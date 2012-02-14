@@ -22,10 +22,14 @@ class Game(gameapp.GameApp):
         self.n2 = avg.PolygonNode(parent=self.display)
         
         # pybox2d setup
-        self.world=b2World(gravity=(3,-10),doSleep=True)
-        self.ground_body=self.world.CreateStaticBody(position=(0,1),shapes=b2PolygonShape(box=(50,5)),)
-        self.dynamic_body=self.world.CreateDynamicBody(position=(10,15), angle=15)
-        self.dynamic_body.CreatePolygonFixture(box=(2,1), density=1, friction=0.3)
+        self.world=b2World(gravity=(0,-5),doSleep=True)
+        self.ground_body=self.world.CreateStaticBody(position=(0,1),density=1,shapes=b2PolygonShape(box=(50,5)),)
+        self.rect=self.world.CreateDynamicBody(position=(10,15), angle=15)
+        self.rect.CreatePolygonFixture(box=(2,1), density=1, friction=0.3)
+        #self.circle = self.world.CreateDynamicBody(position=(12,5))
+        #self.circle.CreateCircleFixture(radius=0.5, density=1, friction=0.3)
+        
+        
         g_player.setOnFrameHandler(self.renderjob)
         
         
@@ -56,7 +60,7 @@ class Game(gameapp.GameApp):
                 # right and downward directions. This means we must flip
                 # the y components.
                 vertices=[(v[0], 1024-v[1]) for v in vertices]
-                if body==self.dynamic_body:
+                if body==self.rect:
                     self.n1.pos=vertices
                 else:
                     self.n2.pos=vertices
