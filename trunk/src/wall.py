@@ -5,8 +5,10 @@ Created on 15.02.2012
 '''
 
 from libavg import AVGApp, avg
-from block import SingleBlock
+import random
 
+from block import SingleBlock, LBlock
+from config import leftPosition, rightPosition, initialNumberOfBlocks
 
 #    liste mit nicht vanished bricks, wenn leer -> ruft methode in oberklasse auf, objekt wird neu eingereiht
 #       randX = random.randint(0,1000)
@@ -19,6 +21,26 @@ class Wall (AVGApp):
     def __init__(self, parentNode):
         
         self.__divNode = avg.DivNode (size = parentNode.size, parent = parentNode)
+        feld = {}
+        #for y in range(yvar):
+         #   for x in range(xvar):
+          #      feld[x,y] = 0
+        blockListL = []
+        blockListR = []
+       # for i in range (initialNumberOfBlocks):
+        #    x = random.randint(0, 4)
+         #   if x == 0:
+          #      h
+           # if x == 1:
+            #    h
+         #   if x == 2:
+          #      h
+           # if x == 3:
+            #    h
+           # if x == 4:
+            #    h
+        b = SingleBlock(self.__divNode, leftPosition[0], leftPosition[1], "00FF00", 1)
+        c = LBlock(self.__divNode, rightPosition[0], rightPosition[1], "FFFF00", 0)
                 
         #self.__Rect.setEventHandler (avg.CURSORDOWN, avg.TOUCH, self.__startPinch)
         #self.__Rect.setEventHandler (avg.CURSORMOTION, avg.TOUCH, self.__doPinch)
