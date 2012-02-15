@@ -5,20 +5,12 @@ Created on 15.02.2012
 '''
 
 from libavg import AVGApp, avg
-from copy import copy
-import time, threading, random
-
-from src.wall.constants import Constants
-from src.wall.block1 import Block1
-from src.wall.block2 import Block2
-from src.wall.block3 import Block3
-from src.wall.block4 import Block4
-from src.wall.block5 import Block5
+from block import SingleBlock
 
 
 #    liste mit nicht vanished bricks, wenn leer -> ruft methode in oberklasse auf, objekt wird neu eingereiht
- #   randX = random.randint(0,1000)
-  #      for i in range (20):
+#       randX = random.randint(0,1000)
+#          for i in range (20):
 
 
 class Wall (AVGApp):
@@ -27,10 +19,7 @@ class Wall (AVGApp):
     def __init__(self, parentNode):
         
         self.__divNode = avg.DivNode (size = parentNode.size, parent = parentNode)
-        
-        timer = threading.Timer(Constants.period, self.__nextBlock)
-        timer.start()
-        
+                
         #self.__Rect.setEventHandler (avg.CURSORDOWN, avg.TOUCH, self.__startPinch)
         #self.__Rect.setEventHandler (avg.CURSORMOTION, avg.TOUCH, self.__doPinch)
         #self.__divNode.setEventHandler (avg.CURSORUP, avg.TOUCH, self.__endPinch)
@@ -48,7 +37,7 @@ class Wall (AVGApp):
     
     
     def __nextBlock(self):
-        b = Block1(self.__divNode, 20, 20, "00FF00")
+        b = SingleBlock(self.__divNode, 20, 20, "00FF00")
         
     def __startPinch (self, event):
         if self.__testCursor:
