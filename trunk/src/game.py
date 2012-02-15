@@ -4,42 +4,60 @@ Created on 19.01.2012
 @author: 2526240
 '''
 
-from display import Display
-from libavg import avg,gameapp
-from Box2D import b2World, b2PolygonShape
+from libavg import avg,gameapp,ui
+from Box2D import b2World,b2EdgeShape,b2Vec2
+from gameobjects import Bat,Ball
 
 g_player = avg.Player.get() # globally store the avg player
 PPM=20.0 # pixels per meter
 TARGET_FPS=60
 TIME_STEP=1.0/TARGET_FPS
 
+def w2a(coords):
+    return avg.Point2D(coords[0],coords[1])*PPM
+def a2w(coords):
+    return b2Vec2(coords[0],coords[1])/PPM
+
 class Game(gameapp.GameApp):
-    def init(self):
-        # libavg setup
-        self.display = Display(self._parentNode)
+    def found(self,event):
+        print "Event detected: ",event
         
-        # pybox2d setup
-        self.world=b2World(gravity=(0,-5),doSleep=True)
+    def init(self):        
+    # libavg setup
+        # setup overall display 
+        self.display=self._parentNode
+        self.display.elementoutlinecolor='FF0000'
+        # store some values
+        displayWidth = self.display.size[0]
+        displayHeight = self.display.size[1]        
+        # setup player fields
+        fieldSize = (displayWidth/3,displayHeight)
+        self.field1 = avg.DivNode(parent=self.display,size=fieldSize,elementoutlinecolor='00FF00')
+        self.field2 = avg.DivNode(parent=self.display,size=fieldSize,elementoutlinecolor='0000FF',pos=(displayWidth*2/3,0))
+        # setup bat handlers
+        #self.bathandler1 = ui.TransformRecognizer(self.field1, self.display, eventSource=avg.TOUCH, moveHandler=self.found)
         
-        # create floor
-        node=avg.PolygonNode(parent=self.display)
-        d = {'type':'poly','node':node}
-        self.world.CreateStaticBody(userData=d,position=(0,1),shapes=b2PolygonShape(box=(50,5)))
+    # pybox2d setup
+        # create world
+        self.world=b2World(gravity=(0,10),doSleep=True)
+                
+        # create sides
+        upperBound = avg.LineNode(parent=self.display,pos1=(0,1),pos2=(displayWidth,1))
+        lowerBound = avg.LineNode(parent=self.display,pos1=(0,displayHeight-1),pos2=(displayWidth,displayHeight-1))
+        d = {'type':'line','node':upperBound}
+        self.world.CreateStaticBody(userData=d,position=a2w((0,1)),shapes=b2EdgeShape(vertices=[a2w((0,1)),a2w((displayWidth,1))]))
+        d['node']=lowerBound
+        self.world.CreateStaticBody(userData=d,position=a2w((0,1)),shapes=b2EdgeShape(vertices=[a2w((0,displayHeight-1)),a2w((displayWidth,displayHeight-1))]))
+                
+        # create balls
+        self.balls=[Ball(self.display,self.world,(15,20),1)]
         
-        # create a rect
-        node=avg.PolygonNode(parent=self.display)
-        d = {'type':'poly','node':node}
-        rect=self.world.CreateDynamicBody(position=(10,30), angle=10,userData=d)
-        rect.CreatePolygonFixture(box=(2,1), density=1, friction=0.3,restitution=.3)
+        # experimental bats
+        bat = Bat(self.display,self.world,(10,35),(20,40))
+        bat2 = Bat(self.display,self.world,(55,40),(60,45))
         
-        # create a circle
-        node=avg.CircleNode(parent=self.display,fillopacity=1, fillcolor="FF1337")
-        d={'type':'circle','node':node}
-        circle = self.world.CreateDynamicBody(position=(15,20),userData=d)
-        circle.CreateCircleFixture(radius=0.5, density=1, friction=0.3,restitution=.73)
-        
-        # setup drawing of the world
-        g_player.setInterval(16,self.renderjob)
+    # setup drawing of the world
+        g_player.setInterval(16,self.renderjob) # TODO setOnFrameHanlder?
         
 
     def renderjob(self):
@@ -47,13 +65,17 @@ class Game(gameapp.GameApp):
             # The body gives us the position and angle of its shapes
             for fixture in body.fixtures:
                 if body.userData['type']=='poly':
-                    vertices=[(body.transform*v)*PPM for v in fixture.shape.vertices]
-                    vertices=[(v[0], self._parentNode.height-v[1]) for v in vertices] # reverse y axis
+                    vertices=[(body.transform*v) for v in fixture.shape.vertices]
+                    vertices=[w2a(v) for v in vertices]
                     body.userData['node'].pos=vertices
                 elif body.userData['type']=='circle':
                     body.userData['node'].r=fixture.shape.radius*PPM
-                    position=body.transform*fixture.shape.pos*PPM
-                    position=(position[0],self._parentNode.height-position[1]) # reverse y axis
-                    body.userData['node'].pos=position
+                    position=body.transform*fixture.shape.pos
+                    body.userData['node'].pos=w2a(position)
+                elif body.userData['type']=='line':
+                    vertices=[body.transform*v for v in fixture.shape.vertices]
+                    vertices = [w2a(v) for v in vertices]
+                    body.userData['node'].pos1=vertices[0]
+                    body.userData['node'].pos2=vertices[1]
         self.world.Step(TIME_STEP, 10, 10)
         self.world.ClearForces()
