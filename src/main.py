@@ -1,14 +1,11 @@
 '''
-Created on 18.01.2012
+Created on 15.02.2012
 
 @author: 2526240
 '''
 import sys
-
-sys.path.append('../')
-
-from engine.game import Game
-from logic import config
+import config
+from game import Game
 
 if __name__ == '__main__':
     if config.debug: 
@@ -16,4 +13,3 @@ if __name__ == '__main__':
     Game.start(sys.argv)
     if config.debug:
         print "DEBUG: Leaving main" 
-    
