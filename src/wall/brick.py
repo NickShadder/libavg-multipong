@@ -5,7 +5,7 @@ Created on 15.02.2012
 '''
 
 from libavg import avg
-from src.wall import constants
+from src.wall.constants import Constants
 
 # a piece of a block
 # x, y - coordinates
@@ -13,7 +13,7 @@ from src.wall import constants
 class Brick (avg.RectNode):
     
     def __init__(self, parentNode, x, y, number, colour):
-        super(Brick, self).__init__(constants.size, pos= (x, y), fillopacity = 1, fillcolor = colour, parent = parentNode)
+        super(Brick, self).__init__(Constants.size, pos= (x, y), fillopacity = 1, fillcolor = colour, parent = parentNode)
         self.__number = number
         
     # is called, when the ball hits the brick
