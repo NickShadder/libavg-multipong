@@ -4,8 +4,8 @@ Created on 15.02.2012
 @author: Philipp
 '''
 
+import config
 from libavg import avg
-from src.wall.constants import Constants
 
 # a piece of a block
 # x, y - coordinates
@@ -13,9 +13,10 @@ from src.wall.constants import Constants
 class Brick (avg.RectNode):
     
     def __init__(self, parentNode, x, y, number, colour):
-        super(Brick, self).__init__(Constants.size, pos= (x, y), fillopacity = 1, fillcolor = colour, parent = parentNode)
+        super(Brick, self).__init__(config.brickSize, pos= (x, y), fillopacity = 1, fillcolor = colour, parent = parentNode)
         self.__number = number
         
     # is called, when the ball hits the brick
     def vanish(self):
         self.fillopacity = 0
+        # todo there should be more than this here
