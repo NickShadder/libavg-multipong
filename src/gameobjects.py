@@ -18,7 +18,7 @@ class Ball(object):
         
         self.game = game
         self.circle = world.CreateDynamicBody(position=position, userData=d)
-        self.circle.CreateCircleFixture(radius=radius, density=1, friction=1,restitution=1)
+        self.circle.CreateCircleFixture(radius=radius, density=1, friction=1,restitution=1,maskBits=0x0004)
         self.circle.bullet = True;
       
     def antouch(self,event):
@@ -35,9 +35,9 @@ class Ball(object):
         x = random.randint(0,1)
         #self.circle.ApplyForce(force=(0,1000), point=startpos)
         if x:
-            self.circle.ApplyForce(force=(3000,random.randint(-1000,1000)), point=startpos)
+            self.circle.ApplyForce(force=(4000,random.randint(-1000,1000)), point=startpos)
         else:
-            self.circle.ApplyForce(force=(-3000,random.randint(-1000,1000)), point=startpos)
+            self.circle.ApplyForce(force=(-4000,random.randint(-1000,1000)), point=startpos)
         
         
         
@@ -67,8 +67,20 @@ class Ghost(object):
         self.world = world
         d = {'type':'circle', 'node':self.node}
         self.circle = world.CreateDynamicBody(position=position, userData=d)
-        self.circle.CreateCircleFixture(radius=radius, density=1, friction=1,restitution=0)
+        
+        self.circle.CreateCircleFixture(radius=radius, density=1, friction=1,restitution=0,groupIndex = -1)
+        #self.circle.fixtures[0].groupIndex = -8
+        
         self.circle.bullet = True;
+        self.circle.ApplyForce(force=(self.direction[0],self.direction[1]), point=self.position)
+        
+        
+    def setDir(self,s):
+        self.circle.ApplyForce(force=((-1)*self.direction[0],(-1)*self.direction[1]), point=self.position)
+        if s == "left":
+            self.direction = (3000,self.direction[1])   
+        else:
+            self.direction = (-3000,self.direction[1])
         self.circle.ApplyForce(force=(self.direction[0],self.direction[1]), point=self.position)
         
     def destroy(self):
@@ -98,6 +110,30 @@ class Ghost(object):
             newy = 0
         self.direction = (newx,newy)
         self.circle.ApplyForce(force=(self.direction[0],self.direction[1]), point=self.position)
+
+class Line:
+    def __init__(self, avg_parentNode, world, pos1, pos2):
+        self.node = avg.LineNode(parent=avg_parentNode, color='000FFF')
+        self.world = world
+        d = {'type':'line', 'node':self.node}
+        self.body = world.CreateStaticBody(userData=d, shapes=b2EdgeShape(vertices=[pos1, pos2]), position=(1, 0), maskBits=0x0004)
+    
+    def destroy(self):
+        self.world.DestroyBody(self.body)
+        self.node.active = False
+        self.node = None
+
+
+class Pill(object):
+    def __init__(self, parentNode, game, world, position, radius=.5):
+        self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00",color='000000')
+        d = {'type':'circle', 'node':self.node}
+        self.world = world
+        self.game = game
+        self.circle = world.CreateDynamicBody(position=position, userData=d)
+        self.circle.CreateCircleFixture(radius=radius, density=1, friction=1,restitution=1,maskBits=0x0004)
+        self.circle.bullet = True;
+       
 
 class Bat:
     def __init__(self, avg_parentNode, world, pos1, pos2):
