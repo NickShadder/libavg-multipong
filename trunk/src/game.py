@@ -40,8 +40,15 @@ class Game(gameapp.GameApp):
         displayWidth = self.display.size[0]
         displayHeight = self.display.size[1]        
         
+        self.leftpoints = 0
+        self.rightpoints = 0  
+          
         self.w = displayWidth
         self.h = displayHeight
+        
+        self.lpn = avg.WordsNode(parent=self.display,pos=(10,10),text= "Points: "+ str(self.leftpoints),color = "FF1337")
+        self.rpn = avg.WordsNode(parent=self.display,pos=(self.w-100,10),text= "Points: "+ str(self.rightpoints),color = "FF1337")
+      
         
         # setup player fields
         fieldSize = (displayWidth/3,displayHeight)
@@ -63,9 +70,9 @@ class Game(gameapp.GameApp):
         self.world.CreateStaticBody(userData=d,position=a2w((0,1)),shapes=b2EdgeShape(vertices=[a2w((0,displayHeight-1)),a2w((displayWidth,displayHeight-1))]))
                         
         # create balls
-        startpos = a2w((displayWidth/2,displayHeight/2))
-        self.balls=[Ball(self.display,self.world,startpos,1)]
-        self.balls[0].circle.ApplyForce(force=(50000,0), point=startpos)
+        self.startpos = a2w((displayWidth/2,displayHeight/2))
+        self.balls=[Ball(self.display,self.world,self.startpos,1)]
+        self.balls[0].start_moving(self.startpos);
 #       self.ghosts = [
 #                       Ghost(self.display,self.world,(10,10),"FF1337",1),
 #                       Ghost(self.display,self.world,(10,25),"00FF66",1),
@@ -81,9 +88,8 @@ class Game(gameapp.GameApp):
        # bat2 = Bat(self.display,self.world,(a2w((displayWidth-40,0))),a2w((displayWidth-40,displayHeight-1)))
         
     # setup drawing of the world
-        g_player.setInterval(16,self.renderjob) # TODO setOnFrameHanlder?
-        g_player.setInterval(16,self.checkballposition) # TODO setOnFrameHanlder?
-         
+        g_player.setInterval(16,self.step) # TODO setOnFrameHanlder?
+           
     def move_ghosts(self):
         for ghost in self.ghosts:
             ghost.changedirection();
@@ -91,9 +97,22 @@ class Game(gameapp.GameApp):
     def checkballposition(self):
         for ball in self.balls:
             if ball.circle.position[0] > (self.w/20-1)+20:
-                ball.circle.position = (10,10)
+                ball.circle.position = self.startpos
+                self.rightpoints = self.rightpoints + 1
+                self.rpn.text = "Points: " + str(self.rightpoints)
+                self.balls[0].start_moving(self.startpos);
+            elif ball.circle.position[0] < 0:
+                ball.circle.position = self.startpos
+                self.leftpoints = self.leftpoints + 1
+                self.lpn.text = "Points: " + str(self.leftpoints)
+                self.balls[0].start_moving(self.startpos);
          
+    def step(self):
+        self.renderjob()
+        self.checkballposition()
+        
     def renderjob(self):
+        self.world.Step(TIME_STEP, 10, 10)
         for body in self.world.bodies:  # inefficient
             # The body gives us the position and angle of its shapes
             for fixture in body.fixtures:
@@ -110,5 +129,4 @@ class Game(gameapp.GameApp):
                     vertices = [w2a(v) for v in vertices]
                     body.userData['node'].pos1=vertices[0]
                     body.userData['node'].pos2=vertices[1]
-        self.world.Step(TIME_STEP, 10, 10)
         self.world.ClearForces()
