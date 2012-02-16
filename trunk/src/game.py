@@ -8,6 +8,7 @@ import math
 from libavg import avg,gameapp,ui
 from Box2D import b2World,b2EdgeShape,b2Vec2
 from gameobjects import Ball,Bat,Ghost,Player,Line
+from compiler.ast import TryExcept
 
 
 g_player = avg.Player.get() # globally store the avg player
@@ -175,14 +176,13 @@ class BatSpawner:
         if self.detected:
             self.cid2 =event.cursorid 
             self.field.setEventCapture(self.cid2)
-            #self.pos2 = a2w(event.pos)
-            self.pos2 = a2w(event.pos)
+            self.pos2 = a2w(self.field.getRelPos(event.pos))
             self.bat = Bat(self.field, self.world, self.pos1, self.pos2)
         else:
             self.cid1 = event.cursorid
             self.field.setEventCapture(self.cid1)
-            #self.pos1 = a2w(event.pos)
-            self.pos1 = a2w(event.pos)
+            self.pos1 = a2w(self.field.getRelPos(event.pos))
+            #print 'aus ',event.pos,'wird ',self.pos1
             self.detected = True
 
     def angle(self):
@@ -194,14 +194,17 @@ class BatSpawner:
             
     def onMove(self,event):
         if event.cursorid == self.cid1 and self.bat is not None:
-            self.pos1 = a2w(event.pos)           
+            self.pos1 = a2w(self.field.getRelPos(event.pos))           
             self.bat.update1(self.pos1)
         elif event.cursorid == self.cid2 and self.bat is not None:
-            self.pos2 = a2w(event.pos)
+            self.pos2 = a2w(self.field.getRelPos(event.pos))
             self.bat.update2(self.pos2)
     
     def onUp(self,event):
-        self.field.releaseEventCapture(event.cursorid)
+        try:
+            self.field.releaseEventCapture(event.cursorid)
+        except:
+            pass
         self.detected = False
         if self.bat is not None:
             self.bat.destroy()
