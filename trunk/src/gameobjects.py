@@ -36,6 +36,18 @@ class Ball(object):
 #    def getY(self): 
 #        pass self.circle.position[1]
 #    
+
+class Player(object):
+    def __init__(self):
+        self.__points = 0
+    
+    def addPoint(self):
+        self.__points += 1
+    
+    def getPoints(self):
+        return self.__points
+    
+
 class Ghost(object):
     def __init__(self, parentNode, world, position,color, radius=.5):
         self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor=color,color='000000')
