@@ -34,9 +34,9 @@ class Ball(object):
         x = random.randint(0,1)
         #self.circle.ApplyForce(force=(0,1000), point=startpos)
         if x:
-            self.circle.ApplyForce(force=(2000,random.randint(-1000,1000)), point=startpos)
+            self.circle.ApplyForce(force=(3000,random.randint(-1000,1000)), point=startpos)
         else:
-            self.circle.ApplyForce(force=(2000,random.randint(-1000,1000)), point=startpos)
+            self.circle.ApplyForce(force=(3000,random.randint(-1000,1000)), point=startpos)
         
         
         
