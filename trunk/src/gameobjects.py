@@ -10,18 +10,19 @@ from Box2D import b2EdgeShape
 import math
 
 class Ball(object):
-    def __init__(self, parentNode, world, position, radius=.5):
+    def __init__(self, parentNode, game, world, position, radius=.5):
         self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00",color='000000')
         self.node.setEventHandler(avg.CURSORDOWN,avg.TOUCH | avg.MOUSE,self.antouch)
         d = {'type':'circle', 'node':self.node}
         self.world = world
+        
+        self.game = game
         self.circle = world.CreateDynamicBody(position=position, userData=d)
         self.circle.CreateCircleFixture(radius=radius, density=1, friction=1,restitution=1)
         self.circle.bullet = True;
       
     def antouch(self,event):
-        self.circle.position = (10,10)
-        
+        self.game.newBall();        
       
     def destroy(self):
         self.world.DestroyBody(self.circle)
@@ -31,11 +32,11 @@ class Ball(object):
     
     def start_moving(self,startpos):
         x = random.randint(0,1)
-        self.circle.ApplyForce(force=(0,4000), point=startpos)
-'''        if x:
-            self.circle.ApplyForce(force=(0,random.randint(-1000,1000)), point=startpos)
+        #self.circle.ApplyForce(force=(0,1000), point=startpos)
+        if x:
+            self.circle.ApplyForce(force=(2000,random.randint(-1000,1000)), point=startpos)
         else:
-            self.circle.ApplyForce(force=(0,random.randint(-1000,1000)), point=startpos)'''
+            self.circle.ApplyForce(force=(2000,random.randint(-1000,1000)), point=startpos)
         
         
         
