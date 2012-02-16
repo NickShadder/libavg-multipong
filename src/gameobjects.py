@@ -36,7 +36,7 @@ class Ball(object):
         if x:
             self.circle.ApplyForce(force=(3000,random.randint(-1000,1000)), point=startpos)
         else:
-            self.circle.ApplyForce(force=(3000,random.randint(-1000,1000)), point=startpos)
+            self.circle.ApplyForce(force=(-3000,random.randint(-1000,1000)), point=startpos)
         
         
         
