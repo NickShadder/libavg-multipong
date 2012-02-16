@@ -89,7 +89,12 @@ class Game(gameapp.GameApp):
         
     # setup drawing of the world
         g_player.setInterval(16,self.step) # TODO setOnFrameHanlder?
-           
+
+    #player
+        self.leftPlayer = Player()
+        self.rightPlayer = Player()
+
+
     def move_ghosts(self):
         for ghost in self.ghosts:
             ghost.changedirection();
@@ -98,13 +103,13 @@ class Game(gameapp.GameApp):
         for ball in self.balls:
             if ball.circle.position[0] > (self.w/20-1)+20:
                 ball.circle.position = self.startpos
-                self.rightpoints = self.rightpoints + 1
-                self.rpn.text = "Points: " + str(self.rightpoints)
+                self.rightPlayer.addPoint
+                self.rpn.text = "Points: " + str(self.rightPlayer.getPoints)
                 self.balls[0].start_moving(self.startpos);
             elif ball.circle.position[0] < 0:
                 ball.circle.position = self.startpos
-                self.leftpoints = self.leftpoints + 1
-                self.lpn.text = "Points: " + str(self.leftpoints)
+                self.leftPlayer.addPoint
+                self.lpn.text = "Points: " + str(self.leftPlayer.getPoints)
                 self.balls[0].start_moving(self.startpos);
          
     def step(self):
