@@ -4,10 +4,11 @@ Created on 15.02.2012
 @author: 2526240
 '''
 
-from libavg import avg
 import random
-from Box2D import b2EdgeShape
 import math
+from config import PPM
+from libavg import avg
+from Box2D import b2EdgeShape,b2PolygonShape,b2FixtureDef
 
 class Ball(object):
     def __init__(self, parentNode, game, world, position, radius=.5):
@@ -136,39 +137,47 @@ class Pill(object):
        
 
 class Bat:
-    def __init__(self, avg_parentNode, world, pos1, pos2):
-        self.pos1=pos1
-        self.pos2=pos2
-        self.world=world
-        self.node = avg.LineNode(parent=avg_parentNode, color='000FFF')
-        d = {'type':'line', 'node':self.node}
-        self.body = world.CreateStaticBody(userData=d, shapes=b2EdgeShape(vertices=[pos1, pos2]), position=pos1)
-            
-    
-    def update1(self,pos1):
-        self.pos1=pos1
-        self.body.fixtures[0].shape.vertices[0]=pos1
+    # the positions are in pixels!
+    def __init__(self, field, world, pos1, pos2):
+        self.world = world
+        self.field = field
+        self.pos1 = pos1
+        self.pos2 = pos2
+        self.width = 5 # set width
+        self.length =  self.length() # compute length
+        self.ang = self.angle(pos1, pos2) # compute angle
+        #self.node = avg.DivNode(parent=field, pos=pos1,size=(self.length,self.width),pivot=(0,0),angle=self.ang,elementoutlinecolor='000FFF')
+        self.node = avg.PolygonNode(parent=field)
+        d = {'type':'poly', 'node':self.node}
+        mid = (pos1+pos2)/(2*PPM)
+        shapedef = b2PolygonShape(box=(self.length/(2*PPM), self.width/(2*PPM), (0,0), self.ang))
+        fixturedef = b2FixtureDef(shape=shapedef,density=1,restitution=self.rest(),friction=.3)
+        self.body = world.CreateKinematicBody(userData=d, position=mid)
+        self.body.CreateFixture(fixturedef)
         
-    def update2(self,pos2):
-        self.pos2=pos2
-        self.body.fixtures[0].shape.vertices[0]=pos2
-        
-    # returns the current length of the bat 
+    # returns the current length of the bat in pixels
     def length(self):
-        pos1 = self.body.fixtures[0].shape.vertices[0]
-        pos2 = self.body.fixtures[0].shape.vertices[1]
-        return math.sqrt((pos2.x - pos1.x) ** 2 + (pos2.y - pos2.y) ** 2)
+        return math.sqrt((self.pos2[0] - self.pos1[0]) ** 2 + (self.pos2[1] - self.pos2[1]) ** 2)
     
     # computes the restitution of the bat
     def rest(self):
         return 1 # TODO implement dependency on length
     
+    def angle(self,pos1,pos2):
+        vec = pos2 - pos1
+        ang = math.atan2(vec.y, vec.x)
+        if ang < 0:
+            ang += math.pi * 2
+        return ang
+    
     def destroy(self):
-        self.world.DestroyBody(self.body)
-        self.node.active = False
-        self.node.unlink()
-        self.node = None
-        self.body=None
+        if self.body is not None:
+            self.world.DestroyBody(self.body)
+            self.body = None
+        if self.node is not None:
+            self.node.active = False
+            self.node.unlink()
+            self.node = None
         
 '''
 class Bat:
