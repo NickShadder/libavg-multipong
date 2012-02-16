@@ -51,7 +51,7 @@ class Game(gameapp.GameApp):
         self.field2 = avg.DivNode(parent=self.display,size=fieldSize,elementoutlinecolor='0000FF',pos=(displayWidth*2/3,0))
         # setup bat handlers
         #self.bathandler1 = ui.TransformRecognizer(self.field1, self.display, eventSource=avg.TOUCH, moveHandler=self.found)
-        
+    
     # pybox2d setup
         # create world
         self.world=b2World(gravity=(0,0),doSleep=True)
@@ -66,7 +66,7 @@ class Game(gameapp.GameApp):
                         
         # create balls
         self.startpos = a2w((displayWidth/2,displayHeight/2))
-        self.balls=[Ball(self.display,self.world,self.startpos,1)]
+        self.balls=[Ball(self.display,self,self.world,self.startpos,1)]
         self.balls[0].start_moving(self.startpos);
 #       self.ghosts = [
 #                       Ghost(self.display,self.world,(10,10),"FF1337",1),
@@ -93,23 +93,28 @@ class Game(gameapp.GameApp):
     def move_ghosts(self):
         for ghost in self.ghosts:
             ghost.changedirection();
-    
+            
+    def newBall(self):
+        self.balls[0].destroy()
+        self.balls=[Ball(self.display,self,self.world,self.startpos,1)]
+        self.balls[0].start_moving(self.startpos);
+                
     def checkballposition(self):
         for ball in self.balls:
             if ball.circle.position[0] > (self.w/20-1)+20:
                 self.balls[0].destroy()
-                self.balls=[Ball(self.display,self.world,self.startpos,1)]
+                self.balls=[Ball(self.display,self,self.world,self.startpos,1)]
                 #ball.circle.position = self.startpos
                 
-                self.rightPlayer.addPoint
-                self.rpn.text = "Points: " + str(self.rightPlayer.getPoints)
+                self.rightPlayer.addPoint()
+                self.rpn.text = "Points: " + str(self.rightPlayer.getPoints())
                 self.balls[0].start_moving(self.startpos);
             elif ball.circle.position[0] < 0:
                 self.balls[0].destroy()
-                self.balls=[Ball(self.display,self.world,self.startpos,1)]
+                self.balls=[Ball(self.display,self,self.world,self.startpos,1)]
                 #ball.circle.position = self.startpos
-                self.leftPlayer.addPoint
-                self.lpn.text = "Points: " + str(self.leftPlayer.getPoints)
+                self.leftPlayer.addPoint()
+                self.lpn.text = "Points: " + str(self.leftPlayer.getPoints())
                 self.balls[0].start_moving(self.startpos);
          
     def step(self):
