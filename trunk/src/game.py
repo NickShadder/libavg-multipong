@@ -4,6 +4,7 @@ Created on 19.01.2012
 @author: 2526240
 '''
 
+import math
 from libavg import avg,gameapp,ui
 from Box2D import b2World,b2EdgeShape,b2Vec2
 from gameobjects import Ball,Bat,Ghost,Player
@@ -140,45 +141,54 @@ class Game(gameapp.GameApp):
                     body.userData['node'].pos2=vertices[1]
         self.world.ClearForces()
         
+
+      
 class BatSpawner:
     def __init__(self,parentNode,world):
         self.world = world
         self.field = parentNode
         self.field.setEventHandler(avg.CURSORDOWN,avg.TOUCH,self.onDetect)
-        self.field.setEventHandler(avg.CURSORMOTION,avg.TOUCH,self.onMove)
+        #self.field.setEventHandler(avg.CURSORMOTION,avg.TOUCH,self.onMove)
         self.field.setEventHandler(avg.CURSORUP,avg.TOUCH,self.onUp)
         self.detected= False
+        self.bat = None
+        self.cid1=None
+        self.cid2=None
+        self.pos1=None
+        self.pos2=None
     
     def onDetect(self,event):        
         if self.detected:
             self.cid2 =event.cursorid 
             self.field.setEventCapture(self.cid2)
-            #self.offset2 = self.field.getRelPos((event.pos.x, event.pos.y))
-            #self.pos2 = a2w(event.pos-self.offset2)
+            #self.pos2 = a2w(event.pos)
             self.pos2 = a2w(event.pos)
             self.bat = Bat(self.field, self.world, self.pos1, self.pos2)
         else:
             self.cid1 = event.cursorid
             self.field.setEventCapture(self.cid1)
-            #self.offset1 = self.field.getRelPos((event.pos.x, event.pos.y))
-            #self.pos1 = a2w(event.pos-self.offset1)
+            #self.pos1 = a2w(event.pos)
             self.pos1 = a2w(event.pos)
             self.detected = True
 
+    def angle(self):
+        vec = self.pos2 - self.pos1
+        ang = math.atan2(vec.y, vec.x)
+        if ang < 0:
+            ang += math.pi * 2
+        return ang
             
     def onMove(self,event):
-        if event.cursorid == self.cid1:
-            #self.pos1 = a2w(event.pos-self.offset1)
-            self.pos1 = a2w(event.pos)
+        if event.cursorid == self.cid1 and self.bat is not None:
+            self.pos1 = a2w(event.pos)           
             self.bat.update1(self.pos1)
-        elif event.cursorid == self.cid2:
-            #self.pos2 = a2w(event.pos-self.offset2)
+        elif event.cursorid == self.cid2 and self.bat is not None:
             self.pos2 = a2w(event.pos)
             self.bat.update2(self.pos2)
     
     def onUp(self,event):
+        self.field.releaseEventCapture(event.cursorid)
         self.detected = False
         if self.bat is not None:
             self.bat.destroy()
             self.bat=None
-        self.field.releaseEventCapture(event.cursorid)
