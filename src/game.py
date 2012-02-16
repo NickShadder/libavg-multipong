@@ -134,7 +134,7 @@ class Game(gameapp.GameApp):
         self.renderjob()
         self.checkballposition()
         self.move_ghosts()
-        #self.checkGhostForBorder()
+        #self.checkGhostForBorder()        
             
     def renderjob(self):
         self.world.Step(TIME_STEP, 10, 10)
