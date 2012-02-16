@@ -5,6 +5,7 @@ Created on 15.02.2012
 '''
 
 from libavg import avg
+import random
 from Box2D import b2EdgeShape
 import math
 
@@ -13,12 +14,60 @@ class Ball(object):
         self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00",color='000000')
         d = {'type':'circle', 'node':self.node}
         self.circle = world.CreateDynamicBody(position=position, userData=d)
-        self.circle.CreateCircleFixture(radius=radius, density=1, friction=.3,restitution=1)
+        self.circle.CreateCircleFixture(radius=radius, density=1, friction=1,restitution=1)
+        self.circle.bullet = True;
         
     def destroy(self):
         self.world.DestroyBody(self.circle)
         self.node.active = False
         self.node = None
+        self.circle = None
+        
+#    def getX(self):
+#        pass self.circle.position[0]
+#    
+#    def getY(self): 
+#        pass self.circle.position[1]
+#    
+class Ghost(object):
+    def __init__(self, parentNode, world, position,color, radius=.5):
+        self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor=color,color='000000')
+        self.direction = (3000,10)
+        self.position = position
+        self.world = world
+        d = {'type':'circle', 'node':self.node}
+        self.circle = world.CreateDynamicBody(position=position, userData=d)
+        self.circle.CreateCircleFixture(radius=radius, density=1, friction=1,restitution=0)
+        self.circle.bullet = True;
+        self.circle.ApplyForce(force=(self.direction[0],self.direction[1]), point=self.position)
+        
+    def destroy(self):
+        self.world.DestroyBody(self.circle)
+        self.node.active = False
+        self.node = None
+        self.circle = None
+            
+    def changedirection(self):
+        self.circle.ApplyForce(force=(-self.direction[0],-self.direction[1]), point=self.position)
+        eins = random.randint(0,1)
+        zwei = random.randint(0,1)
+        newx = 0
+        newy = 0
+        if eins:
+            newx = 3000
+        else: 
+            newx = 0
+            
+        if zwei:
+            newy = 3000
+        else:
+            newy = 0
+            
+        if (not eins and not zwei):
+            newx = 3000
+            newy = 0
+        self.direction = (newx,newy)
+        self.circle.ApplyForce(force=(self.direction[0],self.direction[1]), point=self.position)
 
 class Bat:
     def __init__(self, avg_parentNode, world, pos1, pos2):
