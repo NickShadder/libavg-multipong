@@ -18,14 +18,15 @@ class Brick (avg.RectNode):
         self.__parentBlock = parentBlock
         self.setEventHandler (avg.CURSORDOWN, avg.TOUCH, self.__touch)
         self.setEventHandler (avg.CURSORMOTION, avg.TOUCH, self.__move)
+        self.__currentCursor = None
     
     def __touch(self, event):
         self.__currentCursor = event.cursorid
-        self.__currentPosition = self.getRelPos((event.x, event.y))
+        self.__offset = self.getRelPos((event.x - self.pos[0], event.y - self.pos[1]))
     
     def __move(self, event):
         if event.cursorid == self.__currentCursor:
-            self.__parentBlock.move(self.__currentPosition, event)
+            self.__parentBlock.move(self.__offset, event, self.number)
         
     # is called, when the ball hits the brick
     def vanish(self):

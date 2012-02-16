@@ -7,7 +7,7 @@ Created on 15.02.2012
 from libavg import AVGApp, avg
 import random
 
-from block import SingleBlock, LBlock
+from block import SingleBlock, LBlock, LineBlock
 from config import leftPosition, rightPosition, initialNumberOfBlocks
 
 #    liste mit nicht vanished bricks, wenn leer -> ruft methode in oberklasse auf, objekt wird neu eingereiht
@@ -40,7 +40,8 @@ class Wall (AVGApp):
            # if x == 4:
             #    h
         b = SingleBlock(self.__divNode, leftPosition[0], leftPosition[1], "00FF00", 1)
-        c = LBlock(self.__divNode, rightPosition[0], rightPosition[1], "FFFF00", 0)
+        c = LineBlock(self.__divNode, rightPosition[0], rightPosition[1], "00FFFF", 1)
+        #c = LBlock(self.__divNode, rightPosition[0], rightPosition[1], "FFFF00", 0)
                 
         #self.__Rect.setEventHandler (avg.CURSORDOWN, avg.TOUCH, self.__startPinch)
         #self.__Rect.setEventHandler (avg.CURSORMOTION, avg.TOUCH, self.__doPinch)
