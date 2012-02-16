@@ -19,14 +19,6 @@ class Block (object):
         self.position = position
         self.brickList = []
     
-    def __change_position(self, xDif, yDif):
-        for brick in self.brickList:
-            brick.pos = (brick.pos[0] + xDif, brick.pos[1] + yDif)
-    
-    def move(self, pos, event):
-        self.__change_position(event.x - pos[0], event.y - pos[1])
-
-
 
 # this Block consists only of one brick
 class SingleBlock (Block):    
@@ -34,6 +26,9 @@ class SingleBlock (Block):
         Block.__init__(self, parentNode, colour, position)
         self.brick0 = Brick(self.parentNode, x, y, 0, colour, self)
         self.brickList.append(self.brick0)
+    
+    def move(self, offset, event, number):
+        self.brick0.pos = (event.x - offset[0], event.y - offset[1])
         
         
 # this Block consists of two bricks
@@ -44,6 +39,15 @@ class TwoBlock (Block):
         self.brickList.append(self.brick0)
         self.brick1 = Brick(self.parentNode, x, y - config.brickSize[1], 1, colour, self)
         self.brickList.append(self.brick1)
+    
+    def move(self, offset, event, number):
+        pos = (event.x - offset[0], event.y - offset[1])
+        if number == 0:
+            self.brick0.pos = pos
+            self.brick1.pos = (pos[0], pos[1] - config.brickSize[1])
+        elif number == 1:
+            self.brick1.pos = pos
+            self.brick0.pos = (pos[0], pos[1] + config.brickSize[1])
         
 
 # this Block consists of four bricks which form an rectangle
@@ -66,6 +70,29 @@ class RectBlock (Block):
             self.brickList.append(self.brick2)
             self.brick3 = Brick(self.parentNode, x - config.brickSize[0], y - config.brickSize[1], 3, colour, self)
             self.brickList.append(self.brick3)
+        
+    def move(self, offset, event, number):
+        pos = (event.x - offset[0], event.y - offset[1])
+        if number == 1:
+            pos = (pos[0], pos[1] + config.brickSize[1])
+        elif self.position == 1:
+            if number == 2:
+                pos = (pos[0] - config.brickSize[0], pos[1])
+            elif number == 3:
+                pos = (pos[0] - config.brickSize[0], pos[1] + config.brickSize[1])
+        elif self.position == 0:
+            if number == 2:
+                pos = (pos[0] - config.brickSize[0], pos[1])
+            elif number == 3:
+                pos = (pos[0] - config.brickSize[0], pos[1] + config.brickSize[1])
+        self.brick0.pos = pos
+        self.brick1.pos = (pos[0], pos[1] - config.brickSize[1])
+        if self.position == 1:
+            self.brick2.pos = (pos[0] + config.brickSize[0], pos[1])
+            self.brick3.pos = (pos[0] + config.brickSize[0], pos[1] - config.brickSize[1])
+        elif self.position == 2:
+            self.brick2.pos = (pos[0] - config.brickSize[0], pos[1])
+            self.brick0.pos = (pos[0] - config.brickSize[0], pos[1] - config.brickSize[1])
             
 # this Block consists of four bricks which are arranged in a line
 class LineBlock (Block):
@@ -79,6 +106,19 @@ class LineBlock (Block):
         self.brickList.append(self.brick2)
         self.brick3 = Brick(self.parentNode, x, y + config.brickSize[1], 3, colour, self)
         self.brickList.append(self.brick3)
+        
+    def move(self, offset, event, number):
+        pos = (event.x - offset[0], event.y - offset[1])
+        if number == 1:
+            pos = (pos[0], pos[1] + config.brickSize[1])
+        elif number == 2:
+            pos = (pos[0], pos[1] + 2 * config.brickSize[1])
+        elif number == 3:
+            pos = (pos[0], pos[1] - config.brickSize[1])
+        self.brick0.pos = pos
+        self.brick1.pos = (pos[0], pos[1] - config.brickSize[1])
+        self.brick2.pos = (pos[0], pos[1] - 2 * config.brickSize[1])
+        self.brick3.pos = (pos[0], pos[1] + config.brickSize[1])
         
         
 #this Block consists of four bricks which are arranged like a L
@@ -98,4 +138,26 @@ class LBlock (Block):
         # if the block should appear on the right side:
         if self.position == 0:
             self.brick3 = Brick(self.parentNode, x - config.brickSize[0], y + config.brickSize[1] / 2, 3, colour, self)
-            self.brickList.append(self.brick3)        
+            self.brickList.append(self.brick3)
+    
+    def move(self, offset, event, number):
+        pos = (event.x - offset[0], event.y - offset[1])
+        if number == 0:
+            pos = (pos[0], pos[1] + config.brickSize[1] / 2)
+        if number == 1:
+            pos = (pos[0], pos[1] + 3 * config.brickSize[1] / 2)
+        elif number == 2:
+            pos = (pos[0], pos[1] + config.brickSize[1] / 2)
+        elif self.position == 1:
+            if number == 3:
+                pos = (pos[0] - config.brickSize[0], pos[1] - config.brickSize[1] / 2)
+        elif self.position == 0:
+            if number == 3:
+                pos = (pos[0] + config.brickSize[0], pos[1] - config.brickSize[1] / 2)
+        self.brick0.pos = pos
+        self.brick1.pos = (pos[0], pos[1] - 3 * config.brickSize[1] / 2)
+        self.brick2.pos = (pos[0], pos[1] + config.brickSize[1] / 2)
+        if self.position == 1:
+            self.brick3.pos = (pos[0] + config.brickSize[0], pos[1] + config.brickSize[1] / 2)
+        elif self.position == 0:
+            self.brick3.pos = (pos[0] - config.brickSize[0], pos[1] + config.brickSize[1] / 2)
