@@ -7,7 +7,7 @@ Created on 19.01.2012
 import math
 from libavg import avg,gameapp,ui
 from Box2D import b2World,b2EdgeShape,b2Vec2
-from gameobjects import Ball,Bat,Ghost,Player
+from gameobjects import Ball,Bat,Ghost,Player,Line
 
 
 g_player = avg.Player.get() # globally store the avg player
@@ -27,6 +27,7 @@ class Game(gameapp.GameApp):
     def init(self):        
     # libavg setup
         # setup overall display 
+        self.changeindex = 0
         self.display=self._parentNode
         self.display.elementoutlinecolor='FF0000'
         # store some values
@@ -34,6 +35,7 @@ class Game(gameapp.GameApp):
         displayHeight = self.display.size[1]        
         
         self.leftpoints = 0
+        self.ballrad = 1
         self.rightpoints = 0  
           
         self.w = displayWidth
@@ -64,22 +66,21 @@ class Game(gameapp.GameApp):
                         
         # create balls
         self.startpos = a2w((displayWidth/2,displayHeight/2))
-        self.balls=[Ball(self.display,self,self.world,self.startpos,1)]
+        self.balls=[Ball(self.display,self,self.world,self.startpos, self.ballrad)]
         self.balls[0].start_moving(self.startpos);
-#       self.ghosts = [
-#                       Ghost(self.display,self.world,(10,10),"FF1337",1),
-#                       Ghost(self.display,self.world,(10,25),"00FF66",1),
-#                       Ghost(self.display,self.world,(25,10),"9F00CC",1),
-#                       Ghost(self.display,self.world,(25,25),"4542CE",1)
-#                       ]
+        self.ghosts = [
+                       Ghost(self.display,self.world,(10,10),"FF1337",1),
+                       Ghost(self.display,self.world,(10,25),"00FF66",1),
+                       Ghost(self.display,self.world,(25,10),"9F00CC",1),
+                       Ghost(self.display,self.world,(25,25),"4542CE",1)
+                       ]
 #        
        # self.balls[1].circle.ApplyForce(force=(1500,0), point=(10,10))
         #self.balls[1].circle.ApplyForce(force=(0,0), point=(10,10))   
         # experimental bats
         
-       # bat = Bat(self.display,self.world,(0,0),a2w((0,displayHeight-1))) 
-       # bat2 = Bat(self.display,self.world,(a2w((displayWidth-40,0))),a2w((displayWidth-40,displayHeight-1)))
-        
+        bat = Line(self.display,self.world,a2w((30,0)),a2w((30,displayHeight-1))) 
+        bat2 = Line(self.display,self.world,a2w((displayWidth-60,0)),a2w((displayWidth-60,displayHeight-1)))        
     # setup drawing of the world
         g_player.setInterval(16,self.step) # TODO setOnFrameHanlder?
 
@@ -91,36 +92,49 @@ class Game(gameapp.GameApp):
         s2 = BatSpawner(self.field2, self.world)
 
     def move_ghosts(self):
-        for ghost in self.ghosts:
-            ghost.changedirection();
+        self.changeindex = self.changeindex + 1;
+        if self.changeindex > 60:
+            self.changeindex = 0
+            for ghost in self.ghosts:
+                ghost.changedirection();
             
     def newBall(self):
         self.balls[0].destroy()
-        self.balls=[Ball(self.display,self,self.world,self.startpos,1)]
+        self.balls=[Ball(self.display,self,self.world,self.startpos, self.ballrad)]
         self.balls[0].start_moving(self.startpos);
+    
+    def checkGhostForBorder(self):
+        for ghost in self.ghosts:
+            if ghost.circle.position[0] < 10:
+                ghost.setDir("left")
+            elif ghost.circle.position[0] > 60:
+                ghost.setDir("right")
                 
     def checkballposition(self):
         for ball in self.balls:
-            if ball.circle.position[0] > (self.w/20-1)+20:
+            if ball.circle.position[0] > (self.w/20-1)+ self.ballrad:
                 self.balls[0].destroy()
-                self.balls=[Ball(self.display,self,self.world,self.startpos,1)]
+                self.balls=[Ball(self.display,self,self.world,self.startpos, self.ballrad)]
                 #ball.circle.position = self.startpos
                 
-                self.rightPlayer.addPoint()
-                self.rpn.text = "Points: " + str(self.rightPlayer.getPoints())
-                self.balls[0].start_moving(self.startpos);
-            elif ball.circle.position[0] < 0:
-                self.balls[0].destroy()
-                self.balls=[Ball(self.display,self,self.world,self.startpos,1)]
-                #ball.circle.position = self.startpos
                 self.leftPlayer.addPoint()
                 self.lpn.text = "Points: " + str(self.leftPlayer.getPoints())
+                
+                self.balls[0].start_moving(self.startpos);
+            elif ball.circle.position[0] < (-1)*self.ballrad:
+                self.balls[0].destroy()
+                self.balls=[Ball(self.display,self,self.world,self.startpos, self.ballrad)]
+                #ball.circle.position = self.startpos
+                self.rightPlayer.addPoint()
+                self.rpn.text = "Points: " + str(self.rightPlayer.getPoints())
                 self.balls[0].start_moving(self.startpos);
          
     def step(self):
         self.renderjob()
         self.checkballposition()
-        
+        self.move_ghosts()
+        #self.checkGhostForBorder()
+            
     def renderjob(self):
         self.world.Step(TIME_STEP, 10, 10)
         for body in self.world.bodies:  # inefficient
