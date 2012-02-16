@@ -10,12 +10,7 @@ from gameobjects import *
 from wall import Wall
 import pygame
 import os, sys
-from pygame.locals import*
-from pygame.event import*
-from pygame.key import*
-from pygame.mouse import*
-from pygame.draw import*
-from pygame.display import*
+
 
 g_player = avg.Player.get() # globally store the avg player
 PPM=20.0 # pixels per meter
@@ -102,12 +97,17 @@ class Game(gameapp.GameApp):
     def checkballposition(self):
         for ball in self.balls:
             if ball.circle.position[0] > (self.w/20-1)+20:
-                ball.circle.position = self.startpos
+                self.balls[0].destroy()
+                self.balls=[Ball(self.display,self.world,self.startpos,1)]
+                #ball.circle.position = self.startpos
+                
                 self.rightPlayer.addPoint
                 self.rpn.text = "Points: " + str(self.rightPlayer.getPoints)
                 self.balls[0].start_moving(self.startpos);
             elif ball.circle.position[0] < 0:
-                ball.circle.position = self.startpos
+                self.balls[0].destroy()
+                self.balls=[Ball(self.display,self.world,self.startpos,1)]
+                #ball.circle.position = self.startpos
                 self.leftPlayer.addPoint
                 self.lpn.text = "Points: " + str(self.leftPlayer.getPoints)
                 self.balls[0].start_moving(self.startpos);
