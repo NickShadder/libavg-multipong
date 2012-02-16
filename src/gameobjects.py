@@ -22,6 +22,13 @@ class Ball(object):
         self.node.active = False
         self.node = None
         self.circle = None
+    
+    def start_moving(self,startpos):
+        x = random.randint(0,1)
+        if x:
+            self.circle.ApplyForce(force=(5000,-2000), point=startpos)
+        else:
+            self.circle.ApplyForce(force=(-5000,2000), point=startpos)
         
 #    def getX(self):
 #        pass self.circle.position[0]
