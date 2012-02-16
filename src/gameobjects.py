@@ -27,6 +27,7 @@ class Ball(object):
     def destroy(self):
         self.world.DestroyBody(self.circle)
         self.node.active = False
+        self.node.unlink()
         self.node = None
         self.circle = None
     
@@ -100,10 +101,22 @@ class Ghost(object):
 
 class Bat:
     def __init__(self, avg_parentNode, world, pos1, pos2):
+        self.pos1=pos1
+        self.pos2=pos2
+        self.world=world
         self.node = avg.LineNode(parent=avg_parentNode, color='000FFF')
         d = {'type':'line', 'node':self.node}
-        self.body = world.CreateStaticBody(userData=d, shapes=b2EdgeShape(vertices=[pos1, pos2]), position=(1, 0))
+        self.body = world.CreateStaticBody(userData=d, shapes=b2EdgeShape(vertices=[pos1, pos2]), position=pos1)
+            
     
+    def update1(self,pos1):
+        self.pos1=pos1
+        self.body.fixtures[0].shape.vertices[0]=pos1
+        
+    def update2(self,pos2):
+        self.pos2=pos2
+        self.body.fixtures[0].shape.vertices[0]=pos2
+        
     # returns the current length of the bat 
     def length(self):
         pos1 = self.body.fixtures[0].shape.vertices[0]
@@ -117,7 +130,9 @@ class Bat:
     def destroy(self):
         self.world.DestroyBody(self.body)
         self.node.active = False
+        self.node.unlink()
         self.node = None
+        self.body=None
         
 '''
 class Bat:
