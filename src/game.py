@@ -111,7 +111,7 @@ class Game(gameapp.GameApp):
     def addBall(self):
         if(len(self.balls) < (self.max_balls)):
             self.balls.append(Ball(self.display, self, self.world, self.startpos, self.ballrad))
-            self.balls[-1].start_moving(self.startpos);
+            self.balls[-1].start_moving(self.startpos)
         
     def newGhost(self,index):
         color = self.ghosts[index].old_color
@@ -119,7 +119,7 @@ class Game(gameapp.GameApp):
         del self.ghosts[index]
         tmp.destroy()
         self.ghosts.append(Ghost(self.display, self.world, (random.randint(10,30),random.randint(10,30)),color, 1 ,self.ghostrad))
-        self.addBall()
+        #self.addBall()
         
     def checkGhostForBorder(self):
         for ghost in self.ghosts:
