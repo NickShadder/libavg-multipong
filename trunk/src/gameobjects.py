@@ -45,7 +45,7 @@ class Player(object):
         return self.__points
     
 class Ghost(object):
-    def __init__(self, parentNode, world, position, color,mortality, radius=.5):
+    def __init__(self, parentNode, world, position, color,mortality=0, radius=.5):
         self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor=color, color='000000')
         self.node.setEventHandler(avg.CURSORDOWN,avg.TOUCH | avg.MOUSE,self.antouch)
         self.mortal = 0
