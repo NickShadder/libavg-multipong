@@ -6,7 +6,7 @@ Created on 15.02.2012
 
 import random
 import math
-from config import PPM,DebugNode
+from config import PPM
 from libavg import avg
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef
 
