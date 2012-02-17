@@ -221,12 +221,13 @@ class BatSpawner:
         self.pos2 = (0, 0)
     
     def onDetect(self, event):
-        if self.detected:        
-            #self.pos2 = self.field.getRelPos(event.pos)
+        if self.detected:
+            if self.bat is not None:
+                self.bat.destroy()
+                self.bat = None
             self.pos2 = event.pos
             self.bat = Bat(self.field, self.world, self.pos1, self.pos2)
         else:
-            #self.pos1 = self.field.getRelPos(event.pos)
             self.pos1 = event.pos
             self.detected = True
 
