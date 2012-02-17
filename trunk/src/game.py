@@ -103,6 +103,13 @@ class Game(gameapp.GameApp):
         self.balls[0].destroy()
         self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)]
         self.balls[0].start_moving(self.startpos);
+        
+    def newGhost(self,index):
+        color = self.ghosts[index].old_color
+        self.ghosts[index].destroy()
+        del self.ghosts[index]
+        self.ghosts.append(Ghost(self.display, self.world, (random.randint(10,30),random.randint(10,30)), color, 1))
+        
     
     def checkGhostForBorder(self):
         for ghost in self.ghosts:
@@ -169,14 +176,24 @@ class Game(gameapp.GameApp):
                         print body.position
                         print body.angle
         
-    def checkforballghost(self):    
+    def checkforballghost(self): 
+        index = 0   
         for ghost in self.ghosts: 
             if (ghost.body.position[0] - self.balls[0].body.position[0] < 2 and 
             ghost.body.position[0] - self.balls[0].body.position[0] > -2 and  
             ghost.body.position[1] - self.balls[0].body.position[1] < 2 and 
-            ghost.body.position[1] - self.balls[0].body.position[1] > -2  
+            ghost.body.position[1] - self.balls[0].body.position[1] > -2 and ghost.mortal == 0 
             ): 
                 self.newBall()
+                
+            if (ghost.body.position[0] - self.balls[0].body.position[0] < 2 and 
+            ghost.body.position[0] - self.balls[0].body.position[0] > -2 and  
+            ghost.body.position[1] - self.balls[0].body.position[1] < 2 and 
+            ghost.body.position[1] - self.balls[0].body.position[1] > -2 and ghost.mortal == 1 
+            ): 
+                self.newGhost(index)
+                #Player Punkte addieren
+            index += 1
       
 class BatSpawner:
     def __init__(self, parentNode, world):
