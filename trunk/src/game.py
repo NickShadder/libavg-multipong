@@ -121,6 +121,7 @@ class Game(gameapp.GameApp):
         self.ghosts[index].destroy() 
         del self.ghosts[index] 
         self.ghosts.append(Ghost(self.display, self.world, (random.randint(10,30),random.randint(10,30)), color, 0, self.ghostrad))
+        self.addBall()
         
     def checkGhostForBorder(self):
         for ghost in self.ghosts:
