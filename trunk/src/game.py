@@ -9,6 +9,8 @@ from Box2D import b2World, b2EdgeShape, b2Vec2, b2FixtureDef
 from gameobjects import Ball, Bat, Ghost, Player, GhostLine
 from config import PPM, TIME_STEP
 
+import random
+
 
 g_player = avg.Player.get() # globally store the avg player
 
@@ -19,6 +21,8 @@ def a2w(coords):
 
 class Game(gameapp.GameApp):
     def init(self):
+        self.mag_num = 0.0
+        self.rand_num = random.randint(5,20)
         # setup overall display 
         self.changeindex = 0
         self.display = self._parentNode
@@ -85,6 +89,15 @@ class Game(gameapp.GameApp):
             self.changeindex = 0
             for ghost in self.ghosts:
                 ghost.changedirection();
+                
+    def changeMortality(self):
+        for ghost in self.ghosts:
+            if(ghost.mortal):
+                ghost.mortal = 0
+                ghost.node.fillcolor = ghost.old_color
+            else:
+                ghost.mortal = 1
+                ghost.node.fillcolor = '0000FF'
             
     def newBall(self):
         self.balls[0].destroy()
@@ -122,6 +135,13 @@ class Game(gameapp.GameApp):
         self.checkballposition() 
         self.move_ghosts()
         self.checkforballghost()       
+        if((self.mag_num/1) >= self.rand_num):
+            self.changeMortality()
+            self.mag_num = 0.0
+            self.rand_num = random.randint(5,20)
+        else:
+            self.mag_num = self.mag_num + 0.16
+
             
     def renderjob(self):
         self.world.Step(TIME_STEP, 10, 10)
