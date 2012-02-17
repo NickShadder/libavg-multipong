@@ -59,7 +59,8 @@ class Ghost(object):
         self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
             
     def antouch(self,event): 
-        self.body.pos=(random.randint(10, 60), random.randint(10, 40))         
+        
+        self.body.position=(random.randint(10, 60), random.randint(10, 40))         
             
     def setDir(self, s):
         self.body.ApplyForce(force=((-1) * self.direction[0], (-1) * self.direction[1]), point=self.position)

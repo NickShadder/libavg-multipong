@@ -190,17 +190,17 @@ class Game(gameapp.GameApp):
     def checkforballghost(self):  
         index = 0    
         for ghost in self.ghosts:  
-            if (ghost.body.position[0] - self.balls[0].body.position[0] < 2 and  
-            ghost.body.position[0] - self.balls[0].body.position[0] > -2 and   
-            ghost.body.position[1] - self.balls[0].body.position[1] < 2 and  
-            ghost.body.position[1] - self.balls[0].body.position[1] > -2 and ghost.mortal == 0  
+            if (ghost.body.position[0] - self.balls[0].body.position[0] < 3 and  
+            ghost.body.position[0] - self.balls[0].body.position[0] > -3 and   
+            ghost.body.position[1] - self.balls[0].body.position[1] < 3 and  
+            ghost.body.position[1] - self.balls[0].body.position[1] > -3 and ghost.mortal == 0  
             ):  
                 self.newBall() 
                  
-            if (ghost.body.position[0] - self.balls[0].body.position[0] < 2 and  
-            ghost.body.position[0] - self.balls[0].body.position[0] > -2 and   
-            ghost.body.position[1] - self.balls[0].body.position[1] < 2 and  
-            ghost.body.position[1] - self.balls[0].body.position[1] > -2 and ghost.mortal == 1  
+            if (ghost.body.position[0] - self.balls[0].body.position[0] < 3 and  
+            ghost.body.position[0] - self.balls[0].body.position[0] > -3 and   
+            ghost.body.position[1] - self.balls[0].body.position[1] < 3 and  
+            ghost.body.position[1] - self.balls[0].body.position[1] > -3 and ghost.mortal == 1  
             ):  
                 self.newGhost(index) 
                 #Player Punkte addieren 
