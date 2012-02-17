@@ -72,8 +72,6 @@ class Game(gameapp.GameApp):
 
         GhostLine(self.display, self.world, a2w((30, 0)), a2w((30, self.displayHeight))) 
         GhostLine(self.display, self.world, a2w((self.displayWidth - 60, 0)), a2w((self.displayWidth - 60, self.displayHeight)))
-        #for debugging a TextNode
-        DebugNode = avg.WordsNode (parent = self.display, pos = (600, 700), text = "Debug: ", color = "FFFFFF", active = False)
 
         
                 
@@ -120,7 +118,7 @@ class Game(gameapp.GameApp):
         tmp = self.ghosts[index]
         del self.ghosts[index]
         tmp.destroy()
-        self.ghosts.append(Ghost(self.display, self.world, (random.randint(10,30),random.randint(10,30)),color, 1 ,self.ghostrad))
+        self.ghosts.append(Ghost(self.display, self.world, (random.randint(10,30),random.randint(10,30)),color, 0 ,self.ghostrad))
         #self.addBall()
         
     def checkGhostForBorder(self):

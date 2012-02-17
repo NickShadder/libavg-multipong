@@ -6,7 +6,7 @@ Created on 15.02.2012
 
 import random
 import math
-from config import PPM
+from config import PPM,DebugNode
 from libavg import avg
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef
 
@@ -143,8 +143,7 @@ class Bat:
         mid = (pos1 + pos2) / (2 * PPM)
         len = self.length / (2 * PPM)
         wid = self.width / (2 * PPM)
-        if self.ang > math.pi/2:
-            len,wid = wid,len
+        self.DebugNode = avg.WordsNode(parent = self.field, text = "Debug: "+str(self.ang), color = "FFFFFF")
         shapedef = b2PolygonShape(box=(len,wid , (0, 0), self.ang))
         fixturedef = b2FixtureDef(shape=shapedef, density=1, restitution=self.rest(), friction=.3,groupIndex=1)
         self.body = world.CreateKinematicBody(userData=d, position=mid)
@@ -173,6 +172,10 @@ class Bat:
             self.node.active = False
             self.node.unlink()
             self.node = None
+        if self.DebugNode is not None:
+            self.DebugNode.active = False
+            self.DebugNode.unlink()
+            self.DebugNode = None
         
 '''
 class Bat:
