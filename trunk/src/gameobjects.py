@@ -17,7 +17,7 @@ class Ball(object):
         self.world = world
         self.game = game
         self.body = world.CreateDynamicBody(position=position, userData=d)
-        self.body.CreateCircleFixture(radius=radius, density=1, friction=.2, restitution=1)
+        self.body.CreateCircleFixture(radius=radius, density=1, friction=.2, restitution=1,groupIndex=1,maskBits=0x0002)
       
     def destroy(self):
         if self.body is not None:
@@ -52,7 +52,7 @@ class Ghost(object):
         self.world = world
         d = {'type':'body', 'node':self.node}
         self.body = world.CreateDynamicBody(position=position, userData=d)        
-        self.body.CreateCircleFixture(radius=radius, density=1, friction=1)
+        self.body.CreateCircleFixture(radius=radius, density=1, friction=1,groupIndex=-1)
         self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
             
     def setDir(self, s):
@@ -96,10 +96,10 @@ class Ghost(object):
 
 class GhostLine:
     def __init__(self, avg_parentNode, world, pos1, pos2):
-        self.node = avg.LineNode(parent=avg_parentNode, color='000FFF') # for debugging only
+        self.node = avg.LineNode(parent=avg_parentNode, color='000000') # for debugging only
         self.world = world
         d = {'type':'line', 'node':self.node}
-        self.body = world.CreateStaticBody(userData=d, shapes=b2EdgeShape(vertices=[pos1, pos2]), position=(1, 0))
+        self.body = world.CreateStaticBody(userData=d, shapes=b2EdgeShape(vertices=[pos1, pos2]), position=(1, 0),categoryBits=0x0002)
     
     def destroy(self):
         if self.body is not None:
@@ -135,7 +135,7 @@ class Bat:
         d = {'type':'poly', 'node':self.node}
         mid = (pos1 + pos2) / (2 * PPM)
         shapedef = b2PolygonShape(box=(self.length / (2 * PPM), self.width / (2 * PPM), (0, 0), self.ang))
-        fixturedef = b2FixtureDef(shape=shapedef, density=1, restitution=self.rest(), friction=.3)
+        fixturedef = b2FixtureDef(shape=shapedef, density=1, restitution=self.rest(), friction=.3,groupIndex=1)
         self.body = world.CreateKinematicBody(userData=d, position=mid)
         self.body.CreateFixture(fixturedef)
         

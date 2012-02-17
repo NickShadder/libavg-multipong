@@ -46,11 +46,11 @@ class Game(gameapp.GameApp):
         self.static = self.world.CreateStaticBody(position=(0, 0))
         
         shape = b2EdgeShape(vertices=[a2w((0, 1)), a2w((self.displayWidth, 1))])
-        fixture = b2FixtureDef(shape=shape, density=1)
+        fixture = b2FixtureDef(shape=shape, density=1,groupIndex=1)
         self.static.CreateFixture(fixture)
         
         shape = b2EdgeShape(vertices=[a2w((0, self.displayHeight)), a2w((self.displayWidth, self.displayHeight))])
-        fixture = b2FixtureDef(shape=shape, density=1)
+        fixture = b2FixtureDef(shape=shape, density=1,groupIndex=1)
         self.static.CreateFixture(fixture)        
         
         # create balls
