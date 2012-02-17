@@ -30,9 +30,9 @@ class Ball(object):
     
     def start_moving(self, startpos):
         if random.choice([True, False]):
-            self.body.ApplyForce(force=(4000, random.randint(-1000, 1000)), point=startpos)
+            self.body.ApplyForce(force=(5000, random.randint(-2000, 2000)), point=startpos)
         else:
-            self.body.ApplyForce(force=(-4000, random.randint(-1000, 1000)), point=startpos)
+            self.body.ApplyForce(force=(-5000, random.randint(-2000, 2000)), point=startpos)
         
 class Player(object):
     def __init__(self):
@@ -50,7 +50,7 @@ class Ghost(object):
         self.node.setEventHandler(avg.CURSORDOWN,avg.TOUCH | avg.MOUSE,self.antouch)
         self.mortal = 0
         self.old_color = color
-        self.direction = (3000, 10)
+        self.direction = (8000, 10)
         self.position = position
         self.world = world
         d = {'type':'body', 'node':self.node}
@@ -65,9 +65,9 @@ class Ghost(object):
     def setDir(self, s):
         self.body.ApplyForce(force=((-1) * self.direction[0], (-1) * self.direction[1]), point=self.position)
         if s == "left":
-            self.direction = (3000, self.direction[1])   
+            self.direction = (8000, self.direction[1])   
         else:
-            self.direction = (-3000, self.direction[1])
+            self.direction = (-8000, self.direction[1])
         self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
         
     def destroy(self):
@@ -86,17 +86,17 @@ class Ghost(object):
         newx = 0
         newy = 0
         if eins:
-            newx = 3000
+            newx = 8000
         else: 
             newx = 0
             
         if zwei:
-            newy = 3000
+            newy = 8000
         else:
             newy = 0
             
         if (not eins and not zwei):
-            newx = 3000
+            newx = 8000
             newy = 0
         self.direction = (newx, newy)
         self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
