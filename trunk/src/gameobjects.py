@@ -143,7 +143,8 @@ class Bat:
         mid = (pos1 + pos2) / (2 * PPM)
         len = self.length / (2 * PPM)
         wid = self.width / (2 * PPM)
-        if self.ang < 0:
+        print self.ang
+        if self.ang < math.pi/2:
             len,wid = wid,len
         shapedef = b2PolygonShape(box=(len,wid , (0, 0), self.ang))
         fixturedef = b2FixtureDef(shape=shapedef, density=1, restitution=self.rest(), friction=.3,groupIndex=1)
@@ -161,8 +162,8 @@ class Bat:
     def angle(self, pos1, pos2):
         vec = pos2 - pos1
         ang = math.atan2(vec.y, vec.x)
-        #if ang < 0:
-        #    ang += math.pi * 2
+        if ang < 0:
+            ang += math.pi * 2
         return ang
     
     def destroy(self):
