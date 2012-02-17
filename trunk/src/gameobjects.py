@@ -143,8 +143,7 @@ class Bat:
         mid = (pos1 + pos2) / (2 * PPM)
         len = self.length / (2 * PPM)
         wid = self.width / (2 * PPM)
-        print self.ang
-        if self.ang < math.pi/2:
+        if self.ang > math.pi/2:
             len,wid = wid,len
         shapedef = b2PolygonShape(box=(len,wid , (0, 0), self.ang))
         fixturedef = b2FixtureDef(shape=shapedef, density=1, restitution=self.rest(), friction=.3,groupIndex=1)
