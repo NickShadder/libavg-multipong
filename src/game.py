@@ -66,7 +66,7 @@ class Game(gameapp.GameApp):
         self.ghosts = [Ghost(self.display, self.world, (10, 10), "FF1337", 1),
                        Ghost(self.display, self.world, (10, 25), "00FF66", 1),
                        Ghost(self.display, self.world, (25, 10), "9F00CC", 1),
-                       Ghost(self.display, self.world, (25, 25), "4542CE", 1)]
+                       Ghost(self.display, self.world, (25, 25), "18847B", 1)]
 
         GhostLine(self.display, self.world, a2w((30, 0)), a2w((30, self.displayHeight))) 
         GhostLine(self.display, self.world, a2w((self.displayWidth - 60, 0)), a2w((self.displayWidth - 60, self.displayHeight)))
