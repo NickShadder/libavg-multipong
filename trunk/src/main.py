@@ -18,8 +18,7 @@ if __name__ == '__main__':
 ********************* TODO *******************
 
 1. Punktevergabe bei geistkontakt implementieren
-2. Geistermodus zufaellig aendern (Blau/Normal)
-3. Spielfeldabtrennung schoener darstellen 
+2. Spielfeldabtrennung schoener darstellen 
 
 999. jegliches gehacke entfernen 
 

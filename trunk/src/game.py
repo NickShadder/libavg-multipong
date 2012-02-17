@@ -22,7 +22,7 @@ def a2w(coords):
 class Game(gameapp.GameApp):
     def init(self):
         self.mag_num = 0.0
-        self.rand_num = random.randint(5,20)
+        self.rand_num = random.randint(10,30)
         # setup overall display 
         self.changeindex = 0
         self.display = self._parentNode
@@ -138,7 +138,7 @@ class Game(gameapp.GameApp):
         if((self.mag_num/1) >= self.rand_num):
             self.changeMortality()
             self.mag_num = 0.0
-            self.rand_num = random.randint(5,20)
+            self.rand_num = random.randint(10,30)
         else:
             self.mag_num = self.mag_num + 0.16
 
