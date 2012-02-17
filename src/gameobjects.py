@@ -141,7 +141,11 @@ class Bat:
         self.node = avg.PolygonNode(parent=parentNode)
         d = {'type':'poly', 'node':self.node}
         mid = (pos1 + pos2) / (2 * PPM)
-        shapedef = b2PolygonShape(box=(self.length / (2 * PPM), self.width / (2 * PPM), (0, 0), self.ang))
+        len = self.length / (2 * PPM)
+        wid = self.width / (2 * PPM)
+        if self.ang < 0:
+            len,wid = wid,len
+        shapedef = b2PolygonShape(box=(len,wid , (0, 0), self.ang))
         fixturedef = b2FixtureDef(shape=shapedef, density=1, restitution=self.rest(), friction=.3,groupIndex=1)
         self.body = world.CreateKinematicBody(userData=d, position=mid)
         self.body.CreateFixture(fixturedef)
