@@ -157,8 +157,8 @@ class Bat:
     def angle(self, pos1, pos2):
         vec = pos2 - pos1
         ang = math.atan2(vec.y, vec.x)
-        if ang < 0:
-            ang += math.pi * 2
+        #if ang < 0:
+        #    ang += math.pi * 2
         return ang
     
     def destroy(self):
