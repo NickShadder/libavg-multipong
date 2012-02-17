@@ -45,10 +45,10 @@ class Player(object):
         return self.__points
     
 class Ghost(object):
-    def __init__(self, parentNode, world, position, color, mortality, radius=.5):
+    def __init__(self, parentNode, world, position, color,mortality, radius=.5):
         self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor=color, color='000000')
         self.node.setEventHandler(avg.CURSORDOWN,avg.TOUCH | avg.MOUSE,self.antouch)
-        self.mortal = mortality
+        self.mortal = 0
         self.old_color = color
         self.direction = (3000, 10)
         self.position = position
@@ -60,8 +60,8 @@ class Ghost(object):
             
     def antouch(self,event): 
         self.body.ApplyForce(force=(-self.direction[0], -self.direction[1]), point=self.position) 
-        self.direction = (0, 0)
-    
+        self.direction = (0, 0)            
+            
     def setDir(self, s):
         self.body.ApplyForce(force=((-1) * self.direction[0], (-1) * self.direction[1]), point=self.position)
         if s == "left":
