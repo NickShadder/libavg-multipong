@@ -7,7 +7,7 @@ Created on 19.01.2012
 from libavg import avg, gameapp
 from Box2D import b2World, b2EdgeShape, b2Vec2, b2FixtureDef
 from gameobjects import Ball, Bat, Ghost, Player, GhostLine
-from config import PPM, TIME_STEP
+from config import PPM, TIME_STEP, DebugNode
 
 import random
 
@@ -72,6 +72,8 @@ class Game(gameapp.GameApp):
 
         GhostLine(self.display, self.world, a2w((30, 0)), a2w((30, self.displayHeight))) 
         GhostLine(self.display, self.world, a2w((self.displayWidth - 60, 0)), a2w((self.displayWidth - 60, self.displayHeight)))
+        #for debugging a TextNode
+        DebugNode = avg.WordsNode (parent = self.display, pos = (600, 700), text = "Debug: ", color = "FFFFFF", active = False)
 
         
                 
