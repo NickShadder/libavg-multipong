@@ -136,16 +136,15 @@ class Bat:
         self.pos2 = pos2
         self.width = 5 # set width
         self.length = self.length() # compute length
-        self.ang = self.angle(pos1, pos2) -math.pi # compute angle
+        self.ang = self.angle(pos1, pos2) # compute angle
         #self.node = avg.DivNode(parent=parentNode, pos=pos1,size=(self.length,self.width),pivot=(0,0),angle=self.ang,elementoutlinecolor='000FFF')
         self.node = avg.PolygonNode(parent=parentNode)
         d = {'type':'poly', 'node':self.node}
         mid = (pos1 + pos2) / (2 * PPM)
         len = self.length / (2 * PPM)
         wid = self.width / (2 * PPM)
-        if self.ang > 0:
-            mid,len = len,mid
-        self.DebugNode = avg.WordsNode(parent = self.field, text = "Debug: "+str(self.ang), color = "FFFFFF")
+        self.DebugNode = None 
+        #avg.WordsNode(parent = self.field, text = "Debug: "+str(self.ang), color = "FFFFFF")
         shapedef = b2PolygonShape(box=(len,wid , (0, 0), self.ang))
         fixturedef = b2FixtureDef(shape=shapedef, density=1, restitution=self.rest(), friction=.3,groupIndex=1)
         self.body = world.CreateKinematicBody(userData=d, position=mid)
