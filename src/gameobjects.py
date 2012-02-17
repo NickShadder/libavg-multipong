@@ -30,9 +30,9 @@ class Ball(object):
     
     def start_moving(self, startpos):
         if random.choice([True, False]):
-            self.body.ApplyForce(force=(4000, random.randint(-1000, 1000)), point=startpos)
+            self.body.ApplyForce(force=(40000, random.randint(-10000, 10000)), point=startpos)
         else:
-            self.body.ApplyForce(force=(-4000, random.randint(-1000, 1000)), point=startpos)
+            self.body.ApplyForce(force=(-40000, random.randint(-10000, 10000)), point=startpos)
         
 class Player(object):
     def __init__(self):
