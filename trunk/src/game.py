@@ -23,6 +23,7 @@ class Game(gameapp.GameApp):
     def init(self):
         self.mag_num = 0.0
         self.rand_num = random.randint(10,30)
+        self.max_balls = 3
         # setup overall display 
         self.changeindex = 0
         self.display = self._parentNode
@@ -63,10 +64,10 @@ class Game(gameapp.GameApp):
         # start ball movement
         self.balls[0].start_moving(self.startpos);
         # create ghosts
-        self.ghosts = [Ghost(self.display, self.world, (10, 10), "FF1337", 1),
-                       Ghost(self.display, self.world, (10, 25), "00FF66", 1),
-                       Ghost(self.display, self.world, (25, 10), "9F00CC", 1),
-                       Ghost(self.display, self.world, (25, 25), "18847B", 1)]
+        self.ghosts = [Ghost(self.display, self.world, (10, 10), "FF1337",0 , 1),
+                       Ghost(self.display, self.world, (10, 25), "00FF66",0 ,1),
+                       Ghost(self.display, self.world, (25, 10), "9F00CC",0 ,1),
+                       Ghost(self.display, self.world, (25, 25), "4542CE",0 ,1)]
 
         GhostLine(self.display, self.world, a2w((30, 0)), a2w((30, self.displayHeight))) 
         GhostLine(self.display, self.world, a2w((self.displayWidth - 60, 0)), a2w((self.displayWidth - 60, self.displayHeight)))
@@ -99,17 +100,26 @@ class Game(gameapp.GameApp):
                 ghost.mortal = 1
                 ghost.node.fillcolor = '0000FF'
             
-    def newBall(self):
-        self.balls[0].destroy()
-        self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)]
-        self.balls[0].start_moving(self.startpos);
+    def newBall(self,index):
+        if(len(self.balls) > 1):
+            self.balls[index].destroy()
+            del self.balls[index]
+        else:
+            self.balls[0].destroy()
+            self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)]
+            self.balls[0].start_moving(self.startpos);
+        
+    def addBall(self):
+        if(len(self.balls) < (self.max_balls)):
+            self.balls.append(Ball(self.display, self, self.world, self.startpos, self.ballrad))
+            self.balls[-1].start_moving(self.startpos);
         
     def newGhost(self,index):
-        color = self.ghosts[index].old_color
+        color = self.ghosts[index].color
         self.ghosts[index].destroy()
         del self.ghosts[index]
-        self.ghosts.append(Ghost(self.display, self.world, (random.randint(10,30),random.randint(10,30)), color, 1))
-        
+        self.ghosts.append(Ghost(self.display, self.world, (random.randint(10,30),random.randint(10,30)),color,1 ,1))
+        self.addBall()
     
     def checkGhostForBorder(self):
         for ghost in self.ghosts:
@@ -121,17 +131,25 @@ class Game(gameapp.GameApp):
     def checkballposition(self):
         for ball in self.balls:
             if ball.body.position[0] > (self.displayWidth / PPM - 1) + self.ballrad:
-                self.balls[0].destroy()
-                self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)]
-                #ball.body.position = self.startpos
+                if(len(self.balls) > 1):
+                    self.balls[self.balls.index(ball)].destroy()
+                    del self.balls[self.balls.index(ball)]
+                else:
+                    self.balls[0].destroy()
+                    self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)]
+                    #ball.body.position = self.startpos
                 
                 self.leftPlayer.addPoint()
                 self.lpn.text = "Points: " + str(self.leftPlayer.getPoints())
                 
                 self.balls[0].start_moving(self.startpos);
             elif ball.body.position[0] < (-1) * self.ballrad:
-                self.balls[0].destroy()
-                self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)]
+                if(len(self.balls) > 1):
+                    self.balls[self.balls.index(ball)].destroy()
+                    del self.balls[self.balls.index(ball)]
+                else:
+                    self.balls[0].destroy()
+                    self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)]
                 #ball.body.position = self.startpos
                 self.rightPlayer.addPoint()
                 self.rpn.text = "Points: " + str(self.rightPlayer.getPoints())
@@ -177,24 +195,53 @@ class Game(gameapp.GameApp):
                         print body.angle
         
     def checkforballghost(self): 
-        index = 0   
-        for ghost in self.ghosts: 
-            if (ghost.body.position[0] - self.balls[0].body.position[0] < 2 and 
-            ghost.body.position[0] - self.balls[0].body.position[0] > -2 and  
-            ghost.body.position[1] - self.balls[0].body.position[1] < 2 and 
-            ghost.body.position[1] - self.balls[0].body.position[1] > -2 and ghost.mortal == 0 
-            ): 
-                self.newBall()
+            for ball in self.balls:
+                i = self.balls.index(ball)
+                index = 0
+                for ghost in self.ghosts:
+                    if (ghost.body.position[0] - self.balls[i].body.position[0] < 2 and 
+                        ghost.body.position[0] - self.balls[i].body.position[0] > -2 and  
+                        ghost.body.position[1] - self.balls[i].body.position[1] < 2 and 
+                        ghost.body.position[1] - self.balls[i].body.position[1] > -2 and ghost.mortal == 0 
+                        ): 
+                            #print self.balls.index(self.balls[0])
+                            #eventuell Fehlerquelle dann index in Variable hochzaehlen
+                            #self.newBall(self.balls.index(ball))
+                            self.newBall(i)
+                            
+                    if (ghost.body.position[0] - self.balls[i].body.position[0] < 2 and 
+                        ghost.body.position[0] - self.balls[i].body.position[0] > -2 and  
+                        ghost.body.position[1] - self.balls[i].body.position[1] < 2 and 
+                        ghost.body.position[1] - self.balls[i].body.position[1] > -2 and ghost.mortal == 1 
+                        ): 
                 
-            if (ghost.body.position[0] - self.balls[0].body.position[0] < 2 and 
-            ghost.body.position[0] - self.balls[0].body.position[0] > -2 and  
-            ghost.body.position[1] - self.balls[0].body.position[1] < 2 and 
-            ghost.body.position[1] - self.balls[0].body.position[1] > -2 and ghost.mortal == 1 
-            ): 
-                self.newGhost(index)
-                #Player Punkte addieren
-            index += 1
-      
+                            self.newGhost(index)
+                            #insert newBall
+                            #Player Punkte addieren
+                    index += 1
+                i += 1
+            '''
+            index = 0   
+            for ghost in self.ghosts: 
+                if (ghost.body.position[0] - self.balls[0].body.position[0] < 2 and 
+                ghost.body.position[0] - self.balls[0].body.position[0] > -2 and  
+                ghost.body.position[1] - self.balls[0].body.position[1] < 2 and 
+                ghost.body.position[1] - self.balls[0].body.position[1] > -2 and ghost.mortal == 0 
+                ): 
+                    #print self.balls.index(self.balls[0])
+                    self.newBall(i)
+                    
+                if (ghost.body.position[0] - self.balls[0].body.position[0] < 2 and 
+                ghost.body.position[0] - self.balls[0].body.position[0] > -2 and  
+                ghost.body.position[1] - self.balls[0].body.position[1] < 2 and 
+                ghost.body.position[1] - self.balls[0].body.position[1] > -2 and ghost.mortal == 1 
+                ): 
+                
+                    self.newGhost(index)
+                    #insert newBall
+                    #Player Punkte addieren
+                index += 1
+      '''
 class BatSpawner:
     def __init__(self, parentNode, world):
         self.world = world

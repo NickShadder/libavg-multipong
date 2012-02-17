@@ -17,7 +17,7 @@ class Ball(object):
         self.world = world
         self.game = game
         self.body = world.CreateDynamicBody(position=position, userData=d)
-        self.body.CreateCircleFixture(radius=radius, density=1, friction=.2, restitution=1,groupIndex=1,maskBits=0x0002)
+        self.body.CreateCircleFixture(radius=radius, density=1, friction=0, restitution=1,groupIndex=1,maskBits=0x0002)
       
     def destroy(self):
         if self.body is not None:
@@ -45,9 +45,10 @@ class Player(object):
         return self.__points
     
 class Ghost(object):
-    def __init__(self, parentNode, world, position, color, radius=.5):
+    def __init__(self, parentNode, world, position, color, mortality, radius=.5):
         self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor=color, color='000000')
-        self.mortal = 1
+        self.node.setEventHandler(avg.CURSORDOWN,avg.TOUCH | avg.MOUSE,self.antouch)
+        self.mortal = mortality
         self.old_color = color
         self.direction = (3000, 10)
         self.position = position
@@ -57,6 +58,10 @@ class Ghost(object):
         self.body.CreateCircleFixture(radius=radius, density=1, friction=1,groupIndex=-1)
         self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
             
+    def antouch(self,event): 
+        self.body.ApplyForce(force=(-self.direction[0], -self.direction[1]), point=self.position) 
+        self.direction = (0, 0)
+    
     def setDir(self, s):
         self.body.ApplyForce(force=((-1) * self.direction[0], (-1) * self.direction[1]), point=self.position)
         if s == "left":
