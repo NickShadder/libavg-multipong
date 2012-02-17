@@ -8,47 +8,32 @@ import random
 import math
 from config import PPM
 from libavg import avg
-from Box2D import b2EdgeShape,b2PolygonShape,b2FixtureDef
+from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef
 
 class Ball(object):
     def __init__(self, parentNode, game, world, position, radius=.5):
-        self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00",color='000000')
-        self.node.setEventHandler(avg.CURSORDOWN,avg.TOUCH | avg.MOUSE,self.antouch)
-        d = {'type':'circle', 'node':self.node}
+        self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00", color='000000')
+        d = {'type':'body', 'node':self.node}
         self.world = world
-        
         self.game = game
-        self.circle = world.CreateDynamicBody(position=position, userData=d)
-        self.circle.CreateCircleFixture(radius=radius, density=1, friction=1,restitution=1,maskBits=0x0004)
-        self.circle.bullet = True;
-      
-    def antouch(self,event):
-        self.game.newBall();        
+        self.body = world.CreateDynamicBody(position=position, userData=d)
+        self.body.CreateCircleFixture(radius=radius, density=1, friction=.2, restitution=1)
       
     def destroy(self):
-        self.world.DestroyBody(self.circle)
-        self.node.active = False
-        self.node.unlink()
-        self.node = None
-        self.circle = None
+        if self.body is not None:
+            self.world.DestroyBody(self.body)
+            self.body = None
+        if self.node is not None:
+            self.node.active = False
+            self.node.unlink()
+            self.node = None
     
-    def start_moving(self,startpos):
-        x = random.randint(0,1)
-        #self.circle.ApplyForce(force=(0,1000), point=startpos)
-        if x:
-            self.circle.ApplyForce(force=(4000,random.randint(-1000,1000)), point=startpos)
+    def start_moving(self, startpos):
+        if random.choice([True, False]):
+            self.body.ApplyForce(force=(4000, random.randint(-1000, 1000)), point=startpos)
         else:
-            self.circle.ApplyForce(force=(-4000,random.randint(-1000,1000)), point=startpos)
+            self.body.ApplyForce(force=(-4000, random.randint(-1000, 1000)), point=startpos)
         
-        
-        
-#    def getX(self):
-#        pass self.circle.position[0]
-#    
-#    def getY(self): 
-#        pass self.circle.position[1]
-#    
-
 class Player(object):
     def __init__(self):
         self.__points = 0
@@ -59,41 +44,38 @@ class Player(object):
     def getPoints(self):
         return self.__points
     
-
 class Ghost(object):
-    def __init__(self, parentNode, world, position,color, radius=.5):
-        self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor=color,color='000000')
-        self.direction = (3000,10)
+    def __init__(self, parentNode, world, position, color, radius=.5):
+        self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor=color, color='000000')
+        self.direction = (3000, 10)
         self.position = position
         self.world = world
-        d = {'type':'circle', 'node':self.node}
-        self.circle = world.CreateDynamicBody(position=position, userData=d)
-        
-        self.circle.CreateCircleFixture(radius=radius, density=1, friction=1,restitution=0,groupIndex = -1)
-        #self.circle.fixtures[0].groupIndex = -8
-        
-        self.circle.bullet = True;
-        self.circle.ApplyForce(force=(self.direction[0],self.direction[1]), point=self.position)
-        
-        
-    def setDir(self,s):
-        self.circle.ApplyForce(force=((-1)*self.direction[0],(-1)*self.direction[1]), point=self.position)
+        d = {'type':'body', 'node':self.node}
+        self.body = world.CreateDynamicBody(position=position, userData=d)        
+        self.body.CreateCircleFixture(radius=radius, density=1, friction=1)
+        self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
+            
+    def setDir(self, s):
+        self.body.ApplyForce(force=((-1) * self.direction[0], (-1) * self.direction[1]), point=self.position)
         if s == "left":
-            self.direction = (3000,self.direction[1])   
+            self.direction = (3000, self.direction[1])   
         else:
-            self.direction = (-3000,self.direction[1])
-        self.circle.ApplyForce(force=(self.direction[0],self.direction[1]), point=self.position)
+            self.direction = (-3000, self.direction[1])
+        self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
         
     def destroy(self):
-        self.world.DestroyBody(self.circle)
-        self.node.active = False
-        self.node = None
-        self.circle = None
+        if self.body is not None:
+            self.world.DestroyBody(self.body)
+            self.body = None
+        if self.node is not None:
+            self.node.active = False
+            self.node.unlink()
+            self.node = None
             
     def changedirection(self):
-        self.circle.ApplyForce(force=(-self.direction[0],-self.direction[1]), point=self.position)
-        eins = random.randint(0,1)
-        zwei = random.randint(0,1)
+        self.body.ApplyForce(force=(-self.direction[0], -self.direction[1]), point=self.position)
+        eins = random.randint(0, 1)
+        zwei = random.randint(0, 1)
         newx = 0
         newy = 0
         if eins:
@@ -109,49 +91,51 @@ class Ghost(object):
         if (not eins and not zwei):
             newx = 3000
             newy = 0
-        self.direction = (newx,newy)
-        self.circle.ApplyForce(force=(self.direction[0],self.direction[1]), point=self.position)
+        self.direction = (newx, newy)
+        self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
 
-class Line:
+class GhostLine:
     def __init__(self, avg_parentNode, world, pos1, pos2):
-        self.node = avg.LineNode(parent=avg_parentNode, color='000FFF')
+        self.node = avg.LineNode(parent=avg_parentNode, color='000FFF') # for debugging only
         self.world = world
         d = {'type':'line', 'node':self.node}
-        self.body = world.CreateStaticBody(userData=d, shapes=b2EdgeShape(vertices=[pos1, pos2]), position=(1, 0), maskBits=0x0004)
+        self.body = world.CreateStaticBody(userData=d, shapes=b2EdgeShape(vertices=[pos1, pos2]), position=(1, 0))
     
     def destroy(self):
-        self.world.DestroyBody(self.body)
-        self.node.active = False
-        self.node = None
-
+        if self.body is not None:
+            self.world.DestroyBody(self.body)
+            self.body = None
+        if self.node is not None:
+            self.node.active = False
+            self.node.unlink()
+            self.node = None
 
 class Pill(object):
     def __init__(self, parentNode, game, world, position, radius=.5):
-        self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00",color='000000')
-        d = {'type':'circle', 'node':self.node}
+        self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00", color='000000')
+        d = {'type':'body', 'node':self.node}
         self.world = world
         self.game = game
-        self.circle = world.CreateDynamicBody(position=position, userData=d)
-        self.circle.CreateCircleFixture(radius=radius, density=1, friction=1,restitution=1,maskBits=0x0004)
-        self.circle.bullet = True;
+        self.body = world.CreateDynamicBody(position=position, userData=d)
+        self.body.CreateCircleFixture(radius=radius, density=1, friction=1, restitution=1)
+        self.body.bullet = True;
        
-
 class Bat:
-    # the positions are in pixels!
-    def __init__(self, field, world, pos1, pos2):
+    # the positions are stored in pixels!
+    def __init__(self, parentNode, world, pos1, pos2):
         self.world = world
-        self.field = field
+        self.field = parentNode
         self.pos1 = pos1
         self.pos2 = pos2
         self.width = 5 # set width
-        self.length =  self.length() # compute length
+        self.length = self.length() # compute length
         self.ang = self.angle(pos1, pos2) # compute angle
-        #self.node = avg.DivNode(parent=field, pos=pos1,size=(self.length,self.width),pivot=(0,0),angle=self.ang,elementoutlinecolor='000FFF')
-        self.node = avg.PolygonNode(parent=field)
+        #self.node = avg.DivNode(parent=parentNode, pos=pos1,size=(self.length,self.width),pivot=(0,0),angle=self.ang,elementoutlinecolor='000FFF')
+        self.node = avg.PolygonNode(parent=parentNode)
         d = {'type':'poly', 'node':self.node}
-        mid = (pos1+pos2)/(2*PPM)
-        shapedef = b2PolygonShape(box=(self.length/(2*PPM), self.width/(2*PPM), (0,0), self.ang))
-        fixturedef = b2FixtureDef(shape=shapedef,density=1,restitution=self.rest(),friction=.3)
+        mid = (pos1 + pos2) / (2 * PPM)
+        shapedef = b2PolygonShape(box=(self.length / (2 * PPM), self.width / (2 * PPM), (0, 0), self.ang))
+        fixturedef = b2FixtureDef(shape=shapedef, density=1, restitution=self.rest(), friction=.3)
         self.body = world.CreateKinematicBody(userData=d, position=mid)
         self.body.CreateFixture(fixturedef)
         
@@ -163,7 +147,7 @@ class Bat:
     def rest(self):
         return 1 # TODO implement dependency on length
     
-    def angle(self,pos1,pos2):
+    def angle(self, pos1, pos2):
         vec = pos2 - pos1
         ang = math.atan2(vec.y, vec.x)
         if ang < 0:

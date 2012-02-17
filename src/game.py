@@ -5,9 +5,9 @@ Created on 19.01.2012
 '''
 
 from libavg import avg, gameapp
-from Box2D import b2World, b2EdgeShape, b2Vec2
-from gameobjects import Ball, Bat, Ghost, Player, Line
-from config import PPM,TIME_STEP
+from Box2D import b2World, b2EdgeShape, b2Vec2, b2FixtureDef
+from gameobjects import Ball, Bat, Ghost, Player, GhostLine
+from config import PPM, TIME_STEP
 
 
 g_player = avg.Player.get() # globally store the avg player
@@ -18,62 +18,54 @@ def a2w(coords):
     return b2Vec2(coords[0], coords[1]) / PPM
 
 class Game(gameapp.GameApp):
-    def found(self, event):
-        print "Event detected: ", event
-        
-    def init(self):        
-    # libavg setup
+    def init(self):
         # setup overall display 
         self.changeindex = 0
         self.display = self._parentNode
         self.display.elementoutlinecolor = 'FF0000'
         # store some values
-        displayWidth = self.display.size[0]
-        displayHeight = self.display.size[1]        
-        
+        self.displayWidth = self.display.size[0]
+        self.displayHeight = self.display.size[1]        
+        # initialize values
         self.leftpoints = 0
         self.ballrad = 1
-        self.rightpoints = 0  
-          
-        self.w = displayWidth
-        self.h = displayHeight
-        
+        self.rightpoints = 0
+        # points 
         self.lpn = avg.WordsNode(parent=self.display, pos=(10, 10), text="Points: " + str(self.leftpoints), color="FF1337")
-        self.rpn = avg.WordsNode(parent=self.display, pos=(self.w - 100, 10), text="Points: " + str(self.rightpoints), color="FF1337")
-      
-        
+        self.rpn = avg.WordsNode(parent=self.display, pos=(self.displayWidth - 100, 10), text="Points: " + str(self.rightpoints), color="FF1337")
         # setup player fields
-        fieldSize = (displayWidth / 3, displayHeight)
+        fieldSize = (self.displayWidth / 3, self.displayHeight)
         self.field1 = avg.DivNode(parent=self.display, size=fieldSize, elementoutlinecolor='00FF00')
-        self.field2 = avg.DivNode(parent=self.display, size=fieldSize, elementoutlinecolor='0000FF', pos=(displayWidth * 2 / 3, 0))
-        
-    
-    # pybox2d setup
+        self.field2 = avg.DivNode(parent=self.display, size=fieldSize, elementoutlinecolor='0000FF', pos=(self.displayWidth * 2 / 3, 0))
         # create world
         self.world = b2World(gravity=(0, 0), doSleep=True)
-                
         # create sides
-        upperBound = avg.LineNode(parent=self.display, pos1=(0, 1), pos2=(displayWidth, 1))
-        lowerBound = avg.LineNode(parent=self.display, pos1=(0, displayHeight - 1), pos2=(displayWidth, displayHeight - 1))
-        d = {'type':'line', 'node':upperBound}
-        self.world.CreateStaticBody(userData=d, position=a2w((0, 1)), shapes=b2EdgeShape(vertices=[a2w((0, 1)), a2w((displayWidth, 1))]))
-        d['node'] = lowerBound
-        self.world.CreateStaticBody(userData=d, position=a2w((0, 1)), shapes=b2EdgeShape(vertices=[a2w((0, displayHeight - 1)), a2w((displayWidth, displayHeight - 1))]))
-                        
+        avg.LineNode(parent=self.display, pos1=(0, 1), pos2=(self.displayWidth, 1))
+        avg.LineNode(parent=self.display, pos1=(0, self.displayHeight - 1), pos2=(self.displayWidth, self.displayHeight - 1))
+        
+        self.static = self.world.CreateStaticBody(position=(0, 0))
+        
+        shape = b2EdgeShape(vertices=[a2w((0, 1)), a2w((self.displayWidth, 1))])
+        fixture = b2FixtureDef(shape=shape, density=1)
+        self.static.CreateFixture(fixture)
+        
+        shape = b2EdgeShape(vertices=[a2w((0, self.displayHeight)), a2w((self.displayWidth, self.displayHeight))])
+        fixture = b2FixtureDef(shape=shape, density=1)
+        self.static.CreateFixture(fixture)        
+        
         # create balls
-        self.startpos = a2w((displayWidth / 2, displayHeight / 2))
+        self.startpos = a2w(self.display.size / 2)
         self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)]
+        # start ball movement
         self.balls[0].start_moving(self.startpos);
-        self.ghosts = [
-                       Ghost(self.display, self.world, (10, 10), "FF1337", 1),
+        # create ghosts
+        self.ghosts = [Ghost(self.display, self.world, (10, 10), "FF1337", 1),
                        Ghost(self.display, self.world, (10, 25), "00FF66", 1),
                        Ghost(self.display, self.world, (25, 10), "9F00CC", 1),
-                       Ghost(self.display, self.world, (25, 25), "4542CE", 1)
-                       ]
+                       Ghost(self.display, self.world, (25, 25), "4542CE", 1)]
 
-
-        Line(self.display, self.world, a2w((30, 0)), a2w((30, displayHeight - 1))) 
-        Line(self.display, self.world, a2w((displayWidth - 60, 0)), a2w((displayWidth - 60, displayHeight - 1)))
+        GhostLine(self.display, self.world, a2w((30, 0)), a2w((30, self.displayHeight))) 
+        GhostLine(self.display, self.world, a2w((self.displayWidth - 60, 0)), a2w((self.displayWidth - 60, self.displayHeight)))
 
         
                 
@@ -101,66 +93,77 @@ class Game(gameapp.GameApp):
     
     def checkGhostForBorder(self):
         for ghost in self.ghosts:
-            if ghost.circle.position[0] < 10:
+            if ghost.body.position[0] < 10:
                 ghost.setDir("left")
-            elif ghost.circle.position[0] > 60:
+            elif ghost.body.position[0] > 60:
                 ghost.setDir("right")
                 
     def checkballposition(self):
         for ball in self.balls:
-            if ball.circle.position[0] > (self.w / 20 - 1) + self.ballrad:
+            if ball.body.position[0] > (self.displayWidth / PPM - 1) + self.ballrad:
                 self.balls[0].destroy()
                 self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)]
-                #ball.circle.position = self.startpos
+                #ball.body.position = self.startpos
                 
                 self.leftPlayer.addPoint()
                 self.lpn.text = "Points: " + str(self.leftPlayer.getPoints())
                 
                 self.balls[0].start_moving(self.startpos);
-            elif ball.circle.position[0] < (-1) * self.ballrad:
+            elif ball.body.position[0] < (-1) * self.ballrad:
                 self.balls[0].destroy()
                 self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)]
-                #ball.circle.position = self.startpos
+                #ball.body.position = self.startpos
                 self.rightPlayer.addPoint()
                 self.rpn.text = "Points: " + str(self.rightPlayer.getPoints())
                 self.balls[0].start_moving(self.startpos);
          
-    def step(self):
-        self.renderjob()
-        self.checkballposition()
+    def step(self): 
+        self.renderjob() 
+        self.checkballposition() 
         self.move_ghosts()
-        #self.checkGhostForBorder()        
+        self.checkforballghost()       
             
     def renderjob(self):
         self.world.Step(TIME_STEP, 10, 10)
         self.world.ClearForces()
         for body in self.world.bodies:
-            for fixture in body.fixtures:
-                if body.userData['type'] == 'poly':
-                    vertices = [(body.transform * v) for v in fixture.shape.vertices]
-                    vertices = [w2a(v) for v in vertices]
-                    body.userData['node'].pos = vertices
-                elif body.userData['type'] == 'circle':
-                    body.userData['node'].r = fixture.shape.radius * PPM
-                    position = body.transform * fixture.shape.pos
-                    body.userData['node'].pos = w2a(position)
-                elif body.userData['type'] == 'line':
-                    vertices = [body.transform * v for v in fixture.shape.vertices]
-                    vertices = [w2a(v) for v in vertices]
-                    body.userData['node'].pos1 = vertices[0]
-                    body.userData['node'].pos2 = vertices[1]
-                elif body.userData['type']=='div':
-                    print body
-                    print body.angle
+            if body.userData is not None:
+                for fixture in body.fixtures:
+                    if body.userData['type'] == 'poly':
+                        vertices = [(body.transform * v) for v in fixture.shape.vertices]
+                        vertices = [w2a(v) for v in vertices]
+                        node = body.userData['node']
+                        vertices = [node.getRelPos(v) for v in vertices]
+                        node.pos = vertices
+                    elif body.userData['type'] == 'body':
+                        body.userData['node'].r = fixture.shape.radius * PPM
+                        position = body.transform * fixture.shape.pos
+                        body.userData['node'].pos = w2a(position)
+                    elif body.userData['type'] == 'line':
+                        vertices = [body.transform * v for v in fixture.shape.vertices]
+                        vertices = [w2a(v) for v in vertices]
+                        body.userData['node'].pos1 = vertices[0]
+                        body.userData['node'].pos2 = vertices[1]
+                    elif body.userData['type'] == 'div':
+                        print body
+                        print body.position
+                        print body.angle
         
-
+    def checkforballghost(self):    
+        for ghost in self.ghosts: 
+            if (ghost.body.position[0] - self.balls[0].body.position[0] < 2 and 
+            ghost.body.position[0] - self.balls[0].body.position[0] > -2 and  
+            ghost.body.position[1] - self.balls[0].body.position[1] < 2 and 
+            ghost.body.position[1] - self.balls[0].body.position[1] > -2  
+            ): 
+                self.newBall()
       
 class BatSpawner:
     def __init__(self, parentNode, world):
         self.world = world
         self.field = parentNode
         self.field.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.onDetect)
-        #self.field.setEventHandler(avg.CURSORMOTION,avg.TOUCH,self.onMove)
+        #self.field.setEventHandler(avg.CURSORMOTION,avg.TOUCH,self.onMove) # TODO solve with transformhandler on bat itself
         self.field.setEventHandler(avg.CURSORUP, avg.TOUCH, self.onUp)
         self.detected = False
         self.bat = None
@@ -169,10 +172,12 @@ class BatSpawner:
     
     def onDetect(self, event):
         if self.detected:        
-            self.pos2 = self.field.getRelPos(event.pos)
+            #self.pos2 = self.field.getRelPos(event.pos)
+            self.pos2 = event.pos
             self.bat = Bat(self.field, self.world, self.pos1, self.pos2)
         else:
-            self.pos1 = self.field.getRelPos(event.pos)
+            #self.pos1 = self.field.getRelPos(event.pos)
+            self.pos1 = event.pos
             self.detected = True
 
     def onUp(self, event):

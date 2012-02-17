@@ -13,3 +13,13 @@ if __name__ == '__main__':
     Game.start(sys.argv)
     if config.debug:
         print "DEBUG: Leaving main" 
+        
+'''
+********************* TODO *******************
+
+1. Kollisionen fixen
+2. Punktevergabe bei geistkontakt implementieren
+
+999. gehacke entfernen 
+
+'''
