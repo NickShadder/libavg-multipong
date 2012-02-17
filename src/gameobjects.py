@@ -47,6 +47,8 @@ class Player(object):
 class Ghost(object):
     def __init__(self, parentNode, world, position, color, radius=.5):
         self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor=color, color='000000')
+        self.mortal = 1
+        self.old_color = color
         self.direction = (3000, 10)
         self.position = position
         self.world = world
