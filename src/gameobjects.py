@@ -11,6 +11,7 @@ from libavg import avg
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef
 
 class Ball(object):
+    # TODO refactor with respect to the new rendering mechanism
     def __init__(self, parentNode, game, world, position, radius=.5):
         self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00", color='000000')
         d = {'type':'body', 'node':self.node}
@@ -28,6 +29,16 @@ class Ball(object):
             self.node.unlink()
             self.node = None
     
+    # TODO should return the last player who touched it
+    def lastPlayer(self):
+        pass
+    
+    # TODO should return the player to whom the current zone the ball is in belongs, or None if the ball is in the middle
+    def zone(self):
+        pass
+    
+    # TODO implement some intelligent bahviour here 
+    # e.g. the ball flies towards the winning player
     def start_moving(self, startpos):
         if random.choice([True, False]):
             self.body.ApplyForce(force=(5000, random.randint(-2000, 2000)), point=startpos)
@@ -37,15 +48,24 @@ class Ball(object):
 class Player(object):
     def __init__(self):
         self.__points = 0
+        # TODO make the points an internal wordsnode
+        # TODO keep a reference to the game
     
     def addPoint(self):
         self.__points += 1
+        # TODO this should also update the text and check whether we have a winner
     
+    # TODO this method shouldn't be needed
     def getPoints(self):
         return self.__points
     
+    # TODO should return the other player
+    def other(self):
+        pass
+    
 class Ghost(object):
     def __init__(self, parentNode, world, position, color,mortality=0, radius=.5):
+        # TODO create a realistic body form for the ghosts using b2LoopShape and b2CircleShape
         self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor=color, color='000000')
         self.node.setEventHandler(avg.CURSORDOWN,avg.TOUCH | avg.MOUSE,self.antouch)
         self.mortal = 0
@@ -102,6 +122,7 @@ class Ghost(object):
         self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
 
 class GhostLine:
+    # TODO refactor this class: make it configgable and use it also for upper and lower borders
     def __init__(self, avg_parentNode, world, pos1, pos2):
         self.node = avg.LineNode(parent=avg_parentNode, color='000000') # for debugging only
         self.world = world
@@ -116,8 +137,18 @@ class GhostLine:
             self.node.active = False
             self.node.unlink()
             self.node = None
+            
+
+# TODO create class Bonus
+# TODO create class BallBonus(Bonus)
+# TODO create class WallBonus(Bonus)
+# XXX create class GhostBonus(Bonus)
+
+# XXX create class Turret
+# XXX create class TurretBonus(Bonus)
 
 class Pill(object):
+    # TODO refactor as Pill(BallBonus)
     def __init__(self, parentNode, game, world, position, radius=.5):
         self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00", color='000000')
         d = {'type':'body', 'node':self.node}
@@ -125,16 +156,17 @@ class Pill(object):
         self.game = game
         self.body = world.CreateDynamicBody(position=position, userData=d)
         self.body.CreateCircleFixture(radius=radius, density=1, friction=1, restitution=1)
-        self.body.bullet = True;
+        self.body.bullet = True # seriously?
        
 class Bat:
     # the positions are stored in pixels!
     def __init__(self, parentNode, world, pos1, pos2):
+        # TODO fix this whole mother...
         self.world = world
         self.field = parentNode
         self.pos1 = pos1
         self.pos2 = pos2
-        self.width = 5 # set width
+        self.width = 5 # set width XXX should depend on bat length
         self.length = self.length() # compute length
         self.ang = self.angle(pos1, pos2) # compute angle
         #self.node = avg.DivNode(parent=parentNode, pos=pos1,size=(self.length,self.width),pivot=(0,0),angle=self.ang,elementoutlinecolor='000FFF')
@@ -150,6 +182,7 @@ class Bat:
         self.body = world.CreateKinematicBody(userData=d, position=mid)
         self.body.CreateFixture(fixturedef)
         
+        
     # returns the current length of the bat in pixels
     def length(self):
         return math.sqrt((self.pos2[0] - self.pos1[0]) ** 2 + (self.pos2[1] - self.pos2[1]) ** 2)
@@ -158,6 +191,7 @@ class Bat:
     def rest(self):
         return 1 # TODO implement dependency on length
     
+    # TODO learn basic geometry and come back here
     def angle(self, pos1, pos2):
         vec = pos2 - pos1
         ang = math.atan2(vec.y, vec.x)
@@ -173,46 +207,3 @@ class Bat:
             self.node.active = False
             self.node.unlink()
             self.node = None
-        if self.DebugNode is not None:
-            self.DebugNode.active = False
-            self.DebugNode.unlink()
-            self.DebugNode = None
-        
-'''
-class Bat:
-    def __init__(self,world,pos1,pos2,avg_parentNode):  
-        width = 5 # set width
-        length =  math.sqrt((pos2.x-pos1.x)**2+(pos2.y-pos2.y)**2) # compute length
-        ang = self.angle(pos1, pos2) # compute angle
-        mid = (pos1+pos2)/2 # compute middle
-        
-        if config.debug:
-            print 'length:',length
-        if config.debug:
-            print 'ang: ',ang      
-        if config.debug:
-            print 'mid: ',mid
-            
-        self.node = avg.PolygonNode(parent=avg_parentNode)
-        #self.node2 = avg.RectNode(parent=avg_parentNode,size=(length,width),pos=(mid[0]-length,mid[1]),angle=ang,fillcolor='FF1337',fillopacity=1)
-        d = {'type':'poly','node':self.node}        
-        mid /= PPM # scale from pixels to meters
-        length /= 2*PPM
-        width /= 2*PPM
-        
-        self.body = world.CreateStaticBody(position=mid,userData=d,shapes=b2PolygonShape(box=(width/(2*PPM),length/(2*PPM),mid,ang)))
-        
-        print self.body.fixtures[0].shape.vertices
-        
-    def angle(self,pos1,pos2):
-        vec = pos2 - pos1
-        ang = math.atan2(vec.y, vec.x)
-        if ang < 0:
-            ang += math.pi * 2
-        return ang
-    
-    def destroy(self):
-        self.world.DestroyBody(self.body)
-        self.node.active = False
-        self.node = None
-'''

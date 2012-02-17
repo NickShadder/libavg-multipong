@@ -17,9 +17,25 @@ if __name__ == '__main__':
 '''
 ********************* TODO *******************
 
-1. Punktevergabe bei geistkontakt implementieren
-2. Spielfeldabtrennung schoener darstellen 
+jegliches gehacke entfernen
+agv rendering reorganisieren
+kollisionen in pybox schreiben
+punktevergabe bei geistkontakt implementieren
+in welchem zustand soll ein geist nach dem Tod erscheinen (fressbar oder nicht? )
+spielfeldabtrennung schoener darstellen  
+bilder fuer die spielelemente erstellen(pacman, ghosts, bricks)
+namen ausdenken fuer das spiel
 
-999. jegliches gehacke entfernen 
+********************* ODOT *******************
+
+
+
+
+********************* NOTES *******************
+
+please let your event handlers return False to prevent bubbling!
+please use camelCase when naming methods and fields and let's not use underscores
+classnames should begin with a capital letter and also use CamelCase
+the todos are prioritized as follows: FIXME > TODO > XXX
 
 '''
