@@ -17,9 +17,10 @@ if __name__ == '__main__':
 '''
 ********************* TODO *******************
 
-1. Kollisionen fixen
-2. Punktevergabe bei geistkontakt implementieren
+1. Punktevergabe bei geistkontakt implementieren
+2. Geistermodus zufaellig aendern (Blau/Normal)
+3. Spielfeldabtrennung schoener darstellen 
 
-999. gehacke entfernen 
+999. jegliches gehacke entfernen 
 
 '''
