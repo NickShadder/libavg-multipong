@@ -23,6 +23,3 @@ maxNumberOfBlocks = 15
 PPM = 20.0 # number of pixels per meter
 TARGET_FPS = 60 # the targeted frames per second
 TIME_STEP = 1.0 / TARGET_FPS
-
-#Debug-Node
-DebugNode = None
