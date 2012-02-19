@@ -10,24 +10,34 @@ from config import PPM
 from libavg import avg
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef
 
-class Ball(object):
-    # TODO refactor with respect to the new rendering mechanism
-    def __init__(self, parentNode, game, world, position, radius=1):
-        self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00", color='000000')
-        d = {'type':'body', 'node':self.node}
+# XXX make OWN images!!!
+
+class GameObject:
+    def __init__(self,renderer,world):
+        self.renderer = renderer
         self.world = world
-        self.game = game
-        self.body = world.CreateDynamicBody(position=position, userData=d)
-        self.body.CreateCircleFixture(radius=radius, density=1, friction=0, restitution=1,groupIndex=1,maskBits=0x0002)
-      
+        self.renderer.register(self)
+        
     def destroy(self):
+        self.renderer.deregister(self)
         if self.body is not None:
             self.world.DestroyBody(self.body)
             self.body = None
         if self.node is not None:
             self.node.active = False
-            self.node.unlink()
+            self.node.unlink(True)
             self.node = None
+    
+
+class Ball(GameObject):
+    # TODO refactor with respect to the new rendering mechanism
+    def __init__(self, renderer, world, parentNode, position, radius=1):
+        GameObject.__init__(self, renderer, world)
+        self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00", color='000000')
+        d = {'type':'circle', 'node':self.node}
+        self.body = world.CreateDynamicBody(position=position, userData=d)
+        self.body.CreateCircleFixture(radius=radius, density=1, friction=0, restitution=1,groupIndex=1,maskBits=0x0002)
+      
     
     # TODO should return the last player who touched it
     def lastPlayer(self):
@@ -66,20 +76,18 @@ class Player:
     def other(self):
         pass
     
-class Ghost(object):
-    def __init__(self, parentNode, world, position, name,mortality=0, radius=2):
-        # TODO create a realistic body form for the ghosts using b2LoopShape and b2CircleShape
-        #self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor=color, color='000000')
-        self.node = avg.ImageNode(parent=parentNode,href='../data/img/'+name+'.png',pos = (10,10))
-        
-        self.node.setEventHandler(avg.CURSORDOWN,avg.TOUCH | avg.MOUSE,self.antouch)
+class Ghost(GameObject):
+    def __init__(self, renderer, world, parentNode, position, name ,mortality=0, radius=1.5):
+        GameObject.__init__(self, renderer, world)
+        self.node = avg.ImageNode(parent=parentNode,href='../data/img/'+name+'.png',pos = (10,10))        
+        self.node.setEventHandler(avg.CURSORDOWN,avg.TOUCH | avg.MOUSE,self.antouch) # XXX get rid of this
         self.mortal = 0
         self.old_name = name
         self.direction = (8000, 10)
         self.position = position
-        self.world = world
         d = {'type':'body', 'node':self.node}
         self.body = world.CreateDynamicBody(position=position, userData=d)        
+        # TODO create a realistic body form for the ghosts using b2LoopShape and b2CircleShape
         self.body.CreateCircleFixture(radius=radius, density=1, friction=1,groupIndex=-1)
         self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
             
@@ -94,16 +102,7 @@ class Ghost(object):
         else:
             self.direction = (-8000, self.direction[1])
         self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
-        
-    def destroy(self):
-        if self.body is not None:
-            self.world.DestroyBody(self.body)
-            self.body = None
-        if self.node is not None:
-            self.node.active = False
-            self.node.unlink()
-            self.node = None
-            
+
     def changedirection(self):
         self.body.ApplyForce(force=(-self.direction[0], -self.direction[1]), point=self.position)
         eins = random.randint(0, 1)
@@ -152,7 +151,7 @@ class GhostLine:
 # XXX create class Turret
 # XXX create class TurretBonus(Bonus)
 
-class Pill(object):
+class Pill:
     # TODO refactor as Pill(BallBonus)
     def __init__(self, parentNode, game, world, position, radius=.5):
         self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00", color='000000')
@@ -163,11 +162,11 @@ class Pill(object):
         self.body.CreateCircleFixture(radius=radius, density=1, friction=1, restitution=1)
         self.body.bullet = True # seriously?
        
-class Bat:
+class Bat(GameObject):
     # the positions are stored in pixels!
-    def __init__(self, parentNode, world, pos1, pos2):
+    def __init__(self, renderer, world, parentNode, pos1, pos2):
+        GameObject.__init__(self, renderer, world)
         # TODO fix this whole mother...
-        self.world = world
         self.field = parentNode
         self.pos1 = pos1
         self.pos2 = pos2
@@ -203,12 +202,3 @@ class Bat:
         if ang < 0:
             ang += math.pi * 2
         return ang
-    
-    def destroy(self):
-        if self.body is not None:
-            self.world.DestroyBody(self.body)
-            self.body = None
-        if self.node is not None:
-            self.node.active = False
-            self.node.unlink()
-            self.node = None
