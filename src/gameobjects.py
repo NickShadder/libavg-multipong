@@ -12,7 +12,7 @@ from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef
 
 class Ball(object):
     # TODO refactor with respect to the new rendering mechanism
-    def __init__(self, parentNode, game, world, position, radius=.5):
+    def __init__(self, parentNode, game, world, position, radius=1):
         self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00", color='000000')
         d = {'type':'body', 'node':self.node}
         self.world = world
@@ -67,12 +67,14 @@ class Player:
         pass
     
 class Ghost(object):
-    def __init__(self, parentNode, world, position, color,mortality=0, radius=.5):
+    def __init__(self, parentNode, world, position, name,mortality=0, radius=2):
         # TODO create a realistic body form for the ghosts using b2LoopShape and b2CircleShape
-        self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor=color, color='000000')
+        #self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor=color, color='000000')
+        self.node = avg.ImageNode(parent=parentNode,href='../data/img/'+name+'.png',pos = (10,10))
+        
         self.node.setEventHandler(avg.CURSORDOWN,avg.TOUCH | avg.MOUSE,self.antouch)
         self.mortal = 0
-        self.old_color = color
+        self.old_name = name
         self.direction = (8000, 10)
         self.position = position
         self.world = world

@@ -82,14 +82,9 @@ class Game(gameapp.GameApp):
         self.leftPlayer, self.rightPlayer = Player(self.field1), Player(self.field2) # XXX rename into player1 and player2
         self.leftPlayer.other, self.rightPlayer.other = self.rightPlayer, self.leftPlayer # monkey patch ftw =)
         
-        # TODO get rid of this
-        self.leftpoints = 0
-        self.ballrad = 1
-        self.ghostrad = 2
-        self.rightpoints = 0
         # TODO move to the Player class
-        self.lpn = avg.WordsNode(parent=self.display, pos=(10, 10), text="Points: " + str(self.leftpoints), color="FF1337")
-        self.rpn = avg.WordsNode(parent=self.display, pos=(displayWidth - 100, 10), text="Points: " + str(self.rightpoints), color="FF1337")
+        self.lpn = avg.WordsNode(parent=self.display, pos=(10, 10), text="Points: " + str(0), color="FF1337")
+        self.rpn = avg.WordsNode(parent=self.display, pos=(displayWidth - 100, 10), text="Points: " + str(0), color="FF1337")
         
         # create world
         self.world = b2World(gravity=(0, 0), doSleep=True)
@@ -110,14 +105,14 @@ class Game(gameapp.GameApp):
         
         # create balls
         self.startpos = a2w(self.display.size / 2)
-        self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)]
+        self.balls = [Ball(self.display, self, self.world, self.startpos)]
         # start ball movement
         self.balls[0].start_moving(self.startpos);
         # create ghosts
-        self.ghosts = [Ghost(self.display, self.world, (10, 10), "FF1337", 0, self.ghostrad),
-                       Ghost(self.display, self.world, (10, 25), "00FF66", 0, self.ghostrad),
-                       Ghost(self.display, self.world, (25, 10), "9F00CC", 0, self.ghostrad),
-                       Ghost(self.display, self.world, (25, 25), "18847B", 0, self.ghostrad)]
+        self.ghosts = [Ghost(self.display, self.world, (10, 10), "ghost_red", 0),
+                       Ghost(self.display, self.world, (10, 25), "ghost_green", 0),
+                       Ghost(self.display, self.world, (25, 10), "ghost_orange", 0),
+                       Ghost(self.display, self.world, (25, 25), "ghost_pink", 0)]
 
         GhostLine(self.display, self.world, a2w((30, 0)), a2w((30, displayHeight))) 
         GhostLine(self.display, self.world, a2w((displayWidth - 60, 0)), a2w((displayWidth - 60, displayHeight)))
@@ -142,38 +137,30 @@ class Game(gameapp.GameApp):
         for ghost in self.ghosts:
             if(ghost.mortal):
                 ghost.mortal = 0
-                ghost.node.fillcolor = ghost.old_color
+                ghost.node.href = href='../data/img/'+ghost.old_name+'.png' 
             else:
                 ghost.mortal = 1
-                ghost.node.fillcolor = '0000FF'
+                ghost.node.href = href='../data/img/ghost_blue.png' 
     
     # FIXME rethink concept        
     def newBall(self): 
         self.balls[0].destroy() 
-        self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)] 
+        self.balls = [Ball(self.display, self, self.world, self.startpos)] 
         self.balls[0].start_moving(self.startpos)
         
     # FIXME rethink concept        
     def addBall(self):
         if(len(self.balls) < (self.max_balls)):
-            self.balls.append(Ball(self.display, self, self.world, self.startpos, self.ballrad))
+            self.balls.append(Ball(self.display, self, self.world, self.startpos))
             self.balls[-1].start_moving(self.startpos)
     
     
     def newGhost(self, index): 
-        color = self.ghosts[index].old_color 
+        name = self.ghosts[index].old_name 
         self.ghosts[index].destroy() 
         del self.ghosts[index] 
-        self.ghosts.append(Ghost(self.display, self.world, (random.randint(10, 30), random.randint(10, 30)), color, 0, self.ghostrad))
+        self.ghosts.append(Ghost(self.display, self.world, (random.randint(10, 30), random.randint(10, 30)), name, 0))
         self.addBall()
-    
-    # TODO replace by a collisionlistener
-    def checkGhostForBorder(self):
-        for ghost in self.ghosts:
-            if ghost.body.position[0] < 10:
-                ghost.setDir("left")
-            elif ghost.body.position[0] > 60:
-                ghost.setDir("right")
          
     def step(self): 
         self.renderjob() 
@@ -217,19 +204,20 @@ class Game(gameapp.GameApp):
     
     # TODO replace by a collisionlistener
     def checkforballghost(self):  
+        tolerance = 3
         index = 0    
         for ghost in self.ghosts:  
-            if (ghost.body.position[0] - self.balls[0].body.position[0] < 3 and  
-            ghost.body.position[0] - self.balls[0].body.position[0] > -3 and   
-            ghost.body.position[1] - self.balls[0].body.position[1] < 3 and  
-            ghost.body.position[1] - self.balls[0].body.position[1] > -3 and ghost.mortal == 0  
+            if (ghost.body.position[0] - self.balls[0].body.position[0] < tolerance and  
+            ghost.body.position[0] - self.balls[0].body.position[0] > -tolerance and   
+            ghost.body.position[1] - self.balls[0].body.position[1] < tolerance and  
+            ghost.body.position[1] - self.balls[0].body.position[1] > -tolerance and ghost.mortal == 0  
             ):  
                 self.newBall() 
                  
-            if (ghost.body.position[0] - self.balls[0].body.position[0] < 3 and  
-            ghost.body.position[0] - self.balls[0].body.position[0] > -3 and   
-            ghost.body.position[1] - self.balls[0].body.position[1] < 3 and  
-            ghost.body.position[1] - self.balls[0].body.position[1] > -3 and ghost.mortal == 1  
+            if (ghost.body.position[0] - self.balls[0].body.position[0] < tolerance and  
+            ghost.body.position[0] - self.balls[0].body.position[0] > -tolerance and   
+            ghost.body.position[1] - self.balls[0].body.position[1] < tolerance and  
+            ghost.body.position[1] - self.balls[0].body.position[1] > -tolerance and ghost.mortal == 1  
             ):  
                 self.newGhost(index) 
                 #Player Punkte addieren 
@@ -237,6 +225,7 @@ class Game(gameapp.GameApp):
 
     # TODO replace by a collisionlistener
     def checkballposition(self): 
+        self.ballrad = 1
         for ball in self.balls: 
             if ball.body.position[0] > (self.display.size[0] / PPM - 1) + self.ballrad: 
                 self.balls[0].destroy() 
