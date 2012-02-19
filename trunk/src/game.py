@@ -32,26 +32,18 @@ class Renderer:
     def draw(self):
         for obj in self.objects:
             body = obj.body
-            for fixture in body.fixtures:                
-                # body.userData.pos = w2a(body.position)-body.userData.size/2 # <-- suggested convention+implementation
-                if body.userData['type'] == 'body': # TODO create convention and reimplement
-                    position = body.transform * fixture.shape.pos 
-                    body.userData['node'].pos = w2a(position)
-                elif body.userData['type'] == 'div': # TODO create convention and implement
-                    print body
-                    print body.position
-                    print body.angle
-                # TODO get rid of this
-                elif body.userData['type'] == 'poly': 
+            for fixture in body.fixtures:
+                if body.userData['type'] == 'body':
+                    position = body.transform * fixture.shape.pos
+                    body.userData['node'].pos = w2a(position)-body.userData['node'].size/2
+                    body.userData['node'].angle=body.angle
+                    break # XXX solve this code smell by convention
+                elif body.userData['type'] == 'poly': # XXX get rid of this after Bat reimplementation
                     vertices = [(body.transform * v) for v in fixture.shape.vertices]
                     vertices = [w2a(v) for v in vertices]
                     node = body.userData['node']
                     vertices = [node.getRelPos(v) for v in vertices]
                     node.pos = vertices
-                elif body.userData['type'] == 'circle':
-                    body.userData['node'].r = fixture.shape.radius * PPM
-                    position = body.transform * fixture.shape.pos
-                    body.userData['node'].pos = w2a(position)
             
 class Game(gameapp.GameApp):
     def init(self):
@@ -146,10 +138,10 @@ class Game(gameapp.GameApp):
         # start ball movement
         self.balls[0].start_moving(self.startpos);
         # create ghosts
-        blinky = Ghost(self.renderer, self.world,self.display, (10, 10), "ghost_red")
-        pinky = Ghost(self.renderer, self.world,self.display,(25, 25), "ghost_pink")
-        inky = Ghost(self.renderer, self.world,self.display, (10, 25), "ghost_green") # XXX this one should be cyan-colored
-        clyde = Ghost(self.renderer, self.world,self.display,(25, 10), "ghost_orange")
+        blinky = Ghost(self.renderer, self.world,self.display, (10, 10), "blinky")
+        pinky = Ghost(self.renderer, self.world,self.display,(25, 25), "pinky")
+        inky = Ghost(self.renderer, self.world,self.display, (10, 25), "inky")
+        clyde = Ghost(self.renderer, self.world,self.display,(25, 10), "clyde")
         self.ghosts = [blinky,pinky,inky,clyde]
                 
         # TODO this should be created earlier along with the borders using the same creation technique
@@ -162,6 +154,7 @@ class Game(gameapp.GameApp):
         BatSpawner(self.field2, self.world, self.renderer)
 
     # TODO move into the ghost class as ghost.move()
+
     def move_ghosts(self):
         self.changeindex = self.changeindex + 1;
         if self.changeindex > 60:
@@ -177,7 +170,7 @@ class Game(gameapp.GameApp):
                 ghost.node.href = '../data/img/'+ghost.old_name+'.png' 
             else:
                 ghost.mortal = 1
-                ghost.node.href = '../data/img/ghost_blue.png' 
+                ghost.node.href = '../data/img/blue.png'
     
     # FIXME rethink concept        
     def newBall(self): 

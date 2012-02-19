@@ -8,7 +8,7 @@ import random
 import math
 from config import PPM
 from libavg import avg
-from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef
+from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape
 
 # XXX make OWN images!!!
 
@@ -33,10 +33,12 @@ class Ball(GameObject):
     # TODO refactor with respect to the new rendering mechanism
     def __init__(self, renderer, world, parentNode, position, radius=1):
         GameObject.__init__(self, renderer, world)
-        self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00", color='000000')
-        d = {'type':'circle', 'node':self.node}
+        #self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00", color='000000')
+        diameter = 2*radius*PPM
+        self.node = avg.ImageNode(parent=parentNode,href='../data/img/pacman.png',size=(diameter,diameter))
+        d = {'type':'body', 'node':self.node}
         self.body = world.CreateDynamicBody(position=position, userData=d)
-        self.body.CreateCircleFixture(radius=radius, density=1, friction=0, restitution=1,groupIndex=1,maskBits=0x0002)
+        self.body.CreateCircleFixture(radius=radius, density=1, restitution=1,groupIndex=1,maskBits=0x0002)
       
     
     # TODO should return the last player who touched it
@@ -79,17 +81,22 @@ class Player:
 class Ghost(GameObject):
     def __init__(self, renderer, world, parentNode, position, name ,mortality=0, radius=1.5):
         GameObject.__init__(self, renderer, world)
-        self.node = avg.ImageNode(parent=parentNode,href='../data/img/'+name+'.png',pos = (10,10))        
+        diameter = 2*radius*PPM
+        self.node = avg.ImageNode(parent=parentNode,href='../data/img/'+name+'.png',size=(diameter,diameter))
         self.node.setEventHandler(avg.CURSORDOWN,avg.TOUCH | avg.MOUSE,self.antouch) # XXX get rid of this
         self.mortal = 0
         self.old_name = name
         self.direction = (8000, 10)
         self.position = position
         d = {'type':'body', 'node':self.node}
-        self.body = world.CreateDynamicBody(position=position, userData=d)        
-        # TODO create a realistic body form for the ghosts using b2LoopShape and b2CircleShape
-        self.body.CreateCircleFixture(radius=radius, density=1, friction=1,groupIndex=-1)
-        self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
+        ghostUpper = b2FixtureDef(shape = b2CircleShape(radius=radius),
+                                  density=1,groupIndex = -1)
+        ghostLower = b2FixtureDef(shape = b2PolygonShape(box=(radius,radius/2,(0,-radius/2),0)),
+                                  density=1,groupIndex = -1)
+        self.body = world.CreateDynamicBody(position=position,fixtures=[ghostUpper,ghostLower],
+                                            userData=d,fixedRotation=True) # XXX let them rotate after we fixed their propulsion
+        #self.body.CreateCircleFixture(radius=radius, density=1, friction=1,groupIndex=-1)
+        #self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
             
     def antouch(self,event): 
         
