@@ -24,19 +24,19 @@ kollisionen in pybox schreiben
 punktevergabe bei geistkontakt implementieren
 in welchem zustand soll ein geist nach dem Tod erscheinen (fressbar oder nicht? )
 spielfeldabtrennung schoener darstellen  
-bilder fuer die spielelemente erstellen(pacman, ghosts (DONE), bricks)
+EIGENE!!! bilder fuer die spielelemente erstellen(pacman, ghosts, bricks)
 namen ausdenken fuer das spiel
 
 ********************* ODOT *******************
 
-Update from 19/02, morning
-- checkGhostForBorder deleted (in game)
-- self.ballrad,ghostrad und points deleted (in game)
-- ghostpics with transparency
+The game can now be started directly from game.py
+
+
+
 
 ********************* NOTES *******************
 
-please let your event handlers return False to prevent bubbling!
+please let your event handlers return False to prevent bubbling, also use setEventCapture(id)
 please use camelCase when naming methods and fields and let's not use underscores
 classnames should begin with a capital letter and also use CamelCase
 the todos are prioritized as follows: FIXME > TODO > XXX
