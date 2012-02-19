@@ -21,4 +21,9 @@ maxNumberOfBlocks = 30
 # ****************** bonus config ******************
 bonusTime = 3 # the time in seconds a bonus waits for interaction before disappearing
 
+# ****************** ball config ******************
+maxBalls = 3 # the maximum number of pacmans on the field 
+ballRadius = 1 # the radius of a pacman in meters
 
+# ****************** ghost config ******************
+ghostRadius = 2 # the radius of a ghost in meters

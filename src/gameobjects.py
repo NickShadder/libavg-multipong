@@ -45,19 +45,22 @@ class Ball(object):
         else:
             self.body.ApplyForce(force=(-5000, random.randint(-2000, 2000)), point=startpos)
         
-class Player(object):
-    def __init__(self):
-        self.__points = 0
+class Player:
+    def __init__(self,avgNode):
+        self.points = 0
+        self.other = None
+        self.zone = avgNode
         # TODO make the points an internal wordsnode
         # TODO keep a reference to the game
     
-    def addPoint(self):
-        self.__points += 1
+    def addPoint(self,points=1):
+        self.points += points
         # TODO this should also update the text and check whether we have a winner
-    
-    # TODO this method shouldn't be needed
-    def getPoints(self):
-        return self.__points
+
+    def removePoint(self,points=1):
+        self.points -= points
+        if self.points < 0:
+            self.points = 0
     
     # TODO should return the other player
     def other(self):
