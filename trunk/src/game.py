@@ -4,7 +4,7 @@ Created on 19.01.2012
 @author: 2526240
 '''
 
-from libavg import avg, gameapp
+from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2EdgeShape, b2Vec2, b2FixtureDef
 from gameobjects import Ball, Bat, Ghost, Player, GhostLine
 from config import PPM, TIME_STEP
@@ -13,54 +13,99 @@ import random
 
 g_player = avg.Player.get()
 
+# XXX encapsulate this
 def w2a(coords):
     return avg.Point2D(coords[0], coords[1]) * PPM
 def a2w(coords):
     return b2Vec2(coords[0], coords[1]) / PPM
 
-# XXX implement gamestates (e.g. as an libavg.statemachine.StateMachine)
-# XXX implement game interface (menu,options,highscore,exitbutton)
-# XXX implement highscore (note: use libavg.ui.Keyboard for user name input, use xml or ini for info storage) 
-
 class Game(gameapp.GameApp):
     def init(self):
+        self.machine = statemachine.StateMachine('BEMOCK', 'MainMenu')
+        self.machine.addState('MainMenu', ['Playing', 'Tutorial', 'Highscore'], enterFunc=self.showMenu, leaveFunc=self.hideMenu)
+        self.machine.addState('Tutorial', ['MainMenu', 'Playing', 'Tutorial'], enterFunc=self.startTutorial, leaveFunc=self.hideTutorial)
+        self.machine.addState('Playing', ['Winner'], enterFunc=self.startPlaying)
+        self.machine.addState('Winner', ['Playing', 'Highscore']) # XXX clarify this stuff
+        self.machine.addState('Highscore', ['MainMenu'], enterFunc=self.showHighscore,leaveFunc=self.hideHighscore)        
+        self.showMenu()
+        
+    def showMenu(self):
+        # XXX make better images... maybe .svg?
+        self.menuScreen = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
+        def makeButton(href,posY,pyFunc):
+            pre='../data/img/btn_'
+            upNode = avg.ImageNode(href=pre+href+'_up.png')
+            downNode = avg.ImageNode(href=pre+href+'_dn.png')
+            return ui.TouchButton(upNode, downNode, clickHandler=pyFunc,
+                                          parent=self.menuScreen, pos=(self.menuScreen.pivot[0] - upNode.width / 2, posY))        
+        self.startButton = makeButton('start',30,lambda:self.machine.changeState('Playing')) # XXX remove hardcode  
+        self.tutorialButton = makeButton('tut',200,lambda:self.machine.changeState('Tutorial')) # XXX remove hardcode  
+        self.highscoreButton = makeButton('high',370,lambda:self.machine.changeState('Highscore')) # XXX remove hardcode
+        self.exitButton = makeButton('exit',540,lambda:exit(0)) # XXX remove hardcode
+               
+    def hideMenu(self):
+        # XXX find out if we need to tear down all the buttons first
+        self.menuScreen.unlink(True)
+        self.menuScreen = None
+    
+    def startTutorial(self):
+        # TODO implement a tutorial sequence using avg only - no need to use pybox2d for simple animations 
+        pass
+    
+    def hideTutorial(self):
+        # TODO implement this by simply tearing down what you have built in startTutorial ;)
+        pass
+
+    def showHighscore(self):
+        # TODO implement highscore (note: use libavg.ui.Keyboard for user name input, use xml or ini for info storage)
+        pass
+    
+    def hideHighscore(self):
+        # TODO implement this by simply tearing down what you have built in showHighscore ;)
+        pass
+    
+    def startPlaying(self):
+        # TODO get rid of this
         self.mag_num = 0.0
         self.rand_num = random.randint(10,30)
         self.max_balls = 3
-        # setup overall display 
         self.changeindex = 0
+        
         self.display = self._parentNode
-        self.display.elementoutlinecolor = 'FF0000'
-        # store some values
-        self.displayWidth = self.display.size[0]
-        self.displayHeight = self.display.size[1]        
-        # initialize values
+        displayWidth = self.display.size[0]
+        displayHeight = self.display.size[1]        
+        
+        fieldSize = (displayWidth / 3, displayHeight)
+        self.field1 = avg.DivNode(parent=self.display, size=fieldSize, elementoutlinecolor='00FF00')
+        self.field2 = avg.DivNode(parent=self.display, size=fieldSize, elementoutlinecolor='0000FF', pos=(displayWidth * 2 / 3, 0))
+        
+        self.leftPlayer, self.rightPlayer = Player(self.field1), Player(self.field2) # XXX rename into player1 and player2
+        self.leftPlayer.other, self.rightPlayer.other = self.rightPlayer, self.leftPlayer # monkey patch ftw =)
+        
+        # TODO get rid of this
         self.leftpoints = 0
         self.ballrad = 1
         self.ghostrad = 2
         self.rightpoints = 0
         # TODO move to the Player class
         self.lpn = avg.WordsNode(parent=self.display, pos=(10, 10), text="Points: " + str(self.leftpoints), color="FF1337")
-        self.rpn = avg.WordsNode(parent=self.display, pos=(self.displayWidth - 100, 10), text="Points: " + str(self.rightpoints), color="FF1337")
-        # setup player fields
-        fieldSize = (self.displayWidth / 3, self.displayHeight)
-        self.field1 = avg.DivNode(parent=self.display, size=fieldSize, elementoutlinecolor='00FF00')
-        self.field2 = avg.DivNode(parent=self.display, size=fieldSize, elementoutlinecolor='0000FF', pos=(self.displayWidth * 2 / 3, 0))
+        self.rpn = avg.WordsNode(parent=self.display, pos=(displayWidth - 100, 10), text="Points: " + str(self.rightpoints), color="FF1337")
+        
         # create world
         self.world = b2World(gravity=(0, 0), doSleep=True)
         # create sides
-        avg.LineNode(parent=self.display, pos1=(0, 1), pos2=(self.displayWidth, 1))
-        avg.LineNode(parent=self.display, pos1=(0, self.displayHeight - 1), pos2=(self.displayWidth, self.displayHeight - 1))
+        avg.LineNode(parent=self.display, pos1=(0, 1), pos2=(displayWidth, 1))
+        avg.LineNode(parent=self.display, pos1=(0, displayHeight - 1), pos2=(displayWidth, displayHeight - 1))
         
         # TODO encapsulate in a class and merge with ghostlines, should probably also create some tetrisLines
         self.static = self.world.CreateStaticBody(position=(0, 0))
         
-        shape = b2EdgeShape(vertices=[a2w((0, 1)), a2w((self.displayWidth, 1))])
-        fixture = b2FixtureDef(shape=shape, density=1,groupIndex=1)
+        shape = b2EdgeShape(vertices=[a2w((0, 1)), a2w((displayWidth, 1))])
+        fixture = b2FixtureDef(shape=shape, density=1, groupIndex=1)
         self.static.CreateFixture(fixture)
         
-        shape = b2EdgeShape(vertices=[a2w((0, self.displayHeight)), a2w((self.displayWidth, self.displayHeight))])
-        fixture = b2FixtureDef(shape=shape, density=1,groupIndex=1)
+        shape = b2EdgeShape(vertices=[a2w((0, displayHeight)), a2w((displayWidth, displayHeight))])
+        fixture = b2FixtureDef(shape=shape, density=1, groupIndex=1)
         self.static.CreateFixture(fixture)        
         
         # create balls
@@ -69,30 +114,28 @@ class Game(gameapp.GameApp):
         # start ball movement
         self.balls[0].start_moving(self.startpos);
         # create ghosts
-        self.ghosts = [Ghost(self.display, self.world, (10, 10), "FF1337",0, self.ghostrad),
-                       Ghost(self.display, self.world, (10, 25), "00FF66",0, self.ghostrad),
-                       Ghost(self.display, self.world, (25, 10), "9F00CC",0, self.ghostrad),
-                       Ghost(self.display, self.world, (25, 25), "18847B",0, self.ghostrad)]
+        self.ghosts = [Ghost(self.display, self.world, (10, 10), "FF1337", 0, self.ghostrad),
+                       Ghost(self.display, self.world, (10, 25), "00FF66", 0, self.ghostrad),
+                       Ghost(self.display, self.world, (25, 10), "9F00CC", 0, self.ghostrad),
+                       Ghost(self.display, self.world, (25, 25), "18847B", 0, self.ghostrad)]
 
-        GhostLine(self.display, self.world, a2w((30, 0)), a2w((30, self.displayHeight))) 
-        GhostLine(self.display, self.world, a2w((self.displayWidth - 60, 0)), a2w((self.displayWidth - 60, self.displayHeight)))
+        GhostLine(self.display, self.world, a2w((30, 0)), a2w((30, displayHeight))) 
+        GhostLine(self.display, self.world, a2w((displayWidth - 60, 0)), a2w((displayWidth - 60, displayHeight)))
 
         
-        g_player.setInterval(16, self.step) # XXX setOnFrameHanlder?
-
-        self.leftPlayer = Player()
-        self.rightPlayer = Player()
+        g_player.setInterval(16, self.step) # XXX setOnFrameHandler ?
  
         BatSpawner(self.field1, self.world)
         BatSpawner(self.field2, self.world)
 
     # TODO move into the ghost class as ghost.move()
+    
     def move_ghosts(self):
         self.changeindex = self.changeindex + 1;
         if self.changeindex > 60:
             self.changeindex = 0
             for ghost in self.ghosts:
-                ghost.changedirection();
+                ghost.changedirection();        
     
     # TODO move into the ghost class as ghost.changeMortality
     def changeMortality(self):
@@ -117,11 +160,11 @@ class Game(gameapp.GameApp):
             self.balls[-1].start_moving(self.startpos)
     
     
-    def newGhost(self,index): 
+    def newGhost(self, index): 
         color = self.ghosts[index].old_color 
         self.ghosts[index].destroy() 
         del self.ghosts[index] 
-        self.ghosts.append(Ghost(self.display, self.world, (random.randint(10,30),random.randint(10,30)), color, 0, self.ghostrad))
+        self.ghosts.append(Ghost(self.display, self.world, (random.randint(10, 30), random.randint(10, 30)), color, 0, self.ghostrad))
         self.addBall()
     
     # TODO replace by a collisionlistener
@@ -131,26 +174,6 @@ class Game(gameapp.GameApp):
                 ghost.setDir("left")
             elif ghost.body.position[0] > 60:
                 ghost.setDir("right")
-    
-    # TODO replace by a collisionlistener
-    def checkballposition(self): 
-        for ball in self.balls: 
-            if ball.body.position[0] > (self.displayWidth / PPM - 1) + self.ballrad: 
-                self.balls[0].destroy() 
-                self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)] 
-                #ball.body.position = self.startpos 
-                 
-                self.leftPlayer.addPoint() 
-                self.lpn.text = "Points: " + str(self.leftPlayer.getPoints()) 
-                 
-                self.balls[0].start_moving(self.startpos); 
-            elif ball.body.position[0] < (-1) * self.ballrad: 
-                self.balls[0].destroy() 
-                self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)] 
-                #ball.body.position = self.startpos 
-                self.rightPlayer.addPoint() 
-                self.rpn.text = "Points: " + str(self.rightPlayer.getPoints()) 
-                self.balls[0].start_moving(self.startpos);
          
     def step(self): 
         self.renderjob() 
@@ -158,10 +181,10 @@ class Game(gameapp.GameApp):
         self.move_ghosts()
         self.checkforballghost() # XXX get rid of this call
         # TODO get this out of here
-        if((self.mag_num/1) >= self.rand_num):
+        if((self.mag_num / 1) >= self.rand_num):
             self.changeMortality()
             self.mag_num = 0.0
-            self.rand_num = random.randint(10,30)
+            self.rand_num = random.randint(10, 30)
         else:
             self.mag_num = self.mag_num + 0.16
 
@@ -211,7 +234,27 @@ class Game(gameapp.GameApp):
                 self.newGhost(index) 
                 #Player Punkte addieren 
             index += 1
-                        
+
+    # TODO replace by a collisionlistener
+    def checkballposition(self): 
+        for ball in self.balls: 
+            if ball.body.position[0] > (self.display.size[0] / PPM - 1) + self.ballrad: 
+                self.balls[0].destroy() 
+                self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)] 
+                #ball.body.position = self.startpos 
+                 
+                self.leftPlayer.addPoint() 
+                self.lpn.text = "Points: " + str(self.leftPlayer.points) 
+                 
+                self.balls[0].start_moving(self.startpos)
+            elif ball.body.position[0] < (-1) * self.ballrad: 
+                self.balls[0].destroy() 
+                self.balls = [Ball(self.display, self, self.world, self.startpos, self.ballrad)] 
+                #ball.body.position = self.startpos 
+                self.rightPlayer.addPoint() 
+                self.rpn.text = "Points: " + str(self.rightPlayer.points) 
+                self.balls[0].start_moving(self.startpos)
+    
 class BatSpawner:
     def __init__(self, parentNode, world):
         self.world = world
