@@ -3,6 +3,7 @@ Created on 15.02.2012
 
 @author: 2526240
 '''
+
 import sys
 import config
 from game import Game
@@ -23,13 +24,15 @@ kollisionen in pybox schreiben
 punktevergabe bei geistkontakt implementieren
 in welchem zustand soll ein geist nach dem Tod erscheinen (fressbar oder nicht? )
 spielfeldabtrennung schoener darstellen  
-bilder fuer die spielelemente erstellen(pacman, ghosts, bricks)
+bilder fuer die spielelemente erstellen(pacman, ghosts (DONE), bricks)
 namen ausdenken fuer das spiel
 
 ********************* ODOT *******************
 
-
-
+Update from 19/02, morning
+- checkGhostForBorder deleted (in game)
+- self.ballrad,ghostrad und points deleted (in game)
+- ghostpics with transparency
 
 ********************* NOTES *******************
 
