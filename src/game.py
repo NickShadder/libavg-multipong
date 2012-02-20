@@ -7,7 +7,7 @@ import sys
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2
 from gameobjects import Ball, Bat, Ghost, Player, BorderLine
-from config import PPM, TIME_STEP
+from config import PPM, TIME_STEP, maxBalls, ballRadius
 
 import random
 
@@ -49,27 +49,30 @@ class Renderer:
 class Game(gameapp.GameApp):
     def init(self):
         self.machine = statemachine.StateMachine('BEMOCK', 'MainMenu')
-        self.machine.addState('MainMenu', ['Playing', 'Tutorial', 'Highscore'], enterFunc=self.showMenu, leaveFunc=self.hideMenu)
+        self.machine.addState('MainMenu', ['Playing', 'Tutorial','About'], enterFunc=self.showMenu, leaveFunc=self.hideMenu)
         self.machine.addState('Tutorial', ['MainMenu', 'Playing', 'Tutorial'], enterFunc=self.startTutorial, leaveFunc=self.hideTutorial)
         self.machine.addState('Playing', ['Winner'], enterFunc=self.startPlaying)
-        self.machine.addState('Winner', ['Playing', 'Highscore']) # XXX clarify this stuff
-        self.machine.addState('Highscore', ['MainMenu'], enterFunc=self.showHighscore,leaveFunc=self.hideHighscore)        
+        self.machine.addState('Winner', ['Playing', 'MainMenu']) # XXX clarify this stuff
+        self.machine.addState('About',['MainMenu'],enterFunc=self.showAbout,leaveFunc=self.hideAbout)        
         self.showMenu()
         
+    def makeButtonInMiddle(self,name,node,yOffset,pyFunc):
+        path='../data/img/btn/'
+        svg = avg.SVG(path+name+'_up.svg',False)
+        width = node.width/5 #                     XXX maybe start with height
+        size = (width,width/2.4)
+        upNode = svg.createImageNode('layer1',{},size)
+        svg = avg.SVG(path+name+'_dn.svg',False)
+        downNode = svg.createImageNode('layer1',{},size)
+        position = (node.pivot[0] - upNode.width / 2, node.pivot[1] + yOffset*upNode.height+yOffset*50)
+        return ui.TouchButton(upNode, downNode, clickHandler=pyFunc,parent=node, pos=position)
+            
     def showMenu(self):
-        # XXX make better images        
-        # libavg doesn't support svg -.- spent half a day for nothing
         self.menuScreen = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
-        def makeButton(href,posY,pyFunc):
-            pre='../data/img/btn_'
-            upNode = avg.ImageNode(href=pre+href+'_up.png')
-            downNode = avg.ImageNode(href=pre+href+'_dn.png')
-            return ui.TouchButton(upNode, downNode, clickHandler=pyFunc,
-                                          parent=self.menuScreen, pos=(self.menuScreen.pivot[0] - upNode.width / 2, posY))        
-        self.startButton = makeButton('start',30,lambda:self.machine.changeState('Playing')) # XXX remove hardcode  
-        self.tutorialButton = makeButton('tut',200,lambda:self.machine.changeState('Tutorial')) # XXX remove hardcode  
-        self.highscoreButton = makeButton('high',370,lambda:self.machine.changeState('Highscore')) # XXX remove hardcode
-        self.exitButton = makeButton('exit',540,lambda:exit(0)) # XXX remove hardcode
+        self.startButton = self.makeButtonInMiddle('start',self.menuScreen,-1,lambda:self.machine.changeState('Playing'))
+        self.tutorialButton = self.makeButtonInMiddle('help',self.menuScreen,0,lambda:self.machine.changeState('Tutorial'))
+        self.aboutButton = self.makeButtonInMiddle('about',self.menuScreen, 1, lambda:self.machine.changeState('About'))
+        self.exitButton = self.makeButtonInMiddle('exit',self.menuScreen, 2, lambda:exit(0))
 
     def hideMenu(self):
         # XXX find out if we need to tear down all the buttons first
@@ -83,20 +86,20 @@ class Game(gameapp.GameApp):
     def hideTutorial(self):
         # TODO implement this by simply tearing down what you have built in startTutorial ;)
         pass
-
-    def showHighscore(self):
-        # TODO implement highscore (note: use libavg.ui.Keyboard for user name input, use xml or ini for info storage)
-        pass
     
-    def hideHighscore(self):
-        # TODO implement this by simply tearing down what you have built in showHighscore ;)
-        pass
+    def showAbout(self):
+        self.aboutScreen = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
+        avg.WordsNode(parent=self.aboutScreen,x=5,text='Unnamed Multipong<br/>as envisioned and implemented by<br/>Benjamin Guttman<br/>Joachim Couturier<br/>Phillip Hermann<br/>Mykola Havrikov<br/><br/>This game uses libavg(www.libavg.de) and PyBox2D(http://code.google.com/p/pybox2d/)')
+        self.menuButton = self.makeButtonInMiddle('menu', self.aboutScreen, 1, lambda:self.machine.changeState('MainMenu'))
+    
+    def hideAbout(self):
+        self.aboutScreen.unlink(True)
+        self.aboutScreen = None
     
     def startPlaying(self):
         # TODO get rid of this
         self.mag_num = 0.0
         self.rand_num = random.randint(10,30)
-        self.max_balls = 3
         self.changeindex = 0
         # libavg setup
         self.display = self._parentNode
@@ -106,7 +109,7 @@ class Game(gameapp.GameApp):
         self.field1 = avg.DivNode(parent=self.display, size=fieldSize)
         self.field2 = avg.DivNode(parent=self.display, size=fieldSize, pos=(displayWidth-widthThird, 0))
         
-        self.leftPlayer, self.rightPlayer = Player(self.field1), Player(self.field2) # XXX rename into player1 and player2
+        self.leftPlayer, self.rightPlayer = Player(self, self.field1), Player(self, self.field2) # XXX rename into player1 and player2
         self.leftPlayer.other, self.rightPlayer.other = self.rightPlayer, self.leftPlayer # monkey patch ftw =)
         
         # XXX replace by more beautiful lines
@@ -115,14 +118,8 @@ class Game(gameapp.GameApp):
         avg.LineNode(parent=self.display, pos1=(widthThird,0), pos2=(widthThird, displayHeight))
         avg.LineNode(parent=self.display, pos1=(displayWidth-widthThird,0), pos2=(displayWidth-widthThird, displayHeight))
         
-        
-        
-        # TODO move to the Player class
-        self.lpn = avg.WordsNode(parent=self.display, pos=(10, 10), text="Points: " + str(0), color="FF1337")
-        self.rpn = avg.WordsNode(parent=self.display, pos=(displayWidth - 100, 10), text="Points: " + str(0), color="FF1337")
-        
         self.renderer = Renderer()
-        g_player.setInterval(16, self.step) # XXX setOnFrameHandler ?
+        self.mainLoop = g_player.setInterval(16, self.step) # XXX setOnFrameHandler ?
         
         # pybox2d setup
         self.world = b2World(gravity=(0, 0), doSleep=True)
@@ -150,6 +147,11 @@ class Game(gameapp.GameApp):
 
     # TODO move into the ghost class as ghost.move()
 
+    def win(self,player):
+        g_player.clearInterval(self.mainLoop)
+        # TODO tear down world and current display
+        # TODO show winner/revanche screen and start highscorescreen timeout
+
     def move_ghosts(self):
         self.changeindex = self.changeindex + 1;
         if self.changeindex > 60:
@@ -170,7 +172,7 @@ class Game(gameapp.GameApp):
         
     # FIXME rethink concept        
     def addBall(self):
-        if(len(self.balls) < (self.max_balls)):
+        if(len(self.balls) < (maxBalls)):
             self.balls.append(Ball(self.renderer, self.world,self.display,self.startpos))
             self.balls[-1].start_moving(self.startpos)
     
@@ -199,7 +201,7 @@ class Game(gameapp.GameApp):
             self.mag_num = self.mag_num + 0.16            
         # draw world    
         self.renderer.draw()
-    
+
     # TODO replace by a collisionlistener
     def checkforballghost(self):  
         tolerance = 3
@@ -222,24 +224,20 @@ class Game(gameapp.GameApp):
             index += 1
 
     # TODO replace by a collisionlistener
-    def checkballposition(self): 
-        self.ballrad = 1
+    def checkballposition(self):
         for ball in self.balls: 
-            if ball.body.position[0] > (self.display.size[0] / PPM - 1) + self.ballrad: 
+            if ball.body.position[0] > (self.display.size[0] / PPM - 1) + ballRadius: 
                 self.balls[0].destroy() 
-                self.balls = [Ball(self.renderer, self.world,self.display, self.startpos, self.ballrad)] 
+                self.balls = [Ball(self.renderer, self.world,self.display, self.startpos)] 
                 #ball.body.position = self.startpos 
-                 
-                self.leftPlayer.addPoint() 
-                self.lpn.text = "Points: " + str(self.leftPlayer.points) 
+                self.leftPlayer.addPoint()
                  
                 self.balls[0].start_moving(self.startpos)
-            elif ball.body.position[0] < (-1) * self.ballrad: 
+            elif ball.body.position[0] < (-1) * ballRadius: 
                 self.balls[0].destroy() 
-                self.balls = [Ball(self.renderer, self.world,self.display,self.startpos, self.ballrad)] 
+                self.balls = [Ball(self.renderer, self.world,self.display,self.startpos)] 
                 #ball.body.position = self.startpos 
-                self.rightPlayer.addPoint() 
-                self.rpn.text = "Points: " + str(self.rightPlayer.points) 
+                self.rightPlayer.addPoint()
                 self.balls[0].start_moving(self.startpos)
 
 # XXX rename class    
