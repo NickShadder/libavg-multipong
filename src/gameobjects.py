@@ -10,10 +10,12 @@ from config import PPM
 from libavg import avg
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape
 
-# XXX make OWN images!!!
+cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008}
+def collideWith(categories):
+    return reduce(lambda x, y:x | y, [cats[el] for el in categories], 0x0000)
 
 class GameObject:
-    def __init__(self,renderer,world):
+    def __init__(self, renderer, world):
         self.renderer = renderer
         self.world = world
         self.renderer.register(self)
@@ -28,29 +30,25 @@ class GameObject:
             self.node.unlink(True)
             self.node = None
     
-
 class Ball(GameObject):
     # TODO refactor with respect to the new rendering mechanism
     def __init__(self, renderer, world, parentNode, position, radius=1):
         GameObject.__init__(self, renderer, world)
         #self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00", color='000000')
-        diameter = 2*radius*PPM
-        self.node = avg.ImageNode(parent=parentNode,href='../data/img/pacman.png',size=(diameter,diameter))
+        diameter = 2 * radius * PPM
+        self.node = avg.ImageNode(parent=parentNode, href='../data/img/pacman.png', size=(diameter, diameter))
         d = {'type':'body', 'node':self.node}
         self.body = world.CreateDynamicBody(position=position, userData=d)
-        self.body.CreateCircleFixture(radius=radius, density=1, restitution=1,groupIndex=1,maskBits=0x0002)
-      
-    
-    # TODO should return the last player who touched it
-    def lastPlayer(self):
-        pass
+        self.body.CreateCircleFixture(radius=radius, density=1, restitution=1, categoryBits=cats['ball'])
+        self.lastPlayer = None
+
     
     # TODO should return the player to whom the current zone the ball is in belongs, or None if the ball is in the middle
     def zone(self):
         pass
     
     # TODO implement some intelligent bahviour here 
-    # e.g. the ball flies towards the winning player
+    # e.g. the ball flies towards the winning player or something using lastPlayer 
     def start_moving(self, startpos):
         if random.choice([True, False]):
             self.body.ApplyForce(force=(5000, random.randint(-2000, 2000)), point=startpos)
@@ -58,18 +56,18 @@ class Ball(GameObject):
             self.body.ApplyForce(force=(-5000, random.randint(-2000, 2000)), point=startpos)
         
 class Player:
-    def __init__(self,avgNode):
+    def __init__(self, avgNode):
         self.points = 0
         self.other = None
         self.zone = avgNode
         # TODO make the points an internal wordsnode
         # TODO keep a reference to the game
     
-    def addPoint(self,points=1):
+    def addPoint(self, points=1):
         self.points += points
         # TODO this should also update the text and check whether we have a winner
 
-    def removePoint(self,points=1):
+    def removePoint(self, points=1):
         self.points -= points
         if self.points < 0:
             self.points = 0
@@ -79,28 +77,28 @@ class Player:
         pass
     
 class Ghost(GameObject):
-    def __init__(self, renderer, world, parentNode, position, name ,mortality=0, radius=1.5):
+    def __init__(self, renderer, world, parentNode, position, name , mortality=0, radius=1.5):
         GameObject.__init__(self, renderer, world)
-        diameter = 2*radius*PPM
-        self.node = avg.ImageNode(parent=parentNode,href='../data/img/'+name+'.png',size=(diameter,diameter))
-        self.node.setEventHandler(avg.CURSORDOWN,avg.TOUCH | avg.MOUSE,self.antouch) # XXX get rid of this
+        diameter = 2 * radius * PPM
+        self.node = avg.ImageNode(parent=parentNode, href='../data/img/' + name + '.png', size=(diameter, diameter))
+        self.node.setEventHandler(avg.CURSORDOWN, avg.TOUCH | avg.MOUSE, self.antouch) # XXX get rid of this
         self.mortal = 0
         self.old_name = name
         self.direction = (8000, 10)
         self.position = position
         d = {'type':'body', 'node':self.node}
-        ghostUpper = b2FixtureDef(shape = b2CircleShape(radius=radius),
-                                  density=1,groupIndex = -1)
-        ghostLower = b2FixtureDef(shape = b2PolygonShape(box=(radius,radius/2,(0,-radius/2),0)),
-                                  density=1,groupIndex = -1)
-        self.body = world.CreateDynamicBody(position=position,fixtures=[ghostUpper,ghostLower],
-                                            userData=d,fixedRotation=True) # XXX let them rotate after we fixed their propulsion
+        ghostUpper = b2FixtureDef(shape=b2CircleShape(radius=radius),
+                                  density=1, groupIndex =-1,categoryBits=cats['ghost'])
+        ghostLower = b2FixtureDef(shape=b2PolygonShape(box=(radius, radius / 2, (0, -radius / 2), 0)),
+                                  density=1, groupIndex =-1,categoryBits=cats['ghost'])
+        self.body = world.CreateDynamicBody(position=position, fixtures=[ghostUpper, ghostLower],
+                                            userData=d, fixedRotation=True) # XXX let them rotate after we fixed their propulsion
         #self.body.CreateCircleFixture(radius=radius, density=1, friction=1,groupIndex=-1)
         #self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
             
-    def antouch(self,event): 
+    def antouch(self, event): 
         
-        self.body.position=(random.randint(10, 60), random.randint(10, 40))         
+        self.body.position = (random.randint(10, 60), random.randint(10, 40))         
             
     def setDir(self, s):
         self.body.ApplyForce(force=((-1) * self.direction[0], (-1) * self.direction[1]), point=self.position)
@@ -132,22 +130,20 @@ class Ghost(GameObject):
         self.direction = (newx, newy)
         self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
 
-class GhostLine:
-    # TODO refactor this class: make it configgable and use it also for upper and lower borders
-    def __init__(self, avg_parentNode, world, pos1, pos2):
-        self.node = avg.LineNode(parent=avg_parentNode, color='000000') # for debugging only
+class BorderLine:
+    body = None
+    def __init__(self, world, pos1, pos2, collisions=[],sensor=False):
+        """ the positions are expected to be in meters """
         self.world = world
-        d = {'type':'line', 'node':self.node}
-        self.body = world.CreateStaticBody(userData=d, shapes=b2EdgeShape(vertices=[pos1, pos2]), position=(1, 0),categoryBits=0x0002)
+        if BorderLine.body is None:
+            BorderLine.body = world.CreateStaticBody(position=(0,0))
+        BorderLine.body.CreateFixture(shape=b2EdgeShape(vertices=[pos1, pos2]),density=1,isSensor=sensor,
+                                categoryBits=cats['border'],maskBits=collideWith(collisions))
     
     def destroy(self):
         if self.body is not None:
             self.world.DestroyBody(self.body)
             self.body = None
-        if self.node is not None:
-            self.node.active = False
-            self.node.unlink()
-            self.node = None
             
 
 # TODO create class Bonus
@@ -188,8 +184,8 @@ class Bat(GameObject):
         wid = self.width / (2 * PPM)
         self.DebugNode = None 
         #avg.WordsNode(parent = self.field, text = "Debug: "+str(self.ang), color = "FFFFFF")
-        shapedef = b2PolygonShape(box=(len,wid , (0, 0), self.ang))
-        fixturedef = b2FixtureDef(shape=shapedef, density=1, restitution=self.rest(), friction=.3,groupIndex=1)
+        shapedef = b2PolygonShape(box=(len, wid , (0, 0), self.ang))
+        fixturedef = b2FixtureDef(shape=shapedef, density=1, restitution=self.rest(), friction=.3, groupIndex=1)
         self.body = world.CreateKinematicBody(userData=d, position=mid)
         self.body.CreateFixture(fixturedef)
         
