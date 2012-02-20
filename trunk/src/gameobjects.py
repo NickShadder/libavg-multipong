@@ -7,12 +7,12 @@ Created on 15.02.2012
 import random
 import math
 from config import PPM
-from libavg import avg
+from libavg import avg,ui
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape
 
 cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008}
 def collideWith(categories):
-    return reduce(lambda x, y:x | y, [cats[el] for el in categories], 0x0000)
+    return reduce(lambda x,y: x|y, [cats[el] for el in categories], 0x0000)
 
 class GameObject:
     def __init__(self, renderer, world):
@@ -34,9 +34,9 @@ class Ball(GameObject):
     # TODO refactor with respect to the new rendering mechanism
     def __init__(self, renderer, world, parentNode, position, radius=1):
         GameObject.__init__(self, renderer, world)
-        #self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00", color='000000')
         diameter = 2 * radius * PPM
-        self.node = avg.ImageNode(parent=parentNode, href='../data/img/pacman.png', size=(diameter, diameter))
+        svg = avg.SVG('../data/img/pacman.svg', False)
+        self.node = svg.createImageNode('layer1', dict(parent=parentNode), (diameter, diameter))
         d = {'type':'body', 'node':self.node}
         self.body = world.CreateDynamicBody(position=position, userData=d)
         self.body.CreateCircleFixture(radius=radius, density=1, restitution=1, categoryBits=cats['ball'])
@@ -75,41 +75,50 @@ class Player:
     # TODO should return the other player
     def other(self):
         pass
-    
+
 class Ghost(GameObject):
-    def __init__(self, renderer, world, parentNode, position, name , mortality=0, radius=1.5):
+    def __init__(self, renderer, world, parentNode, position, name, mortality=0, radius=2):
         GameObject.__init__(self, renderer, world)
-        diameter = 2 * radius * PPM
-        self.node = avg.ImageNode(parent=parentNode, href='../data/img/' + name + '.png', size=(diameter, diameter))
-        self.node.setEventHandler(avg.CURSORDOWN, avg.TOUCH | avg.MOUSE, self.antouch) # XXX get rid of this
-        self.mortal = 0
-        self.old_name = name
-        self.direction = (8000, 10)
-        self.position = position
+        self.parentNode = parentNode
+        self.name = name
+        self.mortal = mortality                
+        self.diameter = 2 * radius * PPM                
+        self.node = avg.ImageNode(parent=parentNode, size=(self.diameter, self.diameter))
+        self.setBitmap(name)
         d = {'type':'body', 'node':self.node}
         ghostUpper = b2FixtureDef(shape=b2CircleShape(radius=radius),
-                                  density=1, groupIndex =-1,categoryBits=cats['ghost'])
+                                  density=1, groupIndex= -1, categoryBits=cats['ghost'])
         ghostLower = b2FixtureDef(shape=b2PolygonShape(box=(radius, radius / 2, (0, -radius / 2), 0)),
-                                  density=1, groupIndex =-1,categoryBits=cats['ghost'])
+                                  density=1, groupIndex= -1, categoryBits=cats['ghost'])
         self.body = world.CreateDynamicBody(position=position, fixtures=[ghostUpper, ghostLower],
                                             userData=d, fixedRotation=True) # XXX let them rotate after we fixed their propulsion
-        #self.body.CreateCircleFixture(radius=radius, density=1, friction=1,groupIndex=-1)
-        #self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
-            
-    def antouch(self, event): 
+        ui.DragRecognizer(self.node, moveHandler=self.onMove) # just for debugging and fun
         
-        self.body.position = (random.randint(10, 60), random.randint(10, 40))         
+        # XXX I don't like this...        
+        self.direction = (8000, 10) # XXX what is this?!
+        self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.body.position)
+    
+    def onMove(self, event, offset):
+        self.body.position=(event.pos)/PPM
+            
+    def flipState(self):
+        self.setBitmap(self.name if self.mortal else 'blue')
+        self.mortal ^= 1
+        
+    def setBitmap(self, name):
+        svg = avg.SVG('../data/img/' + name + '.svg', False)        
+        self.node.setBitmap(svg.renderElement('layer1', (self.diameter, self.diameter)))        
             
     def setDir(self, s):
-        self.body.ApplyForce(force=((-1) * self.direction[0], (-1) * self.direction[1]), point=self.position)
+        self.body.ApplyForce(force=((-1) * self.direction[0], (-1) * self.direction[1]), point=self.body.position)
         if s == "left":
             self.direction = (8000, self.direction[1])   
         else:
             self.direction = (-8000, self.direction[1])
-        self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
+        self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.body.position)
 
     def changedirection(self):
-        self.body.ApplyForce(force=(-self.direction[0], -self.direction[1]), point=self.position)
+        self.body.ApplyForce(force=(-self.direction[0], -self.direction[1]), point=self.body.position)
         eins = random.randint(0, 1)
         zwei = random.randint(0, 1)
         newx = 0
@@ -128,17 +137,17 @@ class Ghost(GameObject):
             newx = 8000
             newy = 0
         self.direction = (newx, newy)
-        self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.position)
+        self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.body.position)
 
 class BorderLine:
     body = None
-    def __init__(self, world, pos1, pos2, collisions=[],sensor=False):
+    def __init__(self, world, pos1, pos2, collisions=[], sensor=False):
         """ the positions are expected to be in meters """
         self.world = world
         if BorderLine.body is None:
-            BorderLine.body = world.CreateStaticBody(position=(0,0))
-        BorderLine.body.CreateFixture(shape=b2EdgeShape(vertices=[pos1, pos2]),density=1,isSensor=sensor,
-                                categoryBits=cats['border'],maskBits=collideWith(collisions))
+            BorderLine.body = world.CreateStaticBody(position=(0, 0))
+        BorderLine.body.CreateFixture(shape=b2EdgeShape(vertices=[pos1, pos2]), density=1, isSensor=sensor,
+                                categoryBits=cats['border'], maskBits=collideWith(collisions))
     
     def destroy(self):
         if self.body is not None:
