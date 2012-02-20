@@ -5,7 +5,7 @@ Created on 19.01.2012
 '''
 import sys
 from libavg import avg, gameapp, statemachine, ui
-from Box2D import b2World, b2EdgeShape, b2Vec2, b2FixtureDef
+from Box2D import b2World, b2Vec2
 from gameobjects import Ball, Bat, Ghost, Player, BorderLine
 from config import PPM, TIME_STEP
 
@@ -98,33 +98,40 @@ class Game(gameapp.GameApp):
         self.rand_num = random.randint(10,30)
         self.max_balls = 3
         self.changeindex = 0
-        
+        # libavg setup
         self.display = self._parentNode
-        displayWidth = self.display.size[0]
-        displayHeight = self.display.size[1]        
-        
-        fieldSize = (displayWidth / 3, displayHeight)
-        self.field1 = avg.DivNode(parent=self.display, size=fieldSize, elementoutlinecolor='00FF00')
-        self.field2 = avg.DivNode(parent=self.display, size=fieldSize, elementoutlinecolor='0000FF', pos=(displayWidth * 2 / 3, 0))
+        (displayWidth,displayHeight) = self.display.size
+        widthThird = displayWidth / 3
+        fieldSize = (widthThird, displayHeight)
+        self.field1 = avg.DivNode(parent=self.display, size=fieldSize)
+        self.field2 = avg.DivNode(parent=self.display, size=fieldSize, pos=(displayWidth-widthThird, 0))
         
         self.leftPlayer, self.rightPlayer = Player(self.field1), Player(self.field2) # XXX rename into player1 and player2
         self.leftPlayer.other, self.rightPlayer.other = self.rightPlayer, self.leftPlayer # monkey patch ftw =)
+        
+        # XXX replace by more beautiful lines
+        avg.LineNode(parent=self.display, pos1=(0, 1), pos2=(displayWidth, 1))
+        avg.LineNode(parent=self.display, pos1=(0, displayHeight), pos2=(displayWidth, displayHeight))
+        avg.LineNode(parent=self.display, pos1=(widthThird,0), pos2=(widthThird, displayHeight))
+        avg.LineNode(parent=self.display, pos1=(displayWidth-widthThird,0), pos2=(displayWidth-widthThird, displayHeight))
+        
+        
         
         # TODO move to the Player class
         self.lpn = avg.WordsNode(parent=self.display, pos=(10, 10), text="Points: " + str(0), color="FF1337")
         self.rpn = avg.WordsNode(parent=self.display, pos=(displayWidth - 100, 10), text="Points: " + str(0), color="FF1337")
         
+        self.renderer = Renderer()
+        g_player.setInterval(16, self.step) # XXX setOnFrameHandler ?
+        
+        # pybox2d setup
         self.world = b2World(gravity=(0, 0), doSleep=True)
-        
-        avg.LineNode(parent=self.display, pos1=(0, 1), pos2=(displayWidth, 1))
-        avg.LineNode(parent=self.display, pos1=(0, displayHeight - 1), pos2=(displayWidth, displayHeight - 1))        
-        
         BorderLine(self.world,a2w((0, 1)), a2w((displayWidth, 1)),['ghost','ball'])
         BorderLine(self.world,a2w((0, displayHeight)), a2w((displayWidth, displayHeight)),['ghost','ball'])
         BorderLine(self.world,a2w((30, 0)), a2w((30, displayHeight)),['ghost']) # XXX remove hardcode 
         BorderLine(self.world,a2w((displayWidth - 30, 0)), a2w((displayWidth - 30, displayHeight)),['ghost']) # XXX remove hardcode
         
-        self.renderer = Renderer()
+        # game setup
         
         # create balls
         self.startpos = a2w(self.display.size / 2)
@@ -137,10 +144,7 @@ class Game(gameapp.GameApp):
         inky = Ghost(self.renderer, self.world,self.display, (10, 25), "inky")
         clyde = Ghost(self.renderer, self.world,self.display,(25, 10), "clyde")
         self.ghosts = [blinky,pinky,inky,clyde]
-                
-        
-        g_player.setInterval(16, self.step) # XXX setOnFrameHandler ?
- 
+                         
         BatSpawner(self.field1, self.world, self.renderer)
         BatSpawner(self.field2, self.world, self.renderer)
 
@@ -156,12 +160,7 @@ class Game(gameapp.GameApp):
     # TODO move into the ghost class as ghost.changeMortality or ghost.flipState
     def changeMortality(self):
         for ghost in self.ghosts:
-            if(ghost.mortal):
-                ghost.mortal = 0
-                ghost.node.href = '../data/img/'+ghost.old_name+'.png' 
-            else:
-                ghost.mortal = 1
-                ghost.node.href = '../data/img/blue.png'
+            ghost.flipState()
     
     # FIXME rethink concept        
     def newBall(self): 
@@ -177,7 +176,7 @@ class Game(gameapp.GameApp):
     
     
     def newGhost(self, index): 
-        name = self.ghosts[index].old_name
+        name = self.ghosts[index].name
         self.ghosts[index].destroy() 
         del self.ghosts[index] 
         self.ghosts.append(Ghost(self.renderer, self.world,self.display,(random.randint(10, 30), random.randint(10, 30)), name))
@@ -190,7 +189,7 @@ class Game(gameapp.GameApp):
         
         self.checkballposition() # XXX get rid of this call 
         self.move_ghosts()
-        self.checkforballghost() # XXX get rid of this call
+#        self.checkforballghost() # XXX get rid of this call
         # TODO get this out of here
         if((self.mag_num / 1) >= self.rand_num):
             self.changeMortality()
