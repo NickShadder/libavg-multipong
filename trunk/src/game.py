@@ -6,7 +6,7 @@ Created on 19.01.2012
 import sys
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2EdgeShape, b2Vec2, b2FixtureDef
-from gameobjects import Ball, Bat, Ghost, Player, GhostLine
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine
 from config import PPM, TIME_STEP
 
 import random
@@ -30,6 +30,7 @@ class Renderer:
     def deregisterM(self,pyboxObjectList):
         self.objects.difference_update(pyboxObjectList)
     def draw(self):
+        # TODO implement ausrichtung in flugrichting
         for obj in self.objects:
             body = obj.body
             for fixture in body.fixtures:
@@ -113,25 +114,18 @@ class Game(gameapp.GameApp):
         self.lpn = avg.WordsNode(parent=self.display, pos=(10, 10), text="Points: " + str(0), color="FF1337")
         self.rpn = avg.WordsNode(parent=self.display, pos=(displayWidth - 100, 10), text="Points: " + str(0), color="FF1337")
         
-        # create world
         self.world = b2World(gravity=(0, 0), doSleep=True)
-        # create sides
+        
         avg.LineNode(parent=self.display, pos1=(0, 1), pos2=(displayWidth, 1))
-        avg.LineNode(parent=self.display, pos1=(0, displayHeight - 1), pos2=(displayWidth, displayHeight - 1))
+        avg.LineNode(parent=self.display, pos1=(0, displayHeight - 1), pos2=(displayWidth, displayHeight - 1))        
         
-        # TODO encapsulate in a class and merge with ghostlines, should probably also create some tetrisLines
-        self.static = self.world.CreateStaticBody(position=(0, 0))
-        
-        shape = b2EdgeShape(vertices=[a2w((0, 1)), a2w((displayWidth, 1))])
-        fixture = b2FixtureDef(shape=shape, density=1, groupIndex=1)
-        self.static.CreateFixture(fixture)
-        
-        shape = b2EdgeShape(vertices=[a2w((0, displayHeight)), a2w((displayWidth, displayHeight))])
-        fixture = b2FixtureDef(shape=shape, density=1, groupIndex=1)
-        self.static.CreateFixture(fixture)        
+        BorderLine(self.world,a2w((0, 1)), a2w((displayWidth, 1)),['ghost','ball'])
+        BorderLine(self.world,a2w((0, displayHeight)), a2w((displayWidth, displayHeight)),['ghost','ball'])
+        BorderLine(self.world,a2w((30, 0)), a2w((30, displayHeight)),['ghost']) # XXX remove hardcode 
+        BorderLine(self.world,a2w((displayWidth - 30, 0)), a2w((displayWidth - 30, displayHeight)),['ghost']) # XXX remove hardcode
         
         self.renderer = Renderer()
-         
+        
         # create balls
         self.startpos = a2w(self.display.size / 2)
         self.balls = [Ball(self.renderer, self.world, self.display, self.startpos)]
@@ -144,9 +138,6 @@ class Game(gameapp.GameApp):
         clyde = Ghost(self.renderer, self.world,self.display,(25, 10), "clyde")
         self.ghosts = [blinky,pinky,inky,clyde]
                 
-        # TODO this should be created earlier along with the borders using the same creation technique
-        GhostLine(self.display, self.world, a2w((30, 0)), a2w((30, displayHeight))) 
-        GhostLine(self.display, self.world, a2w((displayWidth - 60, 0)), a2w((displayWidth - 60, displayHeight)))
         
         g_player.setInterval(16, self.step) # XXX setOnFrameHandler ?
  
