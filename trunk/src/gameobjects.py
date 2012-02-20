@@ -6,8 +6,8 @@ Created on 15.02.2012
 
 import random
 import math
-from config import PPM
-from libavg import avg,ui
+from config import PPM, pointsToWin,ballRadius,ghostRadius
+from libavg import avg, ui
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape
 
 cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008}
@@ -32,14 +32,15 @@ class GameObject:
     
 class Ball(GameObject):
     # TODO refactor with respect to the new rendering mechanism
-    def __init__(self, renderer, world, parentNode, position, radius=1):
+    def __init__(self, renderer, world, parentNode, position, radius=ballRadius):
         GameObject.__init__(self, renderer, world)
         diameter = 2 * radius * PPM
-        svg = avg.SVG('../data/img/pacman.svg', False)
+        svg = avg.SVG('../data/img/char/pacman.svg', False)
         self.node = svg.createImageNode('layer1', dict(parent=parentNode), (diameter, diameter))
         d = {'type':'body', 'node':self.node}
         self.body = world.CreateDynamicBody(position=position, userData=d)
-        self.body.CreateCircleFixture(radius=radius, density=1, restitution=1, categoryBits=cats['ball'])
+        self.body.CreateCircleFixture(radius=radius, density=1, restitution=1, 
+                                      friction = .01, categoryBits=cats['ball'])
         self.lastPlayer = None
 
     
@@ -56,16 +57,24 @@ class Ball(GameObject):
             self.body.ApplyForce(force=(-5000, random.randint(-2000, 2000)), point=startpos)
         
 class Player:
-    def __init__(self, avgNode):
+    def __init__(self, game, avgNode):
         self.points = 0
         self.other = None
+        self.game = game
         self.zone = avgNode
-        # TODO make the points an internal wordsnode
-        # TODO keep a reference to the game
+        
+        left = avgNode.pos == (0,0)         
+        angle = math.pi/2 if left else -math.pi/2 
+        pos = (avgNode.width,2) if left else (0,avgNode.height-2)            
+        # XXX gameobects may obstruct view of the points!
+        self.pointsDisplay = avg.WordsNode(parent=avgNode,pivot=(0,0),pos=pos,angle=angle,
+                                           text='Points: 0 / %d' % pointsToWin)
     
     def addPoint(self, points=1):
         self.points += points
-        # TODO this should also update the text and check whether we have a winner
+        self.pointsDisplay.text='Points: %d / %d' %(self.points,pointsToWin)
+        if self.points >= pointsToWin:
+            self.game.win(self)
 
     def removePoint(self, points=1):
         self.points -= points
@@ -77,7 +86,7 @@ class Player:
         pass
 
 class Ghost(GameObject):
-    def __init__(self, renderer, world, parentNode, position, name, mortality=0, radius=2):
+    def __init__(self, renderer, world, parentNode, position, name, mortality=0, radius=ghostRadius):
         GameObject.__init__(self, renderer, world)
         self.parentNode = parentNode
         self.name = name
@@ -99,14 +108,14 @@ class Ghost(GameObject):
         self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.body.position)
     
     def onMove(self, event, offset):
-        self.body.position=(event.pos)/PPM
+        self.body.position=event.pos/PPM
             
     def flipState(self):
         self.setBitmap(self.name if self.mortal else 'blue')
         self.mortal ^= 1
         
     def setBitmap(self, name):
-        svg = avg.SVG('../data/img/' + name + '.svg', False)        
+        svg = avg.SVG('../data/img/char/' + name + '.svg', False)        
         self.node.setBitmap(svg.renderElement('layer1', (self.diameter, self.diameter)))        
             
     def setDir(self, s):
@@ -153,7 +162,6 @@ class BorderLine:
         if self.body is not None:
             self.world.DestroyBody(self.body)
             self.body = None
-            
 
 # TODO create class Bonus
 # TODO create class BallBonus(Bonus)

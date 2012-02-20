@@ -6,6 +6,7 @@ Created on 19.01.2012
 
 # ****************** general config ******************
 debug = True
+pointsToWin = 15
 PPM = 20.0 # number of pixels per meter
 TARGET_FPS = 60 # the targeted frames per second
 TIME_STEP = 1.0 / TARGET_FPS
@@ -23,7 +24,7 @@ bonusTime = 3 # the time in seconds a bonus waits for interaction before disappe
 
 # ****************** ball config ******************
 maxBalls = 3 # the maximum number of pacmans on the field 
-ballRadius = 1 # the radius of a pacman in meters
+ballRadius = 1.2 # the radius of a pacman in meters
 
 # ****************** ghost config ******************
-ghostRadius = 2 # the radius of a ghost in meters
+ghostRadius = 1.8 # the radius of a ghost in meters
