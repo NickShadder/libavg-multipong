@@ -19,12 +19,9 @@ if __name__ == '__main__':
 ********************* TODO *******************
 
 jegliches gehacke entfernen
-agv rendering reorganisieren
-kollisionen in pybox schreiben
-punktevergabe bei geistkontakt implementieren
+dem ball korrekt lastPlayer zuweisen
 in welchem zustand soll ein geist nach dem Tod erscheinen (fressbar oder nicht? )
-spielfeldabtrennung schoener darstellen  
-EIGENE!!! bilder fuer die spielelemente erstellen(pacman, ghosts, bricks)
+EIGENE!!! bilder fuer die spielelemente erstellen(bricks)
 namen ausdenken fuer das spiel
 
 ********************* ODOT *******************

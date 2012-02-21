@@ -6,13 +6,15 @@ Created on 15.02.2012
 
 import random
 import math
-from config import PPM, pointsToWin,ballRadius,ghostRadius
+from config import PPM, pointsToWin, ballRadius, ghostRadius
 from libavg import avg, ui
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape
 
 cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008}
 def collideWith(categories):
-    return reduce(lambda x,y: x|y, [cats[el] for el in categories], 0x0000)
+    return reduce(lambda x, y: x | y, [cats[el] for el in categories])
+
+standardXInertia = 20*ballRadius # XXX solve more elegantly 
 
 class GameObject:
     def __init__(self, renderer, world):
@@ -31,30 +33,47 @@ class GameObject:
             self.node = None
     
 class Ball(GameObject):
-    # TODO refactor with respect to the new rendering mechanism
-    def __init__(self, renderer, world, parentNode, position, radius=ballRadius):
+    def __init__(self, renderer, world, parentNode, position, leftPlayer, rightPlayer, radius=ballRadius):
         GameObject.__init__(self, renderer, world)
+        self.spawnPoint = parentNode.pivot/PPM # XXX maybe make a static class variable
+        self.leftPlayer = leftPlayer
+        self.rightPlayer = rightPlayer
+        self.lastPlayer = None
         diameter = 2 * radius * PPM
         svg = avg.SVG('../data/img/char/pacman.svg', False)
         self.node = svg.createImageNode('layer1', dict(parent=parentNode), (diameter, diameter))
-        d = {'type':'body', 'node':self.node}
+        d = {'type':'body', 'node':self.node,'obj':self}
         self.body = world.CreateDynamicBody(position=position, userData=d)
-        self.body.CreateCircleFixture(radius=radius, density=1, restitution=1, 
-                                      friction = .01, categoryBits=cats['ball'])
-        self.lastPlayer = None
+        self.body.CreateCircleFixture(radius=radius, density=1, restitution=1,
+                                      friction=.01, groupIndex = 1, categoryBits=cats['ball'],
+                                      userData='ball')
+        self.body.CreateCircleFixture(radius=radius, userData='ball',isSensor=True)
+        self.nudge()
+        self.node.setEventHandler(avg.CURSORDOWN,avg.TOUCH,lambda e:self.reSpawn()) # XXX remove
 
+    def reSpawn(self,pos=None):
+        if pos is None:
+            pos = self.spawnPoint
+        self.body.position=pos
+        yOffset = random.randint(-10,10)
+        direction = (-standardXInertia,yOffset) if  self.leftPlayer.points > self.rightPlayer.points else (standardXInertia,yOffset)
+        self.nudge(direction)
     
-    # TODO should return the player to whom the current zone the ball is in belongs, or None if the ball is in the middle
     def zone(self):
-        pass
-    
-    # TODO implement some intelligent bahviour here 
-    # e.g. the ball flies towards the winning player or something using lastPlayer 
-    def start_moving(self, startpos):
-        if random.choice([True, False]):
-            self.body.ApplyForce(force=(5000, random.randint(-2000, 2000)), point=startpos)
+        lz,rz = self.leftPlayer.zone,self.rightPlayer.zone        
+        if lz.getAbsPos((0,0))[0] < self.node.pos[0] < lz.getAbsPos(lz.size)[0]:
+            return self.leftPlayer
+        elif rz.getAbsPos((0,0))[0] < self.node.pos[0] < rz.getAbsPos(rz.size)[0]:
+            return self.rightPlayer
         else:
-            self.body.ApplyForce(force=(-5000, random.randint(-2000, 2000)), point=startpos)
+            return None        
+        
+    def nudge(self, direction=None):
+        self.body.angularVelocity=0
+        self.body.angle = 0
+        if direction is None:
+            direction = (random.choice([standardXInertia,-standardXInertia]),random.randint(-10,10)) 
+        self.body.linearVelocity=direction
         
 class Player:
     def __init__(self, game, avgNode):
@@ -63,16 +82,16 @@ class Player:
         self.game = game
         self.zone = avgNode
         
-        left = avgNode.pos == (0,0)         
-        angle = math.pi/2 if left else -math.pi/2 
-        pos = (avgNode.width,2) if left else (0,avgNode.height-2)            
+        left = avgNode.pos == (0, 0)         
+        angle = math.pi / 2 if left else -math.pi / 2 
+        pos = (avgNode.width, 2) if left else (0, avgNode.height - 2)            
         # XXX gameobects may obstruct view of the points!
-        self.pointsDisplay = avg.WordsNode(parent=avgNode,pivot=(0,0),pos=pos,angle=angle,
+        self.pointsDisplay = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=pos, angle=angle,
                                            text='Points: 0 / %d' % pointsToWin)
     
     def addPoint(self, points=1):
         self.points += points
-        self.pointsDisplay.text='Points: %d / %d' %(self.points,pointsToWin)
+        self.updateDisplay()
         if self.points >= pointsToWin:
             self.game.win(self)
 
@@ -80,35 +99,37 @@ class Player:
         self.points -= points
         if self.points < 0:
             self.points = 0
+        self.updateDisplay()
     
-    # TODO should return the other player
-    def other(self):
-        pass
+    def updateDisplay(self):
+        self.pointsDisplay.text = 'Points: %d / %d' % (self.points, pointsToWin)
+        
 
 class Ghost(GameObject):
     def __init__(self, renderer, world, parentNode, position, name, mortality=0, radius=ghostRadius):
         GameObject.__init__(self, renderer, world)
         self.parentNode = parentNode
+        self.spawnPoint = position
         self.name = name
-        self.mortal = mortality                
-        self.diameter = 2 * radius * PPM                
+        self.mortal = mortality
+        self.diameter = 2 * radius * PPM
         self.node = avg.ImageNode(parent=parentNode, size=(self.diameter, self.diameter))
         self.setBitmap(name)
-        d = {'type':'body', 'node':self.node}
-        ghostUpper = b2FixtureDef(shape=b2CircleShape(radius=radius),
+        d = {'type':'body', 'node':self.node,'obj':self}
+        ghostUpper = b2FixtureDef(userData='ghost',shape=b2CircleShape(radius=radius),
                                   density=1, groupIndex= -1, categoryBits=cats['ghost'])
-        ghostLower = b2FixtureDef(shape=b2PolygonShape(box=(radius, radius / 2, (0, -radius / 2), 0)),
+        ghostLower = b2FixtureDef(userData='ghost',shape=b2PolygonShape(box=(radius, radius / 2, (0, -radius / 2), 0)),
                                   density=1, groupIndex= -1, categoryBits=cats['ghost'])
         self.body = world.CreateDynamicBody(position=position, fixtures=[ghostUpper, ghostLower],
                                             userData=d, fixedRotation=True) # XXX let them rotate after we fixed their propulsion
-        ui.DragRecognizer(self.node, moveHandler=self.onMove) # just for debugging and fun
+        ui.DragRecognizer(self.node, moveHandler=self.onMove) # XXX just for debugging and fun
         
         # XXX I don't like this...        
         self.direction = (8000, 10) # XXX what is this?!
         self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.body.position)
     
     def onMove(self, event, offset):
-        self.body.position=event.pos/PPM
+        self.body.position = event.pos / PPM
             
     def flipState(self):
         self.setBitmap(self.name if self.mortal else 'blue')
@@ -117,7 +138,15 @@ class Ghost(GameObject):
     def setBitmap(self, name):
         svg = avg.SVG('../data/img/char/' + name + '.svg', False)        
         self.node.setBitmap(svg.renderElement('layer1', (self.diameter, self.diameter)))        
-            
+
+    def reSpawn(self,pos=None):
+        if pos is None:
+            pos = self.spawnPoint
+        self.body.position = pos
+        self.setBitmap(self.name) # ghost respawns in immortal state XXX change this?
+        self.mortal = 0
+    
+    # TODO refactor from here
     def setDir(self, s):
         self.body.ApplyForce(force=((-1) * self.direction[0], (-1) * self.direction[1]), point=self.body.position)
         if s == "left":
@@ -170,7 +199,7 @@ class BorderLine:
 
 # XXX create class Turret
 # XXX create class TurretBonus(Bonus)
-
+'''
 class Pill:
     # TODO refactor as Pill(BallBonus)
     def __init__(self, parentNode, game, world, position, radius=.5):
@@ -181,7 +210,8 @@ class Pill:
         self.body = world.CreateDynamicBody(position=position, userData=d)
         self.body.CreateCircleFixture(radius=radius, density=1, friction=1, restitution=1)
         self.body.bullet = True # seriously?
-       
+'''
+            
 class Bat(GameObject):
     # the positions are stored in pixels!
     def __init__(self, renderer, world, parentNode, pos1, pos2):
@@ -197,11 +227,11 @@ class Bat(GameObject):
         self.node = avg.PolygonNode(parent=parentNode)
         d = {'type':'poly', 'node':self.node}
         mid = (pos1 + pos2) / (2 * PPM)
-        len = self.length / (2 * PPM)
+        length = self.length / (2 * PPM)
         wid = self.width / (2 * PPM)
         self.DebugNode = None 
         #avg.WordsNode(parent = self.field, text = "Debug: "+str(self.ang), color = "FFFFFF")
-        shapedef = b2PolygonShape(box=(len, wid , (0, 0), self.ang))
+        shapedef = b2PolygonShape(box=(length, wid , (0, 0), self.ang))
         fixturedef = b2FixtureDef(shape=shapedef, density=1, restitution=self.rest(), friction=.3, groupIndex=1)
         self.body = world.CreateKinematicBody(userData=d, position=mid)
         self.body.CreateFixture(fixturedef)
