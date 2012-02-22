@@ -43,8 +43,6 @@ class Renderer:
 class ContactListener(b2ContactListener):
     def __init__(self):
         b2ContactListener.__init__(self)
-    def BeginContact(self, contact):
-        pass
     def PreSolve(self, contact, oldManifold):
         fA, fB = contact.fixtureA, contact.fixtureB
         dA, dB = fA.userData, fB.userData
@@ -55,7 +53,17 @@ class ContactListener(b2ContactListener):
             bat, ball = fA.body.userData['obj'], fB.body.userData['obj']
         if bat and ball:
             ball.lastPlayer = bat.zone.player
-            
+    def PostSolve(self, contact, impulse):
+        ball = None
+        fA, fB = contact.fixtureA, contact.fixtureB
+        dA, dB = fA.userData, fB.userData
+        if dA == 'ball':
+            ball = fA.body.userData['obj']
+        elif dB == 'ball':
+            ball = fB.body.userData['obj']
+        if ball is not None:
+            ball.refreshBitmap()
+                        
 class Game(gameapp.GameApp):
     def init(self):
         self.machine = statemachine.StateMachine('BEMOCK', 'MainMenu')
