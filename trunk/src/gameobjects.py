@@ -6,16 +6,47 @@ Created on 15.02.2012
 
 import random
 import math
-from config import PPM, pointsToWin, ballRadius, ghostRadius
+from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize
 from libavg import avg, ui
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape
 
 cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008}
-def collideWith(categories):
-    return reduce(lambda x, y: x | y, [cats[el] for el in categories])
+def dontCollideWith(*categories):
+    return reduce(lambda x, y: x ^ y, [cats[el] for el in categories],0xFFFF)
 
 standardXInertia = 20 * ballRadius # XXX solve more elegantly 
 g_player = avg.Player.get()
+
+halfBrickSize = brickSize / 2
+
+class Player:
+    def __init__(self, game, avgNode):
+        self.points = 0
+        self.other = None
+        self.game = game
+        self.zone = avgNode
+        avgNode.player = self # monkey patch
+        left = avgNode.pos == (0, 0)
+        angle = math.pi / 2 if left else -math.pi / 2
+        pos = (avgNode.width, 2) if left else (0, avgNode.height - 2)            
+        # XXX gameobects may obstruct view of the points!
+        self.pointsDisplay = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=pos, angle=angle,
+                                           text='Points: 0 / %d' % pointsToWin)
+    
+    def addPoint(self, points=1):
+        self.points += points
+        self.updateDisplay()
+        if self.points >= pointsToWin:
+            self.game.win(self)
+
+    def removePoint(self, points=1):
+        self.points -= points
+        if self.points < 0:
+            self.points = 0
+        self.updateDisplay()
+    
+    def updateDisplay(self):
+        self.pointsDisplay.text = 'Points: %d / %d' % (self.points, pointsToWin)
 
 class GameObject:
     def __init__(self, renderer, world):
@@ -32,7 +63,7 @@ class GameObject:
             self.node.active = False
             self.node.unlink(True)
             self.node = None
-    
+
 class Ball(GameObject):
     def __init__(self, renderer, world, parentNode, position, leftPlayer, rightPlayer, radius=ballRadius):
         GameObject.__init__(self, renderer, world)
@@ -52,8 +83,8 @@ class Ball(GameObject):
         d = {'type':'body', 'node':self.node, 'obj':self}
         self.body = world.CreateDynamicBody(position=position, userData=d, bullet=True) # XXX reevaluate bullet-ness
         self.body.CreateCircleFixture(radius=radius, density=1, restitution=1,
-                                      friction=.01, groupIndex=1, categoryBits=cats['ball'],
-                                      userData='ball')
+                                      friction=.01, groupIndex=1, categoryBits=cats['ball'], 
+                                      maskBits=dontCollideWith('ghost'), userData='ball')
         self.body.CreateCircleFixture(radius=radius, userData='ball', isSensor=True)
         self.nudge()
         self.node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.reSpawn()) # XXX remove
@@ -85,36 +116,7 @@ class Ball(GameObject):
         if direction is None:
             direction = (random.choice([standardXInertia, -standardXInertia]), random.randint(-10, 10)) 
         self.body.linearVelocity = direction
-        
-class Player:
-    def __init__(self, game, avgNode):
-        self.points = 0
-        self.other = None
-        self.game = game
-        self.zone = avgNode
-        avgNode.player = self # monkey patch
-        left = avgNode.pos == (0, 0)
-        angle = math.pi / 2 if left else -math.pi / 2
-        pos = (avgNode.width, 2) if left else (0, avgNode.height - 2)            
-        # XXX gameobects may obstruct view of the points!
-        self.pointsDisplay = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=pos, angle=angle,
-                                           text='Points: 0 / %d' % pointsToWin)
-    
-    def addPoint(self, points=1):
-        self.points += points
-        self.updateDisplay()
-        if self.points >= pointsToWin:
-            self.game.win(self)
 
-    def removePoint(self, points=1):
-        self.points -= points
-        if self.points < 0:
-            self.points = 0
-        self.updateDisplay()
-    
-    def updateDisplay(self):
-        self.pointsDisplay.text = 'Points: %d / %d' % (self.points, pointsToWin)
-        
 class Ghost(GameObject):
     def __init__(self, renderer, world, parentNode, position, name, mortality=0, radius=ghostRadius):
         GameObject.__init__(self, renderer, world)
@@ -127,9 +129,9 @@ class Ghost(GameObject):
         self.setBitmap()
         d = {'type':'body', 'node':self.node, 'obj':self}
         ghostUpper = b2FixtureDef(userData='ghost', shape=b2CircleShape(radius=radius),
-                                  density=1, groupIndex= -1, categoryBits=cats['ghost'])
+                                  density=1, groupIndex= -1, categoryBits=cats['ghost'],maskBits=dontCollideWith('ball'))
         ghostLower = b2FixtureDef(userData='ghost', shape=b2PolygonShape(box=(radius, radius / 2, (0, -radius / 2), 0)),
-                                  density=1, groupIndex= -1, categoryBits=cats['ghost'])
+                                  density=1, groupIndex= -1, categoryBits=cats['ghost'],maskBits=dontCollideWith('ball'))
         self.body = world.CreateDynamicBody(position=position, fixtures=[ghostUpper, ghostLower],
                                             userData=d, fixedRotation=True) # XXX let them rotate after we fixed their propulsion
         self.move()
@@ -172,31 +174,29 @@ class Ghost(GameObject):
         self.node.active = True
         avg.fadeIn(self.node, 1000, 1, lambda:self.body.__setattr__('active', True))
         
-    def move(self,direction = None):
+    def move(self, direction=None):
         # TODO implement some kind of AI
-        g_player.setTimeout(random.randint(500,2500),self.move)
+        g_player.setTimeout(random.randint(500, 2500), self.move)
         if self.body.active: # just to be sure ;)
-            if direction==None:
-                direction = random.randint(-10,10),random.randint(-10,10)
-            self.body.linearVelocity=direction
+            if direction == None:
+                direction = random.randint(-10, 10), random.randint(-10, 10)
+            self.body.linearVelocity = direction
 
     def changeMortality(self):
         # TODO implement some kind of AI
-        g_player.setTimeout(random.choice([2000,3000,4000,5000,6000]),self.changeMortality)
+        g_player.setTimeout(random.choice([2000, 3000, 4000, 5000, 6000]), self.changeMortality) # XXX store ids for stopping when one player wins
         if self.body.active: # just to be sure ;)
             self.flipState()
-        
 
 class BorderLine:
     body = None
-    def __init__(self, world, pos1, pos2, collisions=[], sensor=False):
+    def __init__(self, world, pos1, pos2, sensor=False, *noCollisions):
         """ the positions are expected to be in meters """
         self.world = world
         if BorderLine.body is None:
             BorderLine.body = world.CreateStaticBody(position=(0, 0))
         BorderLine.body.CreateFixture(shape=b2EdgeShape(vertices=[pos1, pos2]), density=1, isSensor=sensor,
-                                categoryBits=cats['border'], maskBits=collideWith(collisions))
-    
+                                categoryBits=cats['border'], maskBits=dontCollideWith(*noCollisions))
     def destroy(self):
         if self.body is not None:
             self.world.DestroyBody(self.body)
@@ -263,33 +263,42 @@ class Bat(GameObject):
             ang += math.pi * 2
         return ang
 
+#===========================================================================================================================
+# 
+#===========================================================================================================================
 
 # a piece of a block - !Superclass! there are several types of Bricks
-class Brick (GameObject):
-    
-    def __init__(self, parentBlock, renderer, world, parentNode, x, y):
+class Brick(GameObject):
+    def __init__(self, parentBlock, renderer, world, parentNode, pos):
         GameObject.__init__(self, renderer, world)
-        self.__parentBlock = parentBlock
-        self.node = avg.ImageNode (parent = parentNode, size = (brickSize * PPM, brickSize * PPM))
-        data = {'type':'body', 'node':self.node,'obj':self}
-        fixtureDef = b2FixtureDef (userData = 'ghost', shape = b2PolygonShape (box = (brickSize / 2, brickSize / 2)),
-                                  density = 1, friction = .1, restitution = 1, groupIndex= 1, categoryBits = cats['brick'])
-        self.body = world.CreateKinematicBody(position = (x, y), fixture = fixtureDef,
-                                            userData = data)
-        ui.DragRecognizer(self.node, moveHandler = self.__move)
+        self.parentBlock = parentBlock
+        self.node = avg.ImageNode (parent=parentNode, size=(brickSize,brickSize)*PPM,pos=pos)
+        self.dragrecognizer = ui.DragRecognizer(self.node, moveHandler=self.onMove) # TODO nach dem einrasten entfernen
     
-    def __move(self, event, offset):
-        self.__parentBlock.move(event, offset)
+    # spawn a physical object
+    def materialze(self,pos=None):
+        if pos==None:
+            pos = (self.node.pos+self.node.pivot)/PPM # TODO this looks like trouble
+        data = {'type':'body', 'node':self.node, 'obj':self}
+        fixtureDef = b2FixtureDef (userData='ghost', shape=b2PolygonShape (box=(brickSize / 2, brickSize / 2)),
+                                  density=1, friction=.1, restitution=1, groupIndex=1, categoryBits=cats['brick'])
+        self.body = self.world.CreateKinematicBody(position=pos, fixture=fixtureDef,
+                                            userData=data)
+    
+#=======================================================================================================================
+# TODO solve better!
+#=======================================================================================================================
+    def onMove(self, event, offset):
+        self.parentBlock.move(event, offset)
         #self.body.position = event.pos / PPM                is called in block!
         
-    # is called, when the ball hits the brick
+    # is called, when the ball or bullet hits the brick
     def vanish(self):
         pass
         # todo there should be more than this here
 
 
-class DiamondBrick (Brick):
-    
+class DiamondBrick(Brick):
     def __init__(self, parentBlock, renderer, world, parentNode, x, y):
         Brick.__init__(self, parentBlock, renderer, world, parentNode, x, y)
         #svg = avg.SVG('../data/img/?/?.svg', False)                                             #TODO: image
@@ -298,11 +307,13 @@ class DiamondBrick (Brick):
 
 #TODO: other brickTypes
 
+#===========================================================================================================================
+# TODO The block should stop existing after its bricks have been placed! It should only be a container for the bricks while they are being put into place. 
+#===========================================================================================================================
 
 # appears as building material - consists of bricks - !Superclass! there are several types of Blocks
 # brickList contains the bricks which were not hit so far
 class Block (object):
-    
     def __init__(self, parentNode):
         self.parentNode = parentNode
         self.brickList = []
@@ -311,150 +322,136 @@ class Block (object):
     def move(self, event, offset):
         pass
         #self.brick0.pos = (event.x - offset[0], event.y - offset[1])
-    
+
+
+#===========================================================================================================================
+# TODO Get rid of the following copy pasta! use lists of bricks instead!!!
+#===========================================================================================================================
 
 # this Block consists only of one brick
-class SingleBlock (Block):    
-    
+class SingleBlock (Block):
     def __init__(self, parentNode, position, renderer, world, type):
         Block.__init__(self, parentNode)
         #depending on the respective type create the appropriate brick
-
-
-
-# the calls of Brick-constructor have to be changed and the choice of the right brick-type has to be done
-#furthermore halfBrickSize doesn't exist anymore 
-
-        self.brick0 = Brick(self.node, x - config.halfBrickSize, y - config.halfBrickSize, colour, self)
+        # the calls of Brick-constructor have to be changed and the choice of the right brick-type has to be done        
+        self.brick0 = Brick(self.node, x - halfBrickSize, y - halfBrickSize, colour, self)
         self.brickList.append(self.brick0)
-        
         
 # this Block consists of two bricks
 class DoubleBlock (Block):
-    
     def __init__(self, parentNode, position, renderer, world, type):
         Block.__init__(self, parentNode)
-        self.brick0 = Brick(self.parentNode, x - config.halfBrickSize, y - config.brickSize, colour, self)
+        self.brick0 = Brick(self.parentNode, x - halfBrickSize, y - brickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x - config.halfBrickSize, y, colour, self)
+        self.brick1 = Brick(self.parentNode, x - halfBrickSize, y, colour, self)
         self.brickList.append(self.brick1)
         
-
 # this Block consists of four bricks which form an rectangle
 class RectBlock (Block):
-    
     def __init__(self, parentNode, position, renderer, world, type):
         Block.__init__(self, parentNode)
-        self.brick0 = Brick(self.parentNode, x - config.brickSize, y - config.brickSize, colour, self)
+        self.brick0 = Brick(self.parentNode, x - brickSize, y - brickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x, y - config.brickSize, colour, self)
+        self.brick1 = Brick(self.parentNode, x, y - brickSize, colour, self)
         self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x - config.brickSize, y, colour, self)
+        self.brick2 = Brick(self.parentNode, x - brickSize, y, colour, self)
         self.brickList.append(self.brick2)
         self.brick3 = Brick(self.parentNode, x, y, colour, self)
         self.brickList.append(self.brick3)
-        
-            
+             
 # this Block consists of four bricks which are arranged in a line
 class LineBlock (Block):
-    
     def __init__(self, parentNode, position, renderer, world, type):
         Block.__init__(self, parentNode)
-        self.brick0 = Brick(self.parentNode, x - config.halfBrickSize, y - 2 * config.brickSize, colour, self)
+        self.brick0 = Brick(self.parentNode, x - halfBrickSize, y - 2 * brickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x - config.halfBrickSize, y - config.brickSize, colour, self)
+        self.brick1 = Brick(self.parentNode, x - halfBrickSize, y - brickSize, colour, self)
         self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x - config.halfBrickSize, y, colour, self)
+        self.brick2 = Brick(self.parentNode, x - halfBrickSize, y, colour, self)
         self.brickList.append(self.brick2)
-        self.brick3 = Brick(self.parentNode, x - config.halfBrickSize, y + config.brickSize, colour, self)
+        self.brick3 = Brick(self.parentNode, x - halfBrickSize, y + brickSize, colour, self)
         self.brickList.append(self.brick3)
         
         
 #this Block consists of four bricks which are arranged like a L (left)
 class LBlockLeft (Block):
-    
     def __init__(self, parentNode, position, renderer, world, type):
         Block.__init__(self, parentNode)
-        self.brick0 = Brick(self.parentNode, x - config.brickSize, y - 3 * config.halfBrickSize, colour, self)
+        self.brick0 = Brick(self.parentNode, x - brickSize, y - 3 * halfBrickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x  - config.brickSize, y - config.halfBrickSize, colour, self)
+        self.brick1 = Brick(self.parentNode, x - brickSize, y - halfBrickSize, colour, self)
         self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x - config.brickSize, y + config.halfBrickSize, colour, self)
+        self.brick2 = Brick(self.parentNode, x - brickSize, y + halfBrickSize, colour, self)
         self.brickList.append(self.brick2)
-        self.brick3 = Brick(self.parentNode, x, y + config.halfBrickSize, colour, self)
+        self.brick3 = Brick(self.parentNode, x, y + halfBrickSize, colour, self)
         self.brickList.append(self.brick3)
 
 
 #this Block consists of four bricks which are arranged like a L (right - mirror inverted)
 class LBlockRight (Block):
-    
     def __init__(self, parentNode, position, renderer, world, type):
         Block.__init__(self, parentNode)
-        self.brick0 = Brick(self.parentNode, x, y - 3 * config.halfBrickSize, colour, self)
+        self.brick0 = Brick(self.parentNode, x, y - 3 * halfBrickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x, y - config.halfBrickSize, colour, self)
+        self.brick1 = Brick(self.parentNode, x, y - halfBrickSize, colour, self)
         self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x, y + config.halfBrickSize, colour, self)
+        self.brick2 = Brick(self.parentNode, x, y + halfBrickSize, colour, self)
         self.brickList.append(self.brick2)
-        self.brick3 = Brick(self.parentNode, x - config.brickSize, y + config.halfBrickSize, colour, self)
+        self.brick3 = Brick(self.parentNode, x - brickSize, y + halfBrickSize, colour, self)
         self.brickList.append(self.brick3)
 
 
 #this Block consists of four bricks which are arranged like an uppercase gamma (left)
 class GammaBlockLeft (Block):
-    
     def __init__(self, parentNode, position, renderer, world, type):
         Block.__init__(self, parentNode)
-        self.brick0 = Brick(self.parentNode, x - config.brickSize, y - 3 * config.halfBrickSize, colour, self)
+        self.brick0 = Brick(self.parentNode, x - brickSize, y - 3 * halfBrickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x  - config.brickSize, y - config.halfBrickSize, colour, self)
+        self.brick1 = Brick(self.parentNode, x - brickSize, y - halfBrickSize, colour, self)
         self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x - config.brickSize, y + config.halfBrickSize, colour, self)
+        self.brick2 = Brick(self.parentNode, x - brickSize, y + halfBrickSize, colour, self)
         self.brickList.append(self.brick2)
-        self.brick3 = Brick(self.parentNode, x, y - 3 * config.halfBrickSize, colour, self)
+        self.brick3 = Brick(self.parentNode, x, y - 3 * halfBrickSize, colour, self)
         self.brickList.append(self.brick3)
 
 
 #this Block consists of four bricks which are arranged like an uppercase gamma (right - mirror inverted)
 class GammaBlockRight (Block):
-    
     def __init__(self, parentNode, position, renderer, world, type):
         Block.__init__(self, parentNode)
-        self.brick0 = Brick(self.parentNode, x, y - 3 * config.halfBrickSize, colour, self)
+        self.brick0 = Brick(self.parentNode, x, y - 3 * halfBrickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x, y - config.halfBrickSize, colour, self)
+        self.brick1 = Brick(self.parentNode, x, y - halfBrickSize, colour, self)
         self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x, y + config.halfBrickSize, colour, self)
+        self.brick2 = Brick(self.parentNode, x, y + halfBrickSize, colour, self)
         self.brickList.append(self.brick2)
-        self.brick3 = Brick(self.parentNode, x - config.brickSize, y - 3 * config.halfBrickSize, colour, self)
+        self.brick3 = Brick(self.parentNode, x - brickSize, y - 3 * halfBrickSize, colour, self)
         self.brickList.append(self.brick3)
 
 
 # this Block consists of three bricks which are arranged in a line, in the middle a fourth brick is added (left)
 class MiddleBlockLeft (Block):
-    
     def __init__(self, parentNode, position, renderer, world, type):
         Block.__init__(self, parentNode)
-        self.brick0 = Brick(self.parentNode, x - config.brickSize, y - 3 * config.halfBrickSize, colour, self)
+        self.brick0 = Brick(self.parentNode, x - brickSize, y - 3 * halfBrickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x  - config.brickSize, y - config.halfBrickSize, colour, self)
+        self.brick1 = Brick(self.parentNode, x - brickSize, y - halfBrickSize, colour, self)
         self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x - config.brickSize, y + config.halfBrickSize, colour, self)
+        self.brick2 = Brick(self.parentNode, x - brickSize, y + halfBrickSize, colour, self)
         self.brickList.append(self.brick2)
-        self.brick3 = Brick(self.parentNode, x, y - config.halfBrickSize, colour, self)
+        self.brick3 = Brick(self.parentNode, x, y - halfBrickSize, colour, self)
         self.brickList.append(self.brick3)
 
 
 # this Block consists of three bricks which are arranged in a line, in the middle a fourth brick is added (right - mirror inverted)
 class MiddleBlockRight (Block):
-    
     def __init__(self, parentNode, position, renderer, world, type):
         Block.__init__(self, parentNode)
-        self.brick0 = Brick(self.parentNode, x, y - 3 * config.halfBrickSize, colour, self)
+        self.brick0 = Brick(self.parentNode, x, y - 3 * halfBrickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x, y - config.halfBrickSize, colour, self)
+        self.brick1 = Brick(self.parentNode, x, y - halfBrickSize, colour, self)
         self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x, y + config.halfBrickSize, colour, self)
+        self.brick2 = Brick(self.parentNode, x, y + halfBrickSize, colour, self)
         self.brickList.append(self.brick2)
-        self.brick3 = Brick(self.parentNode, x - config.brickSize, y - config.halfBrickSize, colour, self)
+        self.brick3 = Brick(self.parentNode, x - brickSize, y - halfBrickSize, colour, self)
         self.brickList.append(self.brick3)
