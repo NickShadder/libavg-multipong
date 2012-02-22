@@ -18,9 +18,13 @@ if __name__ == '__main__':
 '''
 ********************* TODO *******************
 
+rausfinden, wieso der ball manchmal von den geistern abprallt !!!!!!!!!!!!!!!!!!!!!!!!
 jegliches gehacke entfernen
-rausfinden, wieso der ball manchmal von den geistern abprallt
 EIGENE!!! bilder fuer die spielelemente erstellen(bricks,bat)
+geister scheuchen implementieren
+KI fuer geisterverhalten schreiben
+bessere fress-effekte (auch für geist frisst ball)
+geist-schatten fixen
 namen ausdenken fuer das spiel
 
 ********************* ODOT *******************
