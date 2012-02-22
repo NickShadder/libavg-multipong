@@ -9,8 +9,6 @@ from Box2D import b2World, b2Vec2, b2ContactListener
 from gameobjects import Ball, Bat, Ghost, Player, BorderLine
 from config import PPM, TIME_STEP, maxBalls, ballRadius
 
-import random
-
 g_player = avg.Player.get()
 
 def w2a(coords):
@@ -109,10 +107,6 @@ class Game(gameapp.GameApp):
         self.aboutScreen = None
     
     def startPlaying(self):
-        # TODO get rid of this
-        self.mag_num = 0.0
-        self.rand_num = random.randint(10, 30)
-        self.changeindex = 0
         # libavg setup
         self.display = self._parentNode
         self.display.player = None # monkey patch
@@ -161,34 +155,16 @@ class Game(gameapp.GameApp):
         g_player.clearInterval(self.mainLoop)
         # TODO tear down world and current display
         # TODO show winner/revanche screen
-
-    def move_ghosts(self):
-        self.changeindex = self.changeindex + 1
-        if self.changeindex > 60:
-            self.changeindex = 0
-            for ghost in self.ghosts:
-                ghost.changedirection()        
-    
-    # TODO move into the ghost class as ghost.changeMortality or ghost.flipState
-    def changeMortality(self):
-        for ghost in self.ghosts:
-            ghost.flipState()
-    
-    # FIXME rethink concept        
+      
     def addBall(self):
-        if(len(self.balls) < (maxBalls)):
-            self.balls.append(Ball(self.renderer, self.world, self.display, self.startpos))
-            self.balls[-1].nudge(self.startpos)
+        if len(self.balls) < maxBalls:
+            self.balls.append(Ball(self.renderer, self.world, self.display, self.startpos, self.leftPlayer, self.rightPlayer))
     
-    def newGhost(self, index): 
-        name = self.ghosts[index].name
-        self.ghosts[index].destroy() 
-        del self.ghosts[index] 
-        self.ghosts.append(Ghost(self.renderer, self.world, self.display, (random.randint(10, 30), random.randint(10, 30)), name))
-        self.addBall()
-        
+    def removeBall(self,ball):
+        self.balls.remove(ball)
+        ball.destroy()
+    
     def processBallCollisions(self):
-        killSet = set()
         for ball in self.balls:
             for ce in ball.body.contacts:
                 contact = ce.contact
@@ -200,43 +176,38 @@ class Game(gameapp.GameApp):
                 if ghost is not None:
                     if ghost.mortal:
                         # ball eats ghost
-                        if ball.lastPlayer is not None and ghost not in killSet: # ghost has two shapes! 
+                        ghost.reSpawn()
+                        if ball.lastPlayer is not None:
                             ball.lastPlayer.addPoint()
-                        killSet.add(ghost)
+                        self.addBall()
+                        break
                     else:
                         # ghost eats ball
                         player = ball.zoneOfPlayer()
-                        if player is not None and ball not in killSet:
-                            player.removePoint()
-                        killSet.add(ball)
-        for obj in killSet:
-            obj.reSpawn() # duck typing ftw :)
-               
+                        if player is not None:
+                            player.removePoint()                        
+                        if len(self.balls) <= 1:    # XXX maybe introduce minBalls
+                            ball.reSpawn()
+                        else:
+                            self.removeBall(ball)
+                        break
+                                       
     def step(self):
         self.world.Step(TIME_STEP, 10, 10)
         self.world.ClearForces()
         self.processBallCollisions()
-        self.checkballposition() # XXX get rid of this call 
-        self.move_ghosts() # XXX solve better
-        # TODO get this out of here
-        if((self.mag_num / 1) >= self.rand_num):
-            self.changeMortality()
-            self.mag_num = 0.0
-            self.rand_num = random.randint(10, 30)
-        else:
-            self.mag_num = self.mag_num + 0.16            
-        # draw world    
+        self.checkballposition() # XXX get rid of this call
         self.renderer.draw()
 
     # TODO replace by a collisionlistener
     def checkballposition(self):
-        for ball in self.balls: 
+        for ball in self.balls:
             if ball.body.position[0] > (self.display.size[0] / PPM - 1) + ballRadius: 
                 self.leftPlayer.addPoint()
-                self.balls[0].reSpawn()                
+                ball.reSpawn()                
             elif ball.body.position[0] < (-1) * ballRadius: 
                 self.rightPlayer.addPoint()
-                self.balls[0].reSpawn()
+                ball.reSpawn()
 
 # XXX rename class
 class BatSpawner:

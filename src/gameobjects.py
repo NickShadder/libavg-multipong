@@ -15,6 +15,7 @@ def collideWith(categories):
     return reduce(lambda x, y: x | y, [cats[el] for el in categories])
 
 standardXInertia = 20 * ballRadius # XXX solve more elegantly 
+g_player = avg.Player.get()
 
 class GameObject:
     def __init__(self, renderer, world):
@@ -131,11 +132,9 @@ class Ghost(GameObject):
                                   density=1, groupIndex= -1, categoryBits=cats['ghost'])
         self.body = world.CreateDynamicBody(position=position, fixtures=[ghostUpper, ghostLower],
                                             userData=d, fixedRotation=True) # XXX let them rotate after we fixed their propulsion
+        self.move()
+        self.changeMortality()
         ui.DragRecognizer(self.node, moveHandler=self.onMove) # XXX just for debugging and fun
-        
-        # XXX I don't like this...
-        self.direction = (8000, 10) # XXX what is this?!
-        self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.body.position)
     
     def onMove(self, event, offset):
         self.body.position = event.pos / PPM
@@ -164,7 +163,7 @@ class Ghost(GameObject):
     
     def __kill(self, pos):
         self.node.active = False
-        avg.Player.get().setTimeout(3000, lambda:self.__reAppear(pos)) # XXX adjust timeout or make it configgable 
+        g_player.setTimeout(3000, lambda:self.__reAppear(pos)) # XXX adjust timeout or make it configgable 
     
     def __reAppear(self, pos):
         self.body.position = pos
@@ -173,37 +172,20 @@ class Ghost(GameObject):
         self.node.active = True
         avg.fadeIn(self.node, 1000, 1, lambda:self.body.__setattr__('active', True))
         
-    
-    # TODO refactor from here on downwards
-    def setDir(self, s):
-        self.body.ApplyForce(force=((-1) * self.direction[0], (-1) * self.direction[1]), point=self.body.position)
-        if s == "left":
-            self.direction = (8000, self.direction[1])   
-        else:
-            self.direction = (-8000, self.direction[1])
-        self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.body.position)
+    def move(self,direction = None):
+        # TODO implement some kind of AI
+        g_player.setTimeout(random.randint(500,2500),self.move)
+        if self.body.active: # just to be sure ;)
+            if direction==None:
+                direction = random.randint(-10,10),random.randint(-10,10)
+            self.body.linearVelocity=direction
 
-    def changedirection(self):
-        self.body.ApplyForce(force=(-self.direction[0], -self.direction[1]), point=self.body.position)
-        eins = random.randint(0, 1)
-        zwei = random.randint(0, 1)
-        newx = 0
-        newy = 0
-        if eins:
-            newx = 8000
-        else: 
-            newx = 0
-            
-        if zwei:
-            newy = 8000
-        else:
-            newy = 0
-            
-        if (not eins and not zwei):
-            newx = 8000
-            newy = 0
-        self.direction = (newx, newy)
-        self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.body.position)
+    def changeMortality(self):
+        # TODO implement some kind of AI
+        g_player.setTimeout(random.choice([2000,3000,4000,5000,6000]),self.changeMortality)
+        if self.body.active: # just to be sure ;)
+            self.flipState()
+        
 
 class BorderLine:
     body = None
