@@ -21,14 +21,10 @@ def a2w(coords):
 class Renderer:
     def __init__(self):
         self.objects = set()
-    def register(self, pyboxObject):
-        self.objects.add(pyboxObject)
-    def registerM(self, pyboxObjectList):
-        self.objects.update(pyboxObjectList)
-    def deregister(self, pyboxObject):
-        self.objects.remove(pyboxObject)
-    def deregisterM(self, pyboxObjectList):
-        self.objects.difference_update(pyboxObjectList)
+    def register(self, *pyboxObjects):        
+        self.objects.update(pyboxObjects)
+    def deregister(self, *pyboxObjects):
+        self.objects.difference_update(pyboxObjects)
     def draw(self):
         # TODO implement ausrichtung in flugrichting
         for obj in self.objects:
@@ -52,9 +48,16 @@ class ContactListener(b2ContactListener):
     def BeginContact(self, contact):
         pass
     def PreSolve(self, contact, oldManifold):
-        # TODO implement setting last player on bat contact
-        pass
-
+        fA, fB = contact.fixtureA, contact.fixtureB
+        dA, dB = fA.userData, fB.userData
+        ball, bat = None, None
+        if dA == 'ball' and dB == 'bat':
+            ball, bat = fA.body.userData['obj'], fB.body.userData['obj']
+        elif dA == 'bat' and dB == 'ball':
+            bat, ball = fA.body.userData['obj'], fB.body.userData['obj']
+        if bat and ball:
+            ball.lastPlayer = bat.zone.player
+            
 class Game(gameapp.GameApp):
     def init(self):
         self.machine = statemachine.StateMachine('BEMOCK', 'MainMenu')
@@ -112,6 +115,7 @@ class Game(gameapp.GameApp):
         self.changeindex = 0
         # libavg setup
         self.display = self._parentNode
+        self.display.player = None # monkey patch
         (displayWidth, displayHeight) = self.display.size
         widthThird = displayWidth / 3
         fieldSize = (widthThird, displayHeight)
@@ -141,14 +145,14 @@ class Game(gameapp.GameApp):
         
         # game setup
         
+        # create ghosts                                        XXX remove hardcode
+        self.ghosts = [Ghost(self.renderer, self.world, self.display, (23, 10), "blinky"),
+                       Ghost(self.renderer, self.world, self.display, (40, 10), "pinky"),
+                       Ghost(self.renderer, self.world, self.display, (23, 40), "inky"),
+                       Ghost(self.renderer, self.world, self.display, (40, 40), "clyde")]
         # create balls
         self.startpos = a2w(self.display.pivot) # TODO remove this
         self.balls = [Ball(self.renderer, self.world, self.display, self.startpos, self.leftPlayer, self.rightPlayer)]
-        # create ghosts
-        self.ghosts = [Ghost(self.renderer, self.world, self.display, (10, 10), "blinky"),
-                       Ghost(self.renderer, self.world, self.display, (25, 25), "pinky"),
-                       Ghost(self.renderer, self.world, self.display, (10, 25), "inky"),
-                       Ghost(self.renderer, self.world, self.display, (25, 10), "clyde")]
                          
         BatSpawner(self.field1, self.world, self.renderer)
         BatSpawner(self.field2, self.world, self.renderer)
@@ -156,7 +160,7 @@ class Game(gameapp.GameApp):
     def win(self, player):
         g_player.clearInterval(self.mainLoop)
         # TODO tear down world and current display
-        # TODO show winner/revanche screen and start highscorescreen timeout
+        # TODO show winner/revanche screen
 
     def move_ghosts(self):
         self.changeindex = self.changeindex + 1
@@ -201,7 +205,7 @@ class Game(gameapp.GameApp):
                         killSet.add(ghost)
                     else:
                         # ghost eats ball
-                        player = ball.zone()
+                        player = ball.zoneOfPlayer()
                         if player is not None and ball not in killSet:
                             player.removePoint()
                         killSet.add(ball)
@@ -234,7 +238,7 @@ class Game(gameapp.GameApp):
                 self.rightPlayer.addPoint()
                 self.balls[0].reSpawn()
 
-# XXX rename class    
+# XXX rename class
 class BatSpawner:
     def __init__(self, parentNode, world, renderer):
         self.world = world

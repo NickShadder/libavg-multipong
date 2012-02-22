@@ -14,7 +14,7 @@ cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008}
 def collideWith(categories):
     return reduce(lambda x, y: x | y, [cats[el] for el in categories])
 
-standardXInertia = 20*ballRadius # XXX solve more elegantly 
+standardXInertia = 20 * ballRadius # XXX solve more elegantly 
 
 class GameObject:
     def __init__(self, renderer, world):
@@ -35,45 +35,55 @@ class GameObject:
 class Ball(GameObject):
     def __init__(self, renderer, world, parentNode, position, leftPlayer, rightPlayer, radius=ballRadius):
         GameObject.__init__(self, renderer, world)
-        self.spawnPoint = parentNode.pivot/PPM # XXX maybe make a static class variable
+        self.spawnPoint = parentNode.pivot / PPM # XXX maybe make a static class variable
         self.leftPlayer = leftPlayer
         self.rightPlayer = rightPlayer
         self.lastPlayer = None
         diameter = 2 * radius * PPM
         svg = avg.SVG('../data/img/char/pacman.svg', False)
         self.node = svg.createImageNode('layer1', dict(parent=parentNode), (diameter, diameter))
-        d = {'type':'body', 'node':self.node,'obj':self}
-        self.body = world.CreateDynamicBody(position=position, userData=d)
+        shadow = avg.ShadowFXNode()
+        shadow.opacity = .7
+        shadow.color = 'FFFF00'
+        shadow.radius = 2
+        shadow.offset = (2, 2)
+        self.node.setEffect(shadow)
+        d = {'type':'body', 'node':self.node, 'obj':self}
+        self.body = world.CreateDynamicBody(position=position, userData=d, bullet=True) # XXX reevaluate bullet-ness
         self.body.CreateCircleFixture(radius=radius, density=1, restitution=1,
-                                      friction=.01, groupIndex = 1, categoryBits=cats['ball'],
+                                      friction=.01, groupIndex=1, categoryBits=cats['ball'],
                                       userData='ball')
-        self.body.CreateCircleFixture(radius=radius, userData='ball',isSensor=True)
+        self.body.CreateCircleFixture(radius=radius, userData='ball', isSensor=True)
         self.nudge()
-        self.node.setEventHandler(avg.CURSORDOWN,avg.TOUCH,lambda e:self.reSpawn()) # XXX remove
+        self.node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.reSpawn()) # XXX remove
 
-    def reSpawn(self,pos=None):
+    def reSpawn(self, pos=None):
+        # XXX maybe implement a little timeout
+        self.lastPlayer = None
         if pos is None:
             pos = self.spawnPoint
-        self.body.position=pos
-        yOffset = random.randint(-10,10)
-        direction = (-standardXInertia,yOffset) if  self.leftPlayer.points > self.rightPlayer.points else (standardXInertia,yOffset)
+        self.body.position = pos
+        self.body.active = True # who knows what this ball has been through...
+        yOffset = random.randint(-10, 10)
+        direction = (-standardXInertia, yOffset) if  self.leftPlayer.points > self.rightPlayer.points else (standardXInertia, yOffset)
         self.nudge(direction)
     
-    def zone(self):
-        lz,rz = self.leftPlayer.zone,self.rightPlayer.zone        
-        if lz.getAbsPos((0,0))[0] < self.node.pos[0] < lz.getAbsPos(lz.size)[0]:
+    def zoneOfPlayer(self):
+        # XXX I'm sure there is a better way to do this
+        lz, rz = self.leftPlayer.zone, self.rightPlayer.zone
+        if lz.getAbsPos((0, 0))[0] < self.node.pos[0] < lz.getAbsPos(lz.size)[0]:
             return self.leftPlayer
-        elif rz.getAbsPos((0,0))[0] < self.node.pos[0] < rz.getAbsPos(rz.size)[0]:
+        elif rz.getAbsPos((0, 0))[0] < self.node.pos[0] < rz.getAbsPos(rz.size)[0]:
             return self.rightPlayer
         else:
-            return None        
+            return None
         
     def nudge(self, direction=None):
-        self.body.angularVelocity=0
+        self.body.angularVelocity = 0
         self.body.angle = 0
         if direction is None:
-            direction = (random.choice([standardXInertia,-standardXInertia]),random.randint(-10,10)) 
-        self.body.linearVelocity=direction
+            direction = (random.choice([standardXInertia, -standardXInertia]), random.randint(-10, 10)) 
+        self.body.linearVelocity = direction
         
 class Player:
     def __init__(self, game, avgNode):
@@ -81,9 +91,9 @@ class Player:
         self.other = None
         self.game = game
         self.zone = avgNode
-        
-        left = avgNode.pos == (0, 0)         
-        angle = math.pi / 2 if left else -math.pi / 2 
+        avgNode.player = self # monkey patch
+        left = avgNode.pos == (0, 0)
+        angle = math.pi / 2 if left else -math.pi / 2
         pos = (avgNode.width, 2) if left else (0, avgNode.height - 2)            
         # XXX gameobects may obstruct view of the points!
         self.pointsDisplay = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=pos, angle=angle,
@@ -104,7 +114,6 @@ class Player:
     def updateDisplay(self):
         self.pointsDisplay.text = 'Points: %d / %d' % (self.points, pointsToWin)
         
-
 class Ghost(GameObject):
     def __init__(self, renderer, world, parentNode, position, name, mortality=0, radius=ghostRadius):
         GameObject.__init__(self, renderer, world)
@@ -114,17 +123,17 @@ class Ghost(GameObject):
         self.mortal = mortality
         self.diameter = 2 * radius * PPM
         self.node = avg.ImageNode(parent=parentNode, size=(self.diameter, self.diameter))
-        self.setBitmap(name)
-        d = {'type':'body', 'node':self.node,'obj':self}
-        ghostUpper = b2FixtureDef(userData='ghost',shape=b2CircleShape(radius=radius),
+        self.setBitmap()
+        d = {'type':'body', 'node':self.node, 'obj':self}
+        ghostUpper = b2FixtureDef(userData='ghost', shape=b2CircleShape(radius=radius),
                                   density=1, groupIndex= -1, categoryBits=cats['ghost'])
-        ghostLower = b2FixtureDef(userData='ghost',shape=b2PolygonShape(box=(radius, radius / 2, (0, -radius / 2), 0)),
+        ghostLower = b2FixtureDef(userData='ghost', shape=b2PolygonShape(box=(radius, radius / 2, (0, -radius / 2), 0)),
                                   density=1, groupIndex= -1, categoryBits=cats['ghost'])
         self.body = world.CreateDynamicBody(position=position, fixtures=[ghostUpper, ghostLower],
                                             userData=d, fixedRotation=True) # XXX let them rotate after we fixed their propulsion
         ui.DragRecognizer(self.node, moveHandler=self.onMove) # XXX just for debugging and fun
         
-        # XXX I don't like this...        
+        # XXX I don't like this...
         self.direction = (8000, 10) # XXX what is this?!
         self.body.ApplyForce(force=(self.direction[0], self.direction[1]), point=self.body.position)
     
@@ -132,21 +141,40 @@ class Ghost(GameObject):
         self.body.position = event.pos / PPM
             
     def flipState(self):
-        self.setBitmap(self.name if self.mortal else 'blue')
-        self.mortal ^= 1
+        if self.body.active: # only change if the ghost is currently persistent 
+            self.mortal ^= 1
+            self.setBitmap()
         
-    def setBitmap(self, name):
-        svg = avg.SVG('../data/img/char/' + name + '.svg', False)        
-        self.node.setBitmap(svg.renderElement('layer1', (self.diameter, self.diameter)))        
+    def setBitmap(self):
+        svg = avg.SVG('../data/img/char/' + ('blue' if self.mortal else self.name) + '.svg', False)
+        self.node.setBitmap(svg.renderElement('layer1', (self.diameter, self.diameter)))
+        # XXX adjust and tweak to look moar better
+        shadow = avg.ShadowFXNode()
+        shadow.opacity = .7
+        shadow.color = 'ADD8E6' if self.mortal else 'FFFFFF' # XXX make color dependant on the ghost
+        shadow.radius = 2
+        shadow.offset = (2, 2)
+        self.node.setEffect(shadow)        
 
-    def reSpawn(self,pos=None):
+    def reSpawn(self, pos=None):
+        self.body.active = False 
         if pos is None:
             pos = self.spawnPoint
-        self.body.position = pos
-        self.setBitmap(self.name) # ghost respawns in immortal state XXX change this?
-        self.mortal = 0
+        avg.fadeOut(self.node, 1000, lambda:self.__kill(pos))
     
-    # TODO refactor from here
+    def __kill(self, pos):
+        self.node.active = False
+        avg.Player.get().setTimeout(3000, lambda:self.__reAppear(pos)) # XXX adjust timeout or make it configgable 
+    
+    def __reAppear(self, pos):
+        self.body.position = pos
+        self.mortal = 0 # ghost respawns in immortal state XXX change this?
+        self.setBitmap()
+        self.node.active = True
+        avg.fadeIn(self.node, 1000, 1, lambda:self.body.__setattr__('active', True))
+        
+    
+    # TODO refactor from here on downwards
     def setDir(self, s):
         self.body.ApplyForce(force=((-1) * self.direction[0], (-1) * self.direction[1]), point=self.body.position)
         if s == "left":
@@ -217,7 +245,7 @@ class Bat(GameObject):
     def __init__(self, renderer, world, parentNode, pos1, pos2):
         GameObject.__init__(self, renderer, world)
         # TODO fix this whole mother...
-        self.field = parentNode
+        self.zone = parentNode
         self.pos1 = pos1
         self.pos2 = pos2
         self.width = 5 # set width XXX should depend on bat length
@@ -225,14 +253,14 @@ class Bat(GameObject):
         self.ang = self.angle(pos1, pos2) # compute angle
         #self.node = avg.DivNode(parent=parentNode, pos=pos1,size=(self.length,self.width),pivot=(0,0),angle=self.ang,elementoutlinecolor='000FFF')
         self.node = avg.PolygonNode(parent=parentNode)
-        d = {'type':'poly', 'node':self.node}
+        d = {'type':'poly', 'node':self.node, 'obj':self}
         mid = (pos1 + pos2) / (2 * PPM)
         length = self.length / (2 * PPM)
         wid = self.width / (2 * PPM)
         self.DebugNode = None 
         #avg.WordsNode(parent = self.field, text = "Debug: "+str(self.ang), color = "FFFFFF")
         shapedef = b2PolygonShape(box=(length, wid , (0, 0), self.ang))
-        fixturedef = b2FixtureDef(shape=shapedef, density=1, restitution=self.rest(), friction=.3, groupIndex=1)
+        fixturedef = b2FixtureDef(userData='bat', shape=shapedef, density=1, restitution=self.rest(), friction=.3, groupIndex=1)
         self.body = world.CreateKinematicBody(userData=d, position=mid)
         self.body.CreateFixture(fixturedef)
         

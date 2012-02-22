@@ -19,9 +19,8 @@ if __name__ == '__main__':
 ********************* TODO *******************
 
 jegliches gehacke entfernen
-dem ball korrekt lastPlayer zuweisen
-in welchem zustand soll ein geist nach dem Tod erscheinen (fressbar oder nicht? )
-EIGENE!!! bilder fuer die spielelemente erstellen(bricks)
+rausfinden, wieso der ball manchmal von den geistern abprallt
+EIGENE!!! bilder fuer die spielelemente erstellen(bricks,bat)
 namen ausdenken fuer das spiel
 
 ********************* ODOT *******************
