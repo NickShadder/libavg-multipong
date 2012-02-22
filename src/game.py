@@ -132,13 +132,12 @@ class Game(gameapp.GameApp):
         self.world = b2World(gravity=(0, 0), doSleep=True)
         self.listener = ContactListener()        
         self.world.contactListener = self.listener        
-        BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)), ['ghost', 'ball'])
-        BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)), ['ghost', 'ball'])
-        BorderLine(self.world, a2w((30, 0)), a2w((30, displayHeight)), ['ghost']) # XXX remove hardcode 
-        BorderLine(self.world, a2w((displayWidth - 30, 0)), a2w((displayWidth - 30, displayHeight)), ['ghost']) # XXX remove hardcode
+        BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)))
+        BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)))
+        BorderLine(self.world, a2w((30, 0)), a2w((30, displayHeight)),False,'ball') # XXX remove hardcode 
+        BorderLine(self.world, a2w((displayWidth - 30, 0)), a2w((displayWidth - 30, displayHeight)),False,'ball') # XXX remove hardcode
         
         # game setup
-        
         # create ghosts                                        XXX remove hardcode
         self.ghosts = [Ghost(self.renderer, self.world, self.display, (23, 10), "blinky"),
                        Ghost(self.renderer, self.world, self.display, (40, 10), "pinky"),
@@ -196,16 +195,16 @@ class Game(gameapp.GameApp):
         self.world.Step(TIME_STEP, 10, 10)
         self.world.ClearForces()
         self.processBallCollisions()
-        self.checkballposition() # XXX get rid of this call
+        self.checkballposition() # XXX get rid of this call sometime
         self.renderer.draw()
 
     # TODO replace by a collisionlistener
     def checkballposition(self):
         for ball in self.balls:
-            if ball.body.position[0] > (self.display.size[0] / PPM - 1) + ballRadius: 
+            if ball.body.position[0] > (self.display.size[0] / PPM) + ballRadius: 
                 self.leftPlayer.addPoint()
                 ball.reSpawn()                
-            elif ball.body.position[0] < (-1) * ballRadius: 
+            elif ball.body.position[0] < -ballRadius: 
                 self.rightPlayer.addPoint()
                 ball.reSpawn()
 

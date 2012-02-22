@@ -18,7 +18,6 @@ if __name__ == '__main__':
 '''
 ********************* TODO *******************
 
-rausfinden, wieso der ball manchmal von den geistern abprallt !!!!!!!!!!!!!!!!!!!!!!!!
 jegliches gehacke entfernen
 EIGENE!!! bilder fuer die spielelemente erstellen(bricks,bat)
 geister scheuchen implementieren
