@@ -205,7 +205,7 @@ class BorderLine:
             self.world.DestroyBody(self.body)
             self.body = None
 
-# TODO create class Bonus
+# TODO implement class Bonus
 class Bonus:
     pass
 # TODO create class BallBonus(Bonus)
