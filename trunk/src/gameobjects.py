@@ -53,6 +53,15 @@ class GameObject:
         self.renderer = renderer
         self.world = world
         self.renderer.register(self)
+    
+    def setShadow(self, color):
+        # XXX adjust and tweak to look moar better
+        shadow = avg.ShadowFXNode()
+        shadow.opacity = .7
+        shadow.color = color
+        shadow.radius = 2
+        shadow.offset = (2, 2)
+        self.node.setEffect(shadow)
         
     def destroy(self):
         self.renderer.deregister(self)
@@ -71,15 +80,9 @@ class Ball(GameObject):
         self.leftPlayer = leftPlayer
         self.rightPlayer = rightPlayer
         self.lastPlayer = None
-        diameter = 2 * radius * PPM
-        svg = avg.SVG('../data/img/char/pacman.svg', False)
-        self.node = svg.createImageNode('layer1', dict(parent=parentNode), (diameter, diameter))
-        shadow = avg.ShadowFXNode()
-        shadow.opacity = .7
-        shadow.color = 'FFFF00'
-        shadow.radius = 2
-        shadow.offset = (2, 2)
-        self.node.setEffect(shadow)
+        self.diameter = 2 * radius * PPM        
+        self.node = avg.ImageNode(parent=parentNode,size=(self.diameter, self.diameter))         
+        self.setShadow('FFFF00')
         d = {'type':'body', 'node':self.node, 'obj':self}
         self.body = world.CreateDynamicBody(position=position, userData=d, bullet=True) # XXX reevaluate bullet-ness
         self.body.CreateCircleFixture(radius=radius, density=1, restitution=1,
@@ -88,6 +91,10 @@ class Ball(GameObject):
         self.body.CreateCircleFixture(radius=radius, userData='ball', isSensor=True)
         self.nudge()
         self.node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.reSpawn()) # XXX remove
+
+    def refreshBitmap(self):
+        svg = avg.SVG('../data/img/char/'+('pacman' if self.body.linearVelocity[0]>=0 else 'pacman_left')+'.svg', False)
+        self.node.setBitmap(svg.renderElement('layer1',(self.diameter, self.diameter)))
 
     def reSpawn(self, pos=None):
         # XXX maybe implement a little timeout
@@ -116,6 +123,7 @@ class Ball(GameObject):
         if direction is None:
             direction = (random.choice([standardXInertia, -standardXInertia]), random.randint(-10, 10)) 
         self.body.linearVelocity = direction
+        self.refreshBitmap()
 
 class Ghost(GameObject):
     def __init__(self, renderer, world, parentNode, position, name, mortality=0, radius=ghostRadius):
@@ -126,7 +134,8 @@ class Ghost(GameObject):
         self.mortal = mortality
         self.diameter = 2 * radius * PPM
         self.node = avg.ImageNode(parent=parentNode, size=(self.diameter, self.diameter))
-        self.setBitmap()
+        self.setBitmap()        
+        self.setShadow('ADD8E6')
         d = {'type':'body', 'node':self.node, 'obj':self}
         ghostUpper = b2FixtureDef(userData='ghost', shape=b2CircleShape(radius=radius),
                                   density=1, groupIndex= -1, categoryBits=cats['ghost'],maskBits=dontCollideWith('ball'))
@@ -148,14 +157,7 @@ class Ghost(GameObject):
         
     def setBitmap(self):
         svg = avg.SVG('../data/img/char/' + ('blue' if self.mortal else self.name) + '.svg', False)
-        self.node.setBitmap(svg.renderElement('layer1', (self.diameter, self.diameter)))
-        # XXX adjust and tweak to look moar better
-        shadow = avg.ShadowFXNode()
-        shadow.opacity = .7
-        shadow.color = 'ADD8E6' if self.mortal else 'FFFFFF' # XXX make color dependant on the ghost
-        shadow.radius = 2
-        shadow.offset = (2, 2)
-        self.node.setEffect(shadow)        
+        self.node.setBitmap(svg.renderElement('layer1', (self.diameter, self.diameter)))            
 
     def reSpawn(self, pos=None):
         self.body.active = False 
