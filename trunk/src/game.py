@@ -77,8 +77,8 @@ class Game(gameapp.GameApp):
     def makeButtonInMiddle(self, name, node, yOffset, pyFunc):
         path = '../data/img/btn/'
         svg = avg.SVG(path + name + '_up.svg', False)
-        width = node.width / 5 #                     XXX maybe start with height
-        size = (width, width / 2.4)
+        height = node.height / 8
+        size = (height * 2.4, height)
         upNode = svg.createImageNode('layer1', {}, size)
         svg = avg.SVG(path + name + '_dn.svg', False)
         downNode = svg.createImageNode('layer1', {}, size)
