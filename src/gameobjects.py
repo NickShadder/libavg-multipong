@@ -133,7 +133,7 @@ class Ghost(GameObject):
         self.name = name
         self.mortal = mortality
         self.diameter = 2 * radius * PPM
-        self.node = avg.ImageNode(parent=parentNode, size=(self.diameter, self.diameter))
+        self.node = avg.ImageNode(parent=parentNode, size=(self.diameter, self.diameter),opacity=.85)
         self.setBitmap()        
         self.setShadow('ADD8E6')
         d = {'type':'body', 'node':self.node, 'obj':self}
@@ -157,7 +157,8 @@ class Ghost(GameObject):
         
     def setBitmap(self):
         svg = avg.SVG('../data/img/char/' + ('blue' if self.mortal else self.name) + '.svg', False)
-        self.node.setBitmap(svg.renderElement('layer1', (self.diameter, self.diameter)))            
+        self.node.setBitmap(svg.renderElement('layer1', (self.diameter, self.diameter)))
+        self.node.opacity = .85
 
     def reSpawn(self, pos=None):
         self.body.active = False 
@@ -205,6 +206,8 @@ class BorderLine:
             self.body = None
 
 # TODO create class Bonus
+class Bonus:
+    pass
 # TODO create class BallBonus(Bonus)
 # TODO create class WallBonus(Bonus)
 # XXX create class GhostBonus(Bonus)
@@ -266,11 +269,10 @@ class Bat(GameObject):
         return ang
 
 #===========================================================================================================================
-# 
+#  
 #===========================================================================================================================
 
-# a piece of a block - !Superclass! there are several types of Bricks
-class Brick(GameObject):
+class Brick(Bonus):
     def __init__(self, parentBlock, renderer, world, parentNode, pos):
         GameObject.__init__(self, renderer, world)
         self.parentBlock = parentBlock
@@ -295,7 +297,7 @@ class Brick(GameObject):
         #self.body.position = event.pos / PPM                is called in block!
         
     # is called, when the ball or bullet hits the brick
-    def vanish(self):
+    def hit(self):
         pass
         # todo there should be more than this here
 
@@ -315,7 +317,7 @@ class DiamondBrick(Brick):
 
 # appears as building material - consists of bricks - !Superclass! there are several types of Blocks
 # brickList contains the bricks which were not hit so far
-class Block (object):
+class Block:
     def __init__(self, parentNode):
         self.parentNode = parentNode
         self.brickList = []
