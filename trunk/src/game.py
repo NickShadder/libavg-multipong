@@ -7,12 +7,10 @@ import sys
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
 from gameobjects import Ball, Bat, Ghost, Player, BorderLine
-from config import PPM, TIME_STEP, maxBalls, ballRadius
+from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize
 
 g_player = avg.Player.get()
 
-def w2a(coords):
-    return avg.Point2D(coords[0], coords[1]) * PPM
 def a2w(coords):
     return b2Vec2(coords[0], coords[1]) / PPM
 
@@ -24,21 +22,8 @@ class Renderer:
     def deregister(self, *pyboxObjects):
         self.objects.difference_update(pyboxObjects)
     def draw(self):
-        # TODO implement ausrichtung in flugrichting
         for obj in self.objects:
-            body = obj.body
-            for fixture in body.fixtures:
-                if body.userData['type'] == 'body':
-                    position = body.transform * fixture.shape.pos
-                    body.userData['node'].pos = w2a(position) - body.userData['node'].size / 2
-                    body.userData['node'].angle = body.angle
-                    break # XXX solve this code smell by convention
-                elif body.userData['type'] == 'poly': # XXX get rid of this after Bat reimplementation
-                    vertices = [(body.transform * v) for v in fixture.shape.vertices]
-                    vertices = [w2a(v) for v in vertices]
-                    node = body.userData['node']
-                    vertices = [node.getRelPos(v) for v in vertices]
-                    node.pos = vertices
+            obj.refreshBitmap()
 
 class ContactListener(b2ContactListener):
     def __init__(self):
@@ -48,21 +33,11 @@ class ContactListener(b2ContactListener):
         dA, dB = fA.userData, fB.userData
         ball, bat = None, None
         if dA == 'ball' and dB == 'bat':
-            ball, bat = fA.body.userData['obj'], fB.body.userData['obj']
+            ball, bat = fA.body.userData, fB.body.userData
         elif dA == 'bat' and dB == 'ball':
-            bat, ball = fA.body.userData['obj'], fB.body.userData['obj']
+            bat, ball = fA.body.userData, fB.body.userData
         if bat and ball:
             ball.lastPlayer = bat.zone.player
-    def PostSolve(self, contact, impulse):
-        ball = None
-        fA, fB = contact.fixtureA, contact.fixtureB
-        dA, dB = fA.userData, fB.userData
-        if dA == 'ball':
-            ball = fA.body.userData['obj']
-        elif dB == 'ball':
-            ball = fB.body.userData['obj']
-        if ball is not None:
-            ball.refreshBitmap()
                         
 class Game(gameapp.GameApp):
     def init(self):
@@ -138,12 +113,12 @@ class Game(gameapp.GameApp):
         
         # pybox2d setup
         self.world = b2World(gravity=(0, 0), doSleep=True)
-        self.listener = ContactListener()        
-        self.world.contactListener = self.listener        
+        self.listener = ContactListener()
+        self.world.contactListener = self.listener
         BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)))
         BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)))
-        BorderLine(self.world, a2w((30, 0)), a2w((30, displayHeight)),False,'ball') # XXX remove hardcode 
-        BorderLine(self.world, a2w((displayWidth - 30, 0)), a2w((displayWidth - 30, displayHeight)),False,'ball') # XXX remove hardcode
+        BorderLine(self.world, a2w((30, 0)), a2w((30, displayHeight)), False, 'ball') # XXX remove hardcode 
+        BorderLine(self.world, a2w((displayWidth - 30, 0)), a2w((displayWidth - 30, displayHeight)), False, 'ball') # XXX remove hardcode
         
         # game setup
         # create ghosts                                        XXX remove hardcode
@@ -154,7 +129,7 @@ class Game(gameapp.GameApp):
         # create balls
         self.startpos = a2w(self.display.pivot) # TODO remove this
         self.balls = [Ball(self.renderer, self.world, self.display, self.startpos, self.leftPlayer, self.rightPlayer)]
-                         
+
         BatSpawner(self.field1, self.world, self.renderer)
         BatSpawner(self.field2, self.world, self.renderer)
                 
@@ -167,7 +142,7 @@ class Game(gameapp.GameApp):
         if len(self.balls) < maxBalls:
             self.balls.append(Ball(self.renderer, self.world, self.display, self.startpos, self.leftPlayer, self.rightPlayer))
     
-    def removeBall(self,ball):
+    def removeBall(self, ball):
         self.balls.remove(ball)
         ball.destroy()
     
@@ -177,9 +152,9 @@ class Game(gameapp.GameApp):
                 contact = ce.contact
                 ghost = None
                 if contact.fixtureA.userData == 'ghost':
-                    ghost = contact.fixtureA.body.userData['obj']
+                    ghost = contact.fixtureA.body.userData
                 elif contact.fixtureB.userData == 'ghost':
-                    ghost = contact.fixtureB.body.userData['obj']                
+                    ghost = contact.fixtureB.body.userData                
                 if ghost is not None:
                     if ghost.mortal:
                         # ball eats ghost
@@ -232,6 +207,8 @@ class BatSpawner:
     
     def onDetect(self, event):
         if self.detected:
+            if (event.pos - self.pos1).getNorm() > maxBatSize:
+                return
             if self.bat is not None:
                 self.bat.destroy()
                 self.bat = None
