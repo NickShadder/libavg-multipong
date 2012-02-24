@@ -23,7 +23,7 @@ class Renderer:
         self.objects.difference_update(pyboxObjects)
     def draw(self):
         for obj in self.objects:
-            obj.refreshBitmap()
+            obj.render()
 
 class ContactListener(b2ContactListener):
     def __init__(self):
@@ -206,7 +206,7 @@ class BatManager:
     
     def onDown(self, event):
         if self.started:
-            if (event.pos - self.pos1).getNorm() > maxBatSize*PPM:
+            if (event.pos - self.pos1).getNorm() > maxBatSize * PPM:
                 return
             if self.bat is not None:
                 self.bat.destroy()
@@ -257,7 +257,7 @@ class BatManager:
                 self.bat.body.position += tr.trans / PPM
                 self.bat.body.angle += tr.rot
                 
-                res = 1.5-(length/maxBatSize)
+                res = 1.5 - (length / maxBatSize)
                 self.bat.body.fixtures[0].restitution = res
             
 
