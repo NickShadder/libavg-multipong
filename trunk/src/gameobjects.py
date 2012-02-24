@@ -80,10 +80,10 @@ class Ball(GameObject):
         self.leftPlayer = leftPlayer
         self.rightPlayer = rightPlayer
         self.lastPlayer = None
-        self.diameter = 2 * radius * PPM        
-        self.node = avg.ImageNode(parent=parentNode, size=(self.diameter, self.diameter))         
+        self.diameter = 2 * radius * PPM
+        svg = avg.SVG('../data/img/char/pacman.svg', False)
+        self.node = svg.createImageNode('layer1', dict(parent=parentNode), (self.diameter, self.diameter))
         self.setShadow('FFFF00')
-        self.lastVelX = 0
         self.body = world.CreateDynamicBody(position=position, userData=self, bullet=True) # XXX reevaluate bullet-ness
         self.body.CreateCircleFixture(radius=radius, density=1, restitution=1, # XXX remove this
                                       friction=.01, groupIndex=1, categoryBits=cats['ball'],
@@ -92,15 +92,11 @@ class Ball(GameObject):
         self.nudge()
         self.node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.reSpawn()) # XXX remove
 
-    def refreshBitmap(self):
-        velX = self.body.linearVelocity[0]
-        if (velX * self.lastVelX <= 0):
-            svg = avg.SVG('../data/img/char/' + ('pacman' if velX >= 0 else 'pacman_left') + '.svg', False)
-            self.node.setBitmap(svg.renderElement('layer1', (self.diameter, self.diameter)))
-            self.lastVelX = velX
+    def render(self):
         pos = self.body.position * PPM - self.node.size / 2
         self.node.pos = (pos[0], pos[1])
-        self.node.angle = self.body.angle
+        angle = self.body.angle + math.pi if self.body.linearVelocity[0] < 0 else self.body.angle
+        self.node.angle = angle
 
     def reSpawn(self, pos=None):
         # XXX maybe implement a little timeout
@@ -129,17 +125,20 @@ class Ball(GameObject):
         if direction is None:
             direction = (random.choice([standardXInertia, -standardXInertia]), random.randint(-10, 10)) 
         self.body.linearVelocity = direction        
-        self.refreshBitmap()
+        self.render()
 
 class Ghost(GameObject):
-    def __init__(self, renderer, world, parentNode, position, name, mortality=0, radius=ghostRadius):
+    d = 2 * ghostRadius * PPM
+    blue = avg.SVG('../data/img/char/blue.svg', False).renderElement('layer1', (d, d))
+    def __init__(self, renderer, world, parentNode, position, name, mortality=1, radius=ghostRadius): # make somehow uniform e.g. by prohibiting other ghost radii
         GameObject.__init__(self, renderer, world)
         self.parentNode = parentNode
         self.spawnPoint = position
         self.name = name
         self.mortal = mortality
         self.diameter = 2 * radius * PPM
-        self.node = avg.ImageNode(parent=parentNode, size=(self.diameter, self.diameter), opacity=.85)
+        self.colored = avg.SVG('../data/img/char/' + name + '.svg', False).renderElement('layer1', (self.diameter, self.diameter))
+        self.node = avg.ImageNode(parent=parentNode, opacity=.85)
         self.setShadow('ADD8E6')
         ghostUpper = b2FixtureDef(userData='ghost', shape=b2CircleShape(radius=radius),
                                   density=1, groupIndex= -1, categoryBits=cats['ghost'], maskBits=dontCollideWith('ball'))
@@ -147,26 +146,20 @@ class Ghost(GameObject):
                                   density=1, groupIndex= -1, categoryBits=cats['ghost'], maskBits=dontCollideWith('ball'))
         self.body = world.CreateDynamicBody(position=position, fixtures=[ghostUpper, ghostLower],
                                             userData=self, fixedRotation=True)
-        self.rerender = False
-        self.refreshBitmap()
-        self.move()
         self.changeMortality()
+        self.render()
+        self.move()
         ui.DragRecognizer(self.node, moveHandler=self.onMove) # XXX just for debugging and fun
     
     def onMove(self, event, offset):
         self.body.position = event.pos / PPM
             
     def flipState(self):
-        if self.body.active: # only rerender if the ghost is currently persistent
-            self.rerender = True 
+        if self.body.active: # only flip if the ghost is currently persistent
             self.mortal ^= 1
-            self.refreshBitmap()
+            self.node.setBitmap(self.blue if self.mortal else self.colored)
         
-    def refreshBitmap(self):
-        if self.rerender:
-            svg = avg.SVG('../data/img/char/' + ('blue' if self.mortal else self.name) + '.svg', False)
-            self.node.setBitmap(svg.renderElement('layer1', (self.diameter, self.diameter)))
-            self.rerender = False
+    def render(self):
         pos = self.body.position * PPM - self.node.size / 2
         self.node.pos = (pos[0], pos[1])
         self.node.angle = self.body.angle
@@ -184,7 +177,7 @@ class Ghost(GameObject):
     def __reAppear(self, pos):
         self.body.position = pos
         self.mortal = 0 # ghost respawns in immortal state XXX rerender this?
-        self.refreshBitmap()
+        self.render()
         self.node.active = True
         avg.fadeIn(self.node, 1000, .85, lambda:self.body.__setattr__('active', True))
         
@@ -247,12 +240,12 @@ class Bat(GameObject):
         self.length = vec.getNorm()
         if self.length < 1:
             self.length = 1
-        self.width = (maxBatSize*PPM - self.length) / 10
+        self.width = (maxBatSize * PPM - self.length) / 10
         if self.width < 1:
             self.width = 1
         angle = math.atan2(vec.y, vec.x)
         self.svg = avg.SVG('../data/img/char/' + ('bat_blue'if parentNode.pos == (0, 0)else'bat_green') + '.svg', False)
-        self.node = self.svg.createImageNode('layer1',dict(parent=parentNode),(self.width, self.length))
+        self.node = self.svg.createImageNode('layer1', dict(parent=parentNode), (self.width, self.length))
         mid = (pos1 + pos2) / (2 * PPM)
         width = self.width / (2 * PPM)
         length = self.length / (2 * PPM)
@@ -260,16 +253,16 @@ class Bat(GameObject):
         fixturedef = b2FixtureDef(userData='bat', shape=shapedef, density=1, restitution=1, friction=.02, groupIndex=1)
         self.body = world.CreateKinematicBody(userData=self, position=mid, angle=angle)
         self.body.CreateFixture(fixturedef)
-        self.refreshBitmap()
+        self.render()
         
-    def refreshBitmap(self):
+    def render(self):
         pos = self.body.position * PPM - self.node.size / 2
         self.node.pos = self.zone.getRelPos((pos[0], pos[1]))
         self.node.angle = self.body.angle - math.pi / 2
         ver = self.body.fixtures[0].shape.vertices
-        h = (ver[1][0]-ver[0][0])
-        w = (ver[-1][1]-ver[0][1])
-        self.node.size = avg.Point2D(w,h)*PPM        
+        h = (ver[1][0] - ver[0][0])
+        w = (ver[-1][1] - ver[0][1])
+        self.node.size = avg.Point2D(w, h) * PPM        
     
       
 #===========================================================================================================================
