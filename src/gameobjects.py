@@ -85,7 +85,7 @@ class Ball(GameObject):
         self.setShadow('FFFF00')
         self.lastVelX = 0
         self.body = world.CreateDynamicBody(position=position, userData=self, bullet=True) # XXX reevaluate bullet-ness
-        self.body.CreateCircleFixture(radius=radius, density=1, restitution=1,
+        self.body.CreateCircleFixture(radius=radius, density=1, restitution=1, # XXX remove this
                                       friction=.01, groupIndex=1, categoryBits=cats['ball'],
                                       maskBits=dontCollideWith('ghost'), userData='ball')
         self.body.CreateCircleFixture(radius=radius, userData='ball', isSensor=True)        
@@ -211,6 +211,7 @@ class BorderLine:
             BorderLine.body = world.CreateStaticBody(position=(0, 0))
         BorderLine.body.CreateFixture(shape=b2EdgeShape(vertices=[pos1, pos2]), density=1, isSensor=sensor,
                                 categoryBits=cats['border'], maskBits=dontCollideWith(*noCollisions))
+        # XXX add restitution, but beware of bouncing ghosts
     def destroy(self):
         if self.body is not None:
             self.world.DestroyBody(self.body)
@@ -239,7 +240,6 @@ class Pill:
 '''
             
 class Bat(GameObject):
-    # the positions are stored in pixels!
     def __init__(self, renderer, world, parentNode, pos1, pos2):
         GameObject.__init__(self, renderer, world)
         self.zone = parentNode
@@ -247,33 +247,31 @@ class Bat(GameObject):
         self.length = vec.getNorm()
         if self.length < 1:
             self.length = 1
-        self.width = (maxBatSize - self.length) / 10
+        self.width = (maxBatSize*PPM - self.length) / 10
         if self.width < 1:
             self.width = 1
         angle = math.atan2(vec.y, vec.x)
         self.svg = avg.SVG('../data/img/char/' + ('bat_blue'if parentNode.pos == (0, 0)else'bat_green') + '.svg', False)
         self.node = self.svg.createImageNode('layer1',dict(parent=parentNode),(self.width, self.length))
-        #self.node = avg.ImageNode(parent=parentNode, pos=parentNode.getRelPos(pos1))
-        #self.node.setBitmap(self.svg.renderElement('layer1', (self.width, self.length)))
-
         mid = (pos1 + pos2) / (2 * PPM)
         width = self.width / (2 * PPM)
         length = self.length / (2 * PPM)
-        shapedef = b2PolygonShape(box=(length, width , (0, 0), 0))
-        fixturedef = b2FixtureDef(userData='bat', shape=shapedef, density=1, restitution=self.rest(), friction=.02, groupIndex=1)
+        shapedef = b2PolygonShape(box=(length, width))
+        fixturedef = b2FixtureDef(userData='bat', shape=shapedef, density=1, restitution=1, friction=.02, groupIndex=1)
         self.body = world.CreateKinematicBody(userData=self, position=mid, angle=angle)
         self.body.CreateFixture(fixturedef)
         self.refreshBitmap()
         
     def refreshBitmap(self):
         pos = self.body.position * PPM - self.node.size / 2
-        self.node.pos = self.zone.getRelPos((pos[0], pos[1])) 
+        self.node.pos = self.zone.getRelPos((pos[0], pos[1]))
         self.node.angle = self.body.angle - math.pi / 2
-            
-    # computes the restitution of the bat
-    def rest(self):
-        return 1 # TODO implement dependency on length       
-
+        ver = self.body.fixtures[0].shape.vertices
+        h = (ver[1][0]-ver[0][0])
+        w = (ver[-1][1]-ver[0][1])
+        self.node.size = avg.Point2D(w,h)*PPM        
+    
+      
 #===========================================================================================================================
 #  
 #===========================================================================================================================

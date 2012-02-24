@@ -109,7 +109,7 @@ class Game(gameapp.GameApp):
         svg.createImageNode('layer1', dict(parent=self.display, pos=(displayWidth - widthThird, 0)), (2, displayHeight))
         
         self.renderer = Renderer()
-        self.mainLoop = g_player.setInterval(16, self.step) # XXX setOnFrameHandler ?
+        self.mainLoop = g_player.setInterval(16, self.step) # XXX setOnFrameHandler(self.step) ?
         
         # pybox2d setup
         self.world = b2World(gravity=(0, 0), doSleep=True)
@@ -130,9 +130,9 @@ class Game(gameapp.GameApp):
         self.startpos = a2w(self.display.pivot) # TODO remove this
         self.balls = [Ball(self.renderer, self.world, self.display, self.startpos, self.leftPlayer, self.rightPlayer)]
 
-        BatSpawner(self.field1, self.world, self.renderer)
-        BatSpawner(self.field2, self.world, self.renderer)
-                
+        BatManager(self.field1, self.world, self.renderer)
+        BatManager(self.field2, self.world, self.renderer)
+               
     def win(self, player):
         g_player.clearInterval(self.mainLoop)
         # TODO tear down world and current display
@@ -191,54 +191,74 @@ class Game(gameapp.GameApp):
                 self.rightPlayer.addPoint()
                 ball.reSpawn()
 
-# XXX rename class
-class BatSpawner:
+class BatManager:
     def __init__(self, parentNode, world, renderer):
-        self.world = world
-        self.field = parentNode
-        self.renderer = renderer
-        self.field.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.onDetect)
-        #self.field.setEventHandler(avg.CURSORMOTION,avg.TOUCH,self.onMove) # TODO solve with transformhandler on bat itself
+        self.world, self.field, self.renderer = world, parentNode, renderer
+        self.field.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.onDown)
         self.field.setEventHandler(avg.CURSORUP, avg.TOUCH, self.onUp)
-        self.detected = False
-        self.bat = None
-        self.pos1 = (0, 0)
-        self.pos2 = (0, 0)
+        self.reset()
+        self.rec = ui.TransformRecognizer(self.field, moveHandler=self.onTransform)
+        
+    def reset(self):
+        self.started, self.bat = False, None
+        self.pos1 = self.pos2 = (0, 0)
+        self.cid1 = self.cid2 = -1
     
-    def onDetect(self, event):
-        if self.detected:
-            if (event.pos - self.pos1).getNorm() > maxBatSize:
+    def onDown(self, event):
+        if self.started:
+            if (event.pos - self.pos1).getNorm() > maxBatSize*PPM:
                 return
             if self.bat is not None:
                 self.bat.destroy()
                 self.bat = None
             self.pos2 = event.pos
+            self.cid2 = event.cursorid
             self.bat = Bat(self.renderer, self.world, self.field, self.pos1, self.pos2)
+#            self.field.setEventCapture(self.cid1)
+#            self.field.setEventCapture(self.cid2)
         else:
             self.pos1 = event.pos
-            self.detected = True
+            self.cid1 = event.cursorid
+            self.started = True
 
     def onUp(self, event):
-        self.detected = False
-        if self.bat is not None:
-            self.bat.destroy()
-            self.bat = None
+        if event.cursorid == self.cid1:                
+            if self.bat is None:
+                self.reset()
+            else:
+#                self.field.releaseEventCapture(self.cid1)
+#                self.field.releaseEventCapture(self.cid2)
+                self.bat.destroy()
+                self.bat = None
+                self.pos1 = self.pos2
+                self.cid1 = self.cid2
+                self.cid2 = -1
+        elif event.cursorid == self.cid2:
+            if self.bat is not None:
+#                self.field.releaseEventCapture(self.cid1)
+#                self.field.releaseEventCapture(self.cid2)
+                self.bat.destroy()
+                self.bat = None
+                self.cid2 = -1
     
-    '''        
-    def onMove(self, event):
-        if event.cursorid == self.cid1 and self.bat is not None:
-            self.pos1 = a2w(self.field.getRelPos(event.pos))           
-            self.bat.update1(self.pos1)
-        elif event.cursorid == self.cid2 and self.bat is not None:
-            self.pos2 = a2w(self.field.getRelPos(event.pos))
-            self.bat.update2(self.pos2)
+    def onTransform(self, tr):
+        if self.bat is not None:
+            # ugly
+            vert = [(tr.scale * v[0], tr.scale * v[1]) for v in self.bat.body.fixtures[0].shape.vertices]
+            pos1, pos2 = avg.Point2D(vert[0]), avg.Point2D(vert[1])
+            length = (pos2 - pos1).getNorm()
+            if length > maxBatSize:
+                self.bat.body.active, self.bat.node.active = False, False
+            else:
+                self.bat.body.active, self.bat.node.active = True, True
+                width = (maxBatSize - length) / 10
+                self.bat.body.fixtures[0].shape.SetAsBox(length / 2, width / 2)
+                self.bat.body.position = tr.pivot / PPM 
+                self.bat.body.position += tr.trans / PPM
+                self.bat.body.angle += tr.rot
+                
+                res = 1.5-(length/maxBatSize)
+                self.bat.body.fixtures[0].restitution = res
             
-    def angle(self):
-        vec = self.pos2 - self.pos1
-        ang = math.atan2(vec.y, vec.x)
-        if ang < 0:
-            ang += math.pi * 2
-        return ang
-    '''
 
 Game.start(sys.argv) # TODO decide whether to return to the previous launch mode

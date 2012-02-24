@@ -7,12 +7,12 @@ Created on 19.01.2012
 # ****************** general config ******************
 debug = True
 pointsToWin = 15
-PPM = 20.0 # number of pixels per meter
+PPM = 20 # number of pixels per meter
 TARGET_FPS = 60 # the targeted frames per second
 TIME_STEP = 1.0 / TARGET_FPS
 
 # ****************** bat config ******************
-maxBatSize = 300 # maximal bat size in pixels XXX should be dependent on the actual resolution
+maxBatSize = 17 # maximal bat size in meters XXX should be dependent on the actual resolution
 
 # ****************** wall config ******************
 #size has to be an even number!!!
