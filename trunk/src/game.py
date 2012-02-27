@@ -109,7 +109,7 @@ class Game(gameapp.GameApp):
         svg.createImageNode('layer1', dict(parent=self.display, pos=(displayWidth - widthThird, 0)), (2, displayHeight))
         
         self.renderer = Renderer()
-        self.mainLoop = g_player.setInterval(16, self.step) # XXX setOnFrameHandler(self.step) ?
+        self.mainLoop = g_player.setInterval(13, self.step) # XXX g_player.setOnFrameHandler(self.step) 
         
         # pybox2d setup
         self.world = b2World(gravity=(0, 0), doSleep=True)
@@ -181,7 +181,7 @@ class Game(gameapp.GameApp):
         self.checkballposition() # XXX get rid of this call sometime
         self.renderer.draw()
 
-    # TODO replace by a collisionlistener
+    # XXX replace by a collisionlistener
     def checkballposition(self):
         for ball in self.balls:
             if ball.body.position[0] > (self.display.size[0] / PPM) + ballRadius: 
@@ -191,6 +191,87 @@ class Game(gameapp.GameApp):
                 self.rightPlayer.addPoint()
                 ball.reSpawn()
 
+class BatManager:
+    # XXX remove all the assertions some time
+    def __init__(self, parentNode, world, renderer):
+        self.world, self.field, self.renderer = world, parentNode, renderer
+        self.machine = statemachine.StateMachine('manager', 'idle')
+        self.machine.addState('idle', ['started'])
+        self.machine.addState('started', {'idle':self.reset, 'created':None})
+        self.machine.addState('created', ['started'], enterFunc=self.createBat, leaveFunc=self.destroyBat)
+        self.pos = [] # it's a list of tuples of the form (cursorid, position)  
+        self.bat = None
+        self.field.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.onDown)
+        self.field.setEventHandler(avg.CURSORUP, avg.TOUCH, self.onUp)
+        self.field.setEventHandler(avg.CURSOROUT, avg.TOUCH, self.onUp)
+        self.rec = ui.TransformRecognizer(self.field, moveHandler=self.onTransform)
+        
+    def reset(self):
+        assert len(self.pos) > 0
+        del self.pos[:]
+        assert len(self.pos) == 0
+        self.destroyBat()
+    
+    def destroyBat(self):
+        if self.bat is not None:
+            self.bat.destroy()
+            self.bat = None
+    
+    def createBat(self):
+        self.bat = Bat(self.renderer, self.world, self.field, [p[1] for p in self.pos])
+
+    def onDown(self, e):
+        state = self.machine.state
+        if state == 'idle':
+            assert len(self.pos) == 0
+            self.pos.append((e.cursorid, e.pos))
+            assert len(self.pos) == 1
+            self.machine.changeState('started')
+        elif state == 'started':
+            assert len(self.pos) == 1
+            if (e.pos - self.pos[0][1]).getNorm() <= maxBatSize * PPM:
+                self.pos.append((e.cursorid, e.pos))
+                assert len(self.pos) == 2
+                self.machine.changeState('created')
+
+    def onUp(self, e):
+        state = self.machine.state
+        cid = e.cursorid
+        if state == 'started':
+            assert len(self.pos) == 1
+            if cid == self.pos[0][0]:
+                self.machine.changeState('idle')
+        elif state == 'created':
+            assert len(self.pos) == 2            
+            if cid == self.pos[1][0]:
+                del self.pos[1]
+                assert len(self.pos) == 1
+                self.machine.changeState('started')
+            elif cid == self.pos[0][0]:
+                del self.pos[0]
+                assert len(self.pos) == 1
+                self.machine.changeState('started')
+                
+    def onTransform(self, tr):
+        if self.bat is not None:
+            # ugly
+            vert = [(tr.scale * v[0], tr.scale * v[1]) for v in self.bat.body.fixtures[0].shape.vertices]
+            pos1, pos2 = avg.Point2D(vert[0]), avg.Point2D(vert[1])
+            length = (pos2 - pos1).getNorm()
+            if length > maxBatSize:
+                self.bat.body.active, self.bat.node.active = False, False
+            else:
+                self.bat.body.active, self.bat.node.active = True, True
+                width = (maxBatSize - length) / 10
+                self.bat.body.fixtures[0].shape.SetAsBox(length / 2, width / 2)
+                self.bat.body.position = tr.pivot / PPM 
+                self.bat.body.position += tr.trans / PPM
+                self.bat.body.angle += tr.rot
+                
+                res = 1.5 - (length / maxBatSize)
+                self.bat.body.fixtures[0].restitution = res
+
+'''
 class BatManager:
     def __init__(self, parentNode, world, renderer):
         self.world, self.field, self.renderer = world, parentNode, renderer
@@ -213,7 +294,7 @@ class BatManager:
                 self.bat = None
             self.pos2 = event.pos
             self.cid2 = event.cursorid
-            self.bat = Bat(self.renderer, self.world, self.field, self.pos1, self.pos2)
+            self.bat = Bat(self.renderer, self.world, self.field, [self.pos1, self.pos2])
 #            self.field.setEventCapture(self.cid1)
 #            self.field.setEventCapture(self.cid2)
         else:
@@ -259,6 +340,5 @@ class BatManager:
                 
                 res = 1.5 - (length / maxBatSize)
                 self.bat.body.fixtures[0].restitution = res
-            
-
+'''                
 Game.start(sys.argv) # TODO decide whether to return to the previous launch mode
