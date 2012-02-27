@@ -50,8 +50,7 @@ class Player:
 
 class GameObject:
     def __init__(self, renderer, world):
-        self.renderer = renderer
-        self.world = world
+        self.renderer, self.world = renderer, world
         self.renderer.register(self)
     
     def setShadow(self, color):
@@ -84,12 +83,12 @@ class Ball(GameObject):
         svg = avg.SVG('../data/img/char/pacman.svg', False)
         self.node = svg.createImageNode('layer1', dict(parent=parentNode), (self.diameter, self.diameter))
         self.setShadow('FFFF00')
-        self.body = world.CreateDynamicBody(position=position, userData=self, bullet=True) # XXX reevaluate bullet-ness
+        self.body = world.CreateDynamicBody(position=position, userData=self, active=False, bullet=True) # XXX reevaluate bullet-ness
         self.body.CreateCircleFixture(radius=radius, density=1, restitution=1, # XXX remove this
                                       friction=.01, groupIndex=1, categoryBits=cats['ball'],
                                       maskBits=dontCollideWith('ghost'), userData='ball')
-        self.body.CreateCircleFixture(radius=radius, userData='ball', isSensor=True)        
-        self.nudge()
+        self.body.CreateCircleFixture(radius=radius, userData='ball', isSensor=True)
+        self.__appear(lambda:self.nudge())
         self.node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.reSpawn()) # XXX remove
 
     def render(self):
@@ -99,15 +98,19 @@ class Ball(GameObject):
         self.node.angle = angle
 
     def reSpawn(self, pos=None):
-        # XXX maybe implement a little timeout
+        self.body.active = False
         self.lastPlayer = None
         if pos is None:
             pos = self.spawnPoint
         self.body.position = pos
-        self.body.active = True # who knows what this ball has been through...
         yOffset = random.randint(-10, 10)
         direction = (-standardXInertia, yOffset) if  self.leftPlayer.points > self.rightPlayer.points else (standardXInertia, yOffset)
-        self.nudge(direction)
+        self.__appear(lambda:self.nudge(direction))
+        
+    def __appear(self,stopAction=None):
+        wAnim = avg.LinearAnim(self.node,'width',300,1,int(self.node.width))
+        hAnim = avg.LinearAnim(self.node,'height',300,1,int(self.node.height))
+        avg.ParallelAnim([wAnim,hAnim],None,stopAction,300).start()
     
     def zoneOfPlayer(self):
         # XXX I'm sure there is a better way to do this
@@ -120,11 +123,12 @@ class Ball(GameObject):
             return None
         
     def nudge(self, direction=None):
+        self.body.active = True
         self.body.angularVelocity = 0
         self.body.angle = 0
         if direction is None:
             direction = (random.choice([standardXInertia, -standardXInertia]), random.randint(-10, 10)) 
-        self.body.linearVelocity = direction        
+        self.body.linearVelocity = direction
         self.render()
 
 class Ghost(GameObject):
@@ -233,21 +237,28 @@ class Pill:
 '''
             
 class Bat(GameObject):
-    def __init__(self, renderer, world, parentNode, pos1, pos2):
+#    XXX find out why this optimization makes the bat appear slightly above the intended position for a very short time (a single frame?)  
+#    batImgLen = maxBatSize * PPM / 2
+#    if batImgLen < 1: batImgLen = 1
+#    batImgWidth = batImgLen / 10 
+#    if batImgWidth < 1: batImgWidth = 1
+#    blueBat = avg.SVG('../data/img/char/bat_blue.svg', False).renderElement('layer1', (batImgWidth,batImgLen))
+#    greenBat = avg.SVG('../data/img/char/bat_green.svg', False).renderElement('layer1', (batImgWidth,batImgLen))
+    def __init__(self, renderer, world, parentNode, pos):
         GameObject.__init__(self, renderer, world)
         self.zone = parentNode
-        vec = pos2 - pos1
+        vec = pos[1] - pos[0]
         self.length = vec.getNorm()
-        if self.length < 1:
-            self.length = 1
-        self.width = (maxBatSize * PPM - self.length) / 10
-        if self.width < 1:
-            self.width = 1
+        if self.length < 1: self.length = 1
+        width = (maxBatSize * PPM - self.length) / 10
+        if width < 1: width = 1
         angle = math.atan2(vec.y, vec.x)
+#        self.node = avg.ImageNode(parent=parentNode)
+#        self.node.setBitmap(Bat.blueBat if parentNode.pos==(0,0)else Bat.greenBat)
         self.svg = avg.SVG('../data/img/char/' + ('bat_blue'if parentNode.pos == (0, 0)else'bat_green') + '.svg', False)
-        self.node = self.svg.createImageNode('layer1', dict(parent=parentNode), (self.width, self.length))
-        mid = (pos1 + pos2) / (2 * PPM)
-        width = self.width / (2 * PPM)
+        self.node = self.svg.createImageNode('layer1', dict(parent=parentNode), (width, self.length))
+        mid = (pos[0] + pos[1]) / (2 * PPM)
+        width = width / (2 * PPM)
         length = self.length / (2 * PPM)
         shapedef = b2PolygonShape(box=(length, width))
         fixturedef = b2FixtureDef(userData='bat', shape=shapedef, density=1, restitution=1, friction=.02, groupIndex=1)
@@ -262,7 +273,7 @@ class Bat(GameObject):
         ver = self.body.fixtures[0].shape.vertices
         h = (ver[1][0] - ver[0][0])
         w = (ver[-1][1] - ver[0][1])
-        self.node.size = avg.Point2D(w, h) * PPM        
+        self.node.size = avg.Point2D(w, h) * PPM
     
       
 #===========================================================================================================================
