@@ -285,7 +285,7 @@ class Brick(Bonus):
         GameObject.__init__(self, renderer, world)
         self.parentBlock = parentBlock
         self.node = avg.ImageNode (parent=parentNode, size=(brickSize, brickSize) * PPM, pos=pos)
-        self.dragrecognizer = ui.DragRecognizer(self.node, moveHandler=self.onMove) # TODO nach dem einrasten entfernen
+        self.dragrecognizer = ui.DragRecognizer(self.node, moveHandler=self.onMove) # TODO nach dem einrasten entfernen, gehoert hier nicht her --> Block
     
     # spawn a physical object
     def materialze(self, pos=None):
@@ -296,6 +296,9 @@ class Brick(Bonus):
                                   density=1, friction=.1, restitution=1, groupIndex=1, categoryBits=cats['brick'])
         self.body = self.world.CreateKinematicBody(position=pos, fixture=fixtureDef,
                                             userData=data)
+    
+    def changeRelPos (self, x, y):
+        self.node.pos = (self.node.pos[0] + x, self.node.pos[1] + y)
     
 #=======================================================================================================================
 # TODO solve better!
@@ -311,8 +314,8 @@ class Brick(Bonus):
 
 
 class DiamondBrick(Brick):
-    def __init__(self, parentBlock, renderer, world, parentNode, x, y):
-        Brick.__init__(self, parentBlock, renderer, world, parentNode, x, y)
+    def __init__(self, parentBlock, renderer, world, parentNode, position):
+        Brick.__init__(self, parentBlock, renderer, world, parentNode, position)
         #svg = avg.SVG('../data/img/?/?.svg', False)                                             #TODO: image
         #self.node.setBitmap(svg.renderElement('layer1', (brickSize * PPM, brickSize * PPM)))
 
@@ -337,133 +340,118 @@ class Block:
 
 
 #===========================================================================================================================
-# TODO Get rid of the following copy pasta! use lists of bricks instead!!!
+# TODO /
 #===========================================================================================================================
 
 # this Block consists only of one brick
 class SingleBlock (Block):
-    def __init__(self, parentNode, position, renderer, world, type):
+    def __init__(self, parentNode, position, renderer, world, brick):
         Block.__init__(self, parentNode)
-        #depending on the respective type create the appropriate brick
-        # the calls of Brick-constructor have to be changed and the choice of the right brick-type has to be done        
-        self.brick0 = Brick(self.node, x - halfBrickSize, y - halfBrickSize, colour, self)
-        self.brickList.append(self.brick0)
+        self.brickList.append(brick)
+
+class DiamondSingleBlock (SingleBlock):
+    def __init__(self, parentNode, position, renderer, world):
+        SingleBlock.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0] - halfBrickSize, position[1] - halfBrickSize)))
+
         
 # this Block consists of two bricks
-class DoubleBlock (Block):
-    def __init__(self, parentNode, position, renderer, world, type):
-        Block.__init__(self, parentNode)
-        self.brick0 = Brick(self.parentNode, x - halfBrickSize, y - brickSize, colour, self)
-        self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x - halfBrickSize, y, colour, self)
-        self.brickList.append(self.brick1)
+class DoubleBlock (SingleBlock):
+    def __init__(self, parentNode, position, renderer, world, brick):
+        SingleBlock.__init__(self, parentNode, position, renderer, world, brick)
+        brick1 = copy.deepcopy(brick)
+        brick1.changeRelPos(0, brickSize)
+
+class DiamondDoubleBlock (DoubleBlock):
+    def __init__(self, parentNode, position, renderer, world):
+        DoubleBlock.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0] - halfBrickSize, position[1] - brickSize)))
+
+ 
+ #
+ #    Remains to be done like above
+ #
         
 # this Block consists of four bricks which form an rectangle
-class RectBlock (Block):
-    def __init__(self, parentNode, position, renderer, world, type):
+class RectBlock (DoubleBlock):
+    def __init__(self, parentNode, position, renderer, world, brick):
         Block.__init__(self, parentNode)
         self.brick0 = Brick(self.parentNode, x - brickSize, y - brickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x, y - brickSize, colour, self)
-        self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x - brickSize, y, colour, self)
-        self.brickList.append(self.brick2)
-        self.brick3 = Brick(self.parentNode, x, y, colour, self)
-        self.brickList.append(self.brick3)
+        #self.brick1 = Brick(self.parentNode, x, y - brickSize, colour, self)
+        #self.brick2 = Brick(self.parentNode, x - brickSize, y, colour, self)
+        #self.brick3 = Brick(self.parentNode, x, y, colour, self)
              
 # this Block consists of four bricks which are arranged in a line
 class LineBlock (Block):
-    def __init__(self, parentNode, position, renderer, world, type):
+    def __init__(self, parentNode, position, renderer, world, brick):
         Block.__init__(self, parentNode)
         self.brick0 = Brick(self.parentNode, x - halfBrickSize, y - 2 * brickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x - halfBrickSize, y - brickSize, colour, self)
-        self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x - halfBrickSize, y, colour, self)
-        self.brickList.append(self.brick2)
-        self.brick3 = Brick(self.parentNode, x - halfBrickSize, y + brickSize, colour, self)
-        self.brickList.append(self.brick3)
+        #self.brick1 = Brick(self.parentNode, x - halfBrickSize, y - brickSize, colour, self)
+        #self.brick2 = Brick(self.parentNode, x - halfBrickSize, y, colour, self)
+        #self.brick3 = Brick(self.parentNode, x - halfBrickSize, y + brickSize, colour, self)
         
         
 #this Block consists of four bricks which are arranged like a L (left)
 class LBlockLeft (Block):
-    def __init__(self, parentNode, position, renderer, world, type):
+    def __init__(self, parentNode, position, renderer, world, brick):
         Block.__init__(self, parentNode)
         self.brick0 = Brick(self.parentNode, x - brickSize, y - 3 * halfBrickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x - brickSize, y - halfBrickSize, colour, self)
-        self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x - brickSize, y + halfBrickSize, colour, self)
-        self.brickList.append(self.brick2)
-        self.brick3 = Brick(self.parentNode, x, y + halfBrickSize, colour, self)
-        self.brickList.append(self.brick3)
+        #self.brick1 = Brick(self.parentNode, x - brickSize, y - halfBrickSize, colour, self)
+        #self.brick2 = Brick(self.parentNode, x - brickSize, y + halfBrickSize, colour, self)
+        #self.brick3 = Brick(self.parentNode, x, y + halfBrickSize, colour, self)
+
 
 
 #this Block consists of four bricks which are arranged like a L (right - mirror inverted)
 class LBlockRight (Block):
-    def __init__(self, parentNode, position, renderer, world, type):
+    def __init__(self, parentNode, position, renderer, world, brick):
         Block.__init__(self, parentNode)
         self.brick0 = Brick(self.parentNode, x, y - 3 * halfBrickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x, y - halfBrickSize, colour, self)
-        self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x, y + halfBrickSize, colour, self)
-        self.brickList.append(self.brick2)
-        self.brick3 = Brick(self.parentNode, x - brickSize, y + halfBrickSize, colour, self)
-        self.brickList.append(self.brick3)
+        #self.brick1 = Brick(self.parentNode, x, y - halfBrickSize, colour, self)
+        #self.brick2 = Brick(self.parentNode, x, y + halfBrickSize, colour, self)
+        #self.brick3 = Brick(self.parentNode, x - brickSize, y + halfBrickSize, colour, self)
 
 
 #this Block consists of four bricks which are arranged like an uppercase gamma (left)
 class GammaBlockLeft (Block):
-    def __init__(self, parentNode, position, renderer, world, type):
+    def __init__(self, parentNode, position, renderer, world, brick):
         Block.__init__(self, parentNode)
         self.brick0 = Brick(self.parentNode, x - brickSize, y - 3 * halfBrickSize, colour, self)
-        self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x - brickSize, y - halfBrickSize, colour, self)
-        self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x - brickSize, y + halfBrickSize, colour, self)
-        self.brickList.append(self.brick2)
-        self.brick3 = Brick(self.parentNode, x, y - 3 * halfBrickSize, colour, self)
-        self.brickList.append(self.brick3)
+        #self.brick1 = Brick(self.parentNode, x - brickSize, y - halfBrickSize, colour, self)
+        #self.brick2 = Brick(self.parentNode, x - brickSize, y + halfBrickSize, colour, self)
+        #self.brick3 = Brick(self.parentNode, x, y - 3 * halfBrickSize, colour, self)
 
 
 #this Block consists of four bricks which are arranged like an uppercase gamma (right - mirror inverted)
 class GammaBlockRight (Block):
-    def __init__(self, parentNode, position, renderer, world, type):
+    def __init__(self, parentNode, position, renderer, world, brick):
         Block.__init__(self, parentNode)
         self.brick0 = Brick(self.parentNode, x, y - 3 * halfBrickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x, y - halfBrickSize, colour, self)
-        self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x, y + halfBrickSize, colour, self)
-        self.brickList.append(self.brick2)
-        self.brick3 = Brick(self.parentNode, x - brickSize, y - 3 * halfBrickSize, colour, self)
-        self.brickList.append(self.brick3)
+        #self.brick1 = Brick(self.parentNode, x, y - halfBrickSize, colour, self)
+        #self.brick2 = Brick(self.parentNode, x, y + halfBrickSize, colour, self)
+        #self.brick3 = Brick(self.parentNode, x - brickSize, y - 3 * halfBrickSize, colour, self)
 
 
 # this Block consists of three bricks which are arranged in a line, in the middle a fourth brick is added (left)
 class MiddleBlockLeft (Block):
-    def __init__(self, parentNode, position, renderer, world, type):
+    def __init__(self, parentNode, position, renderer, world, brick):
         Block.__init__(self, parentNode)
         self.brick0 = Brick(self.parentNode, x - brickSize, y - 3 * halfBrickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x - brickSize, y - halfBrickSize, colour, self)
-        self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x - brickSize, y + halfBrickSize, colour, self)
-        self.brickList.append(self.brick2)
-        self.brick3 = Brick(self.parentNode, x, y - halfBrickSize, colour, self)
-        self.brickList.append(self.brick3)
+        #self.brick1 = Brick(self.parentNode, x - brickSize, y - halfBrickSize, colour, self)
+        #self.brick2 = Brick(self.parentNode, x - brickSize, y + halfBrickSize, colour, self)
+        #self.brick3 = Brick(self.parentNode, x, y - halfBrickSize, colour, self)
 
 
 # this Block consists of three bricks which are arranged in a line, in the middle a fourth brick is added (right - mirror inverted)
 class MiddleBlockRight (Block):
-    def __init__(self, parentNode, position, renderer, world, type):
+    def __init__(self, parentNode, position, renderer, world, brick):
         Block.__init__(self, parentNode)
         self.brick0 = Brick(self.parentNode, x, y - 3 * halfBrickSize, colour, self)
         self.brickList.append(self.brick0)
-        self.brick1 = Brick(self.parentNode, x, y - halfBrickSize, colour, self)
-        self.brickList.append(self.brick1)
-        self.brick2 = Brick(self.parentNode, x, y + halfBrickSize, colour, self)
-        self.brickList.append(self.brick2)
-        self.brick3 = Brick(self.parentNode, x - brickSize, y - halfBrickSize, colour, self)
-        self.brickList.append(self.brick3)
+        #self.brick1 = Brick(self.parentNode, x, y - halfBrickSize, colour, self)
+        #self.brick2 = Brick(self.parentNode, x, y + halfBrickSize, colour, self)
+        #self.brick3 = Brick(self.parentNode, x - brickSize, y - halfBrickSize, colour, self)
