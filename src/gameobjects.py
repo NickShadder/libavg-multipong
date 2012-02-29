@@ -285,7 +285,6 @@ class Brick(Bonus):
         GameObject.__init__(self, renderer, world)
         self.parentBlock = parentBlock
         self.node = avg.ImageNode (parent=parentNode, size=(brickSize, brickSize) * PPM, pos=pos)
-        self.dragrecognizer = ui.DragRecognizer(self.node, moveHandler=self.onMove) # TODO nach dem einrasten entfernen, gehoert hier nicht her --> Block
     
     # spawn a physical object
     def materialze(self, pos=None):
@@ -303,10 +302,7 @@ class Brick(Bonus):
 #=======================================================================================================================
 # TODO solve better!
 #=======================================================================================================================
-    def onMove(self, event, offset):
-        self.parentBlock.move(event, offset)
-        #self.body.position = event.pos / PPM                is called in block!
-        
+
     # is called, when the ball or bullet hits the brick
     def hit(self):
         pass
@@ -332,11 +328,12 @@ class Block:
     def __init__(self, parentNode):
         self.parentNode = parentNode
         self.brickList = []
-        self.node = None                #TODO: create an appropriate Node to handle drag-event at this place
+        self.node = avg.DivNode(parent = parentNode)
+        self.dragrecognizer = ui.DragRecognizer(self.node, moveHandler=self.onMove)
     
-    def move(self, event, offset):
-        pass
-        #self.brick0.pos = (event.x - offset[0], event.y - offset[1])
+    def onMove(self, event, offset):
+        for brick in self.brickList:
+            brick.changeRelPos(offset[0], offset[1])
 
 
 #===========================================================================================================================
@@ -360,35 +357,43 @@ class DoubleBlock (SingleBlock):
         SingleBlock.__init__(self, parentNode, position, renderer, world, brick)
         brick1 = copy.deepcopy(brick)
         brick1.changeRelPos(0, brickSize)
+        self.brickList.append(brick1)
 
 class DiamondDoubleBlock (DoubleBlock):
     def __init__(self, parentNode, position, renderer, world):
         DoubleBlock.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0] - halfBrickSize, position[1] - brickSize)))
 
- 
- #
- #    Remains to be done like above
- #
         
 # this Block consists of four bricks which form an rectangle
 class RectBlock (DoubleBlock):
     def __init__(self, parentNode, position, renderer, world, brick):
-        Block.__init__(self, parentNode)
-        self.brick0 = Brick(self.parentNode, x - brickSize, y - brickSize, colour, self)
-        self.brickList.append(self.brick0)
-        #self.brick1 = Brick(self.parentNode, x, y - brickSize, colour, self)
-        #self.brick2 = Brick(self.parentNode, x - brickSize, y, colour, self)
-        #self.brick3 = Brick(self.parentNode, x, y, colour, self)
+        DoubleBlock.__init__(self, parentNode, position, renderer, world, brick)
+        brick2 = copy.deepcopy(brick)
+        brick2.changeRelPos(brickSize, 0)
+        brick3 = copy.deepcopy(brick)
+        brick3.changeRelPos(brickSize, brickSize)
+        self.brickList.append(brick2)
+        self.brickList.append(brick3)
+
+class DiamondRectBlock (RectBlock):
+    def __init__(self, parentNode, position, renderer, world):
+        RectBlock.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0] - brickSize, position[1] - brickSize)))
+
              
 # this Block consists of four bricks which are arranged in a line
-class LineBlock (Block):
+class LineBlock (DoubleBlock):
     def __init__(self, parentNode, position, renderer, world, brick):
-        Block.__init__(self, parentNode)
-        self.brick0 = Brick(self.parentNode, x - halfBrickSize, y - 2 * brickSize, colour, self)
-        self.brickList.append(self.brick0)
-        #self.brick1 = Brick(self.parentNode, x - halfBrickSize, y - brickSize, colour, self)
-        #self.brick2 = Brick(self.parentNode, x - halfBrickSize, y, colour, self)
-        #self.brick3 = Brick(self.parentNode, x - halfBrickSize, y + brickSize, colour, self)
+        DoubleBlock.__init__(self, parentNode, position, renderer, world, brick)
+        brick2 = copy.deepcopy(brick)
+        brick2.changeRelPos(0, 2 * brickSize)
+        brick3 = copy.deepcopy(brick)
+        brick3.changeRelPos(0, 3 * brickSize)
+        self.brickList.append(brick2)
+        self.brickList.append(brick3)
+
+class DiamondLineBlock (LineBlock):
+    def __init__(self, parentNode, position, renderer, world):
+        LineBlock.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0] - halfBrickSize, position[1] - 2 * brickSize)))
         
         
 #this Block consists of four bricks which are arranged like a L (left)
