@@ -82,7 +82,7 @@ class Ball(GameObject):
         self.diameter = 2 * radius * PPM
         svg = avg.SVG('../data/img/char/pacman.svg', False)
         self.node = svg.createImageNode('layer1', dict(parent=parentNode), (self.diameter, self.diameter))
-        self.setShadow('FFFF00')
+        #self.setShadow('FFFF00')
         self.body = world.CreateDynamicBody(position=position, userData=self, active=False, bullet=True) # XXX reevaluate bullet-ness
         self.body.CreateCircleFixture(radius=radius, density=1, restitution=1, # XXX remove this
                                       friction=.01, groupIndex=1, categoryBits=cats['ball'],
@@ -143,7 +143,7 @@ class Ghost(GameObject):
         self.diameter = 2 * radius * PPM
         self.colored = avg.SVG('../data/img/char/' + name + '.svg', False).renderElement('layer1', (self.diameter, self.diameter))
         self.node = avg.ImageNode(parent=parentNode, opacity=.85)
-        self.setShadow('ADD8E6')
+        #self.setShadow('ADD8E6')
         ghostUpper = b2FixtureDef(userData='ghost', shape=b2CircleShape(radius=radius),
                                   density=1, groupIndex= -1, categoryBits=cats['ghost'], maskBits=dontCollideWith('ball'))
         ghostLower = b2FixtureDef(userData='ghost', shape=b2PolygonShape(box=(radius, radius / 2, (0, -radius / 2), 0)),
@@ -280,11 +280,14 @@ class Bat(GameObject):
 #  
 #===========================================================================================================================
 
-class Brick(Bonus):
+class Brick(GameObject):
     def __init__(self, parentBlock, renderer, world, parentNode, pos):
         GameObject.__init__(self, renderer, world)
         self.parentBlock = parentBlock
-        self.node = avg.ImageNode (parent=parentNode, size=(brickSize, brickSize) * PPM, pos=pos)
+        self.renderer = renderer
+        self.world = world
+        self.parentNode = parentNode
+        self.node = avg.ImageNode (parent = parentNode, size = (brickSize * PPM, brickSize * PPM), pos=pos)
     
     # spawn a physical object
     def materialze(self, pos=None):
@@ -309,11 +312,12 @@ class Brick(Bonus):
         # todo there should be more than this here
 
 
-class DiamondBrick(Brick):
+class GlassBrick(Brick):
     def __init__(self, parentBlock, renderer, world, parentNode, position):
         Brick.__init__(self, parentBlock, renderer, world, parentNode, position)
-        #svg = avg.SVG('../data/img/?/?.svg', False)                                             #TODO: image
-        #self.node.setBitmap(svg.renderElement('layer1', (brickSize * PPM, brickSize * PPM)))
+        svg = avg.SVG('../data/img/char/glass.svg', False)
+        self.node.setBitmap(svg.renderElement('layer1', (brickSize * PPM, brickSize * PPM)))
+        
         
         #TODO: counter and destroy-method called, when brick is hit a specified amount of times
 
@@ -327,138 +331,94 @@ class DiamondBrick(Brick):
 # appears as building material - consists of bricks - !Superclass! there are several types of Blocks
 # brickList contains the bricks which were not hit so far
 class Block:
-    def __init__(self, parentNode):
-        self.parentNode = parentNode
+    def __init__(self, parentNode, renderer, world, position, form = None, flip = False, material = Material.GLASS, angle = 0):
+        self.__parentNode = parentNode
+        self.__renderer = renderer
+        self.__world = world
+        self.__position = position
+        self.__form = form
+        self.__flip = flip
+        self.__material = material
+        self.__angle = angle
+        if form == None:
+            self.__form = random.randint(1, 6)
         self.brickList = []
         self.node = avg.DivNode(parent = parentNode)
         self.dragrecognizer = ui.DragRecognizer(self.node, moveHandler=self.onMove)
+        self.__getattribute__(Form.dict[self.__form])()                                    #function call
+        
     
     def onMove(self, event, offset):
         for brick in self.brickList:
             brick.changeRelPos(offset[0], offset[1])
-
-
-#===========================================================================================================================
-# TODO /
-#===========================================================================================================================
-
-# this Block consists only of one brick
-class SingleBlock (Block):
-    def __init__(self, parentNode, position, renderer, world, brick):
-        Block.__init__(self, parentNode)
+    
+    # this Block consists only of one brick
+    def __single(self, position = (self.__position[0] - halfBrickSize, self.__position[1] - halfBrickSize)):
+        brick = Material.createBrick(self, self.__renderer, self.__world, self.__node, position, self.__material)
         self.brickList.append(brick)
-
-class DiamondSingleBlock (SingleBlock):
-    def __init__(self, parentNode, position, renderer, world):
-        SingleBlock.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0] - halfBrickSize, position[1] - halfBrickSize)))
-
-        
-# this Block consists of two bricks
-class DoubleBlock (SingleBlock):
-    def __init__(self, parentNode, position, renderer, world, brick):
-        SingleBlock.__init__(self, parentNode, position, renderer, world, brick)
-        brick1 = copy.deepcopy(brick)
-        brick1.changeRelPos(0, brickSize)
-        self.brickList.append(brick1)
-
-class DiamondDoubleBlock (DoubleBlock):
-    def __init__(self, parentNode, position, renderer, world):
-        DoubleBlock.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0] - halfBrickSize, position[1] - brickSize)))
-
-        
-# this Block consists of four bricks which form an rectangle
-class RectBlock (DoubleBlock):
-    def __init__(self, parentNode, position, renderer, world, brick):
-        DoubleBlock.__init__(self, parentNode, position, renderer, world, brick)
-        brick2 = copy.deepcopy(brick)
-        brick2.changeRelPos(brickSize, 0)
-        brick3 = copy.deepcopy(brick)
-        brick3.changeRelPos(brickSize, brickSize)
-        self.brickList.append(brick2)
-        self.brickList.append(brick3)
-
-class DiamondRectBlock (RectBlock):
-    def __init__(self, parentNode, position, renderer, world):
-        RectBlock.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0] - brickSize, position[1] - brickSize)))
-
-             
-# this Block consists of four bricks which are arranged in a line
-class LineBlock (DoubleBlock):
-    def __init__(self, parentNode, position, renderer, world, brick):
-        DoubleBlock.__init__(self, parentNode, position, renderer, world, brick)
-        brick2 = copy.deepcopy(brick)
-        brick2.changeRelPos(0, 2 * brickSize)
-        brick3 = copy.deepcopy(brick)
-        brick3.changeRelPos(0, 3 * brickSize)
-        self.brickList.append(brick2)
-        self.brickList.append(brick3)
-
-class DiamondLineBlock (LineBlock):
-    def __init__(self, parentNode, position, renderer, world):
-        LineBlock.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0] - halfBrickSize, position[1] - 2 * brickSize)))
-        
-        
-#this Block consists of four bricks which are arranged like a L (left)
-class LBlockLeft (LineBlock):
-    def __init__(self, parentNode, position, renderer, world, brick):
-        LineBlock.__init__(self, parentNode, position, renderer, world, brick)
-        self.brickList[-1].changeRelPos(brickSize, -brickSize)
-
-class DiamondLBlockLeft (LBlockLeft):
-    def __init__(self, parentNode, position, renderer, world):
-        LBlockLeft.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0] - brickSize, position[1] - 3 * halfBrickSize)))
+    
+    # this Block consists of two bricks
+    def __double(self, position = (self.__position[0] - halfBrickSize, self.__position[1] - brickSize)):
+        self.__single(position)
+        brick = Material.createBrick(self, self.__renderer, self.__world, self.__node, (position[0], position[1] + brickSize), self.__material)
+        self.brickList.append(brick)
+    
+    # this Block consists of four bricks which form an rectangle
+    def __rect(self, position = (self.__position[0] - brickSize, self.__position[1] - brickSize)):
+        self.__double(position)
+        self.__double((position[0] + brickSize, position[1]))
+    
+    # this Block consists of four bricks which are arranged in a line
+    def __line(self, position = (self.__position[0] - halfBrickSize, self.__position[1] - 2 * brickSize)):
+        self.__double(position)
+        self.__double((position[0], position[1] + 2 * brickSize))
+    
+    #this Block consists of four bricks which are arranged like an uppercase gamma
+    def __gamma(self, position = (self.__position[0] - brickSize, self.__position[1] - 3 * halfBrickSize)):
+        if self.__angle == 0:       #gamma
+            if self.__flip: #right - mirror inverted
+                self.__line(position[0] + brickSize, position[1])
+                self.brickList[-1].changeRelPos(-brickSize, - 3 * brickSize)
+            else:           #left
+                self.__line(position)
+                self.brickList[-1].changeRelPos(brickSize, - 3 * brickSize)
+        elif self.__angle == 180:   #L
+            if self.__flip: #right - mirror inverted
+                self.__line(position[0] + brickSize, position[1])
+                self.brickList[-1].changeRelPos(-brickSize, -brickSize)
+            else:           #left
+                self.__line(position)
+                self.brickList[-1].changeRelPos(brickSize, -brickSize)
+    
+    # this Block consists of three bricks which are arranged in a line, in the middle a fourth brick is added
+    def __middle(self, position = (self.__position[0] - brickSize, self.__position[1] - 3 * halfBrickSize)):
+        if self.__flip: #right - mirror inverted
+            self.__line(position[0] + brickSize, position[1])
+            self.brickList[-1].changeRelPos(-brickSize, - 2 * brickSize)
+        else:           #left
+            self.__line(position)
+            self.brickList[-1].changeRelPos(brickSize, - 2 * brickSize)
 
 
-#this Block consists of four bricks which are arranged like a L (right - mirror inverted)
-class LBlockRight (LineBlock):
-    def __init__(self, parentNode, position, renderer, world, brick):
-        LineBlock.__init__(self, parentNode, position, renderer, world, brick)
-        self.brickList[-1].changeRelPos(-brickSize, -brickSize)
-
-class DiamondLBlockRight (LBlockRight):
-    def __init__(self, parentNode, position, renderer, world):
-        LBlockRight.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0], position[1] - 3 * halfBrickSize)))
-
-
-#this Block consists of four bricks which are arranged like an uppercase gamma (left)
-class GammaBlockLeft (LineBlock):
-    def __init__(self, parentNode, position, renderer, world, brick):
-        LineBlock.__init__(self, parentNode, position, renderer, world, brick)
-        self.brickList[-1].changeRelPos(brickSize, - 3 * brickSize)
-
-class DiamondGammaBlockLeft (GammaBlockLeft):
-    def __init__(self, parentNode, position, renderer, world):
-        GammaBlockLeft.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0] - brickSize, position[1] - 3 * halfBrickSize)))
+class Form:
+    SINGLE = 1
+    DOUBLE = 2
+    RECT = 3
+    LINE = 4
+    GAMMA = 5
+    MIDDLE = 6
+    
+    dict = {SINGLE: "single",
+            DOUBLE: "double",
+            RECT: "rect",
+            LINE: "line",
+            GAMMA: "gamma",
+            MIDDLE: "middle"}
 
 
-#this Block consists of four bricks which are arranged like an uppercase gamma (right - mirror inverted)
-class GammaBlockRight (LineBlock):
-    def __init__(self, parentNode, position, renderer, world, brick):
-        LineBlock.__init__(self, parentNode, position, renderer, world, brick)
-        self.brickList[-1].changeRelPos(-brickSize, - 3 * brickSize)
-
-class DiamondGammaBlockRight (GammaBlockRight):
-    def __init__(self, parentNode, position, renderer, world):
-        GammaBlockRight.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0], position[1] - 3 * halfBrickSize)))
-
-
-# this Block consists of three bricks which are arranged in a line, in the middle a fourth brick is added (left)
-class MiddleBlockLeft (LineBlock):
-    def __init__(self, parentNode, position, renderer, world, brick):
-        LineBlock.__init__(self, parentNode, position, renderer, world, brick)
-        self.brickList[-1].changeRelPos(brickSize, - 2 * brickSize)
-
-class DiamondMiddleBlockLeft (MiddleBlockLeft):
-    def __init__(self, parentNode, position, renderer, world):
-        MiddleBlockLeft.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0] - brickSize, position[1] - 3 * halfBrickSize)))
-
-
-# this Block consists of three bricks which are arranged in a line, in the middle a fourth brick is added (right - mirror inverted)
-class MiddleBlockRight (LineBlock):
-    def __init__(self, parentNode, position, renderer, world, brick):
-        LineBlock.__init__(self, parentNode, position, renderer, world, brick)
-        self.brickList[-1].changeRelPos(-brickSize, - 2 * brickSize)
-
-class DiamondMiddleBlockRight (MiddleBlockRight):
-    def __init__(self, parentNode, position, renderer, world):
-        MiddleBlockRight.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0], position[1] - 3 * halfBrickSize)))
+class Material:
+    GLASS = 1
+    
+    def createBrick(self, parentBlock, renderer, world, parentNode, position, material):
+        if material == GLASS:
+            return GlassBrick(parentBlock, renderer, world, parentNode, position)

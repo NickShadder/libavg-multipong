@@ -16,7 +16,7 @@ maxBatSize = 17 # maximal bat size in meters XXX should be dependent on the actu
 
 # ****************** wall config ******************
 #size has to be an even number!!!
-brickSize = 50 # the size of a brick in meter XXX should be dependent on the actual resolution
+brickSize = 5 # the size of a brick in meter XXX should be dependent on the actual resolution
 initialNumberOfBlocks = 10
 maxNumberOfBlocks = 30
 
