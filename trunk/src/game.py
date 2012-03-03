@@ -7,6 +7,7 @@ import sys
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
 from gameobjects import Ball, Bat, Ghost, Player, BorderLine
+from gameobjects import *
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize
 
 g_player = avg.Player.get()
@@ -132,6 +133,7 @@ class Game(gameapp.GameApp):
 
         BatManager(self.field1, self.world, self.renderer)
         BatManager(self.field2, self.world, self.renderer)
+
                
     def win(self, player):
         g_player.clearInterval(self.mainLoop)
