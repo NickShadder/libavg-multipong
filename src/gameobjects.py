@@ -437,7 +437,7 @@ class GammaBlockRight (LineBlock):
         LineBlock.__init__(self, parentNode, position, renderer, world, brick)
         self.brickList[-1].changeRelPos(-brickSize, - 3 * brickSize)
 
-class DiamondGammaBlockRight (GammaRightBlock):
+class DiamondGammaBlockRight (GammaBlockRight):
     def __init__(self, parentNode, position, renderer, world):
         GammaBlockRight.__init__(self, parentNode, position, renderer, world, DiamondBrick(self, renderer, world, parentNode, (position[0], position[1] - 3 * halfBrickSize)))
 
