@@ -9,14 +9,14 @@ debug = True
 pointsToWin = 15
 PPM = 20 # number of pixels per meter
 TARGET_FPS = 60 # the targeted frames per second
-TIME_STEP = 1.0 / TARGET_FPS
+TIME_STEP = 1.0 / TARGET_FPS # XXX rethink maybe .013 is better
 
 # ****************** bat config ******************
 maxBatSize = 17 # maximal bat size in meters XXX should be dependent on the actual resolution
 
 # ****************** wall config ******************
 #size has to be an even number!!!
-brickSize = 5 # the size of a brick in meter XXX should be dependent on the actual resolution
+brickSize = 2 # the size of a brick in meter XXX should be dependent on the actual resolution
 initialNumberOfBlocks = 10
 maxNumberOfBlocks = 30
 

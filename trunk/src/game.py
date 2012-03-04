@@ -6,8 +6,7 @@ Created on 19.01.2012
 import sys
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
-from gameobjects import Ball, Bat, Ghost, Player, BorderLine
-from gameobjects import *
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine, Block, Form
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize
 
 g_player = avg.Player.get()
@@ -18,7 +17,7 @@ def a2w(coords):
 class Renderer:
     def __init__(self):
         self.objects = set()
-    def register(self, *pyboxObjects):        
+    def register(self, *pyboxObjects):
         self.objects.update(pyboxObjects)
     def deregister(self, *pyboxObjects):
         self.objects.difference_update(pyboxObjects)
@@ -49,7 +48,7 @@ class Game(gameapp.GameApp):
         self.machine.addState('Winner', ['Playing', 'MainMenu']) # XXX clarify this stuff
         self.machine.addState('About', ['MainMenu'], enterFunc=self.showAbout, leaveFunc=self.hideAbout)        
         self.showMenu()
-        
+
     def makeButtonInMiddle(self, name, node, yOffset, pyFunc):
         path = '../data/img/btn/'
         svg = avg.SVG(path + name + '_up.svg', False)
@@ -60,7 +59,7 @@ class Game(gameapp.GameApp):
         downNode = svg.createImageNode('layer1', {}, size)
         position = (node.pivot[0] - upNode.width / 2, node.pivot[1] + yOffset * upNode.height + yOffset * 50)
         return ui.TouchButton(upNode, downNode, clickHandler=pyFunc, parent=node, pos=position)
-            
+
     def showMenu(self):
         self.menuScreen = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
         self.startButton = self.makeButtonInMiddle('start', self.menuScreen, -1, lambda:self.machine.changeState('Playing'))
@@ -72,24 +71,24 @@ class Game(gameapp.GameApp):
         # XXX find out if we need to tear down all the buttons first
         self.menuScreen.unlink(True)
         self.menuScreen = None
-    
+
     def startTutorial(self):
         # TODO implement a tutorial sequence using avg only - no need to use pybox2d for simple animations 
         pass
-    
+
     def hideTutorial(self):
         # TODO implement this by simply tearing down what you have built in startTutorial ;)
         pass
-    
+
     def showAbout(self):
         self.aboutScreen = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
         avg.WordsNode(parent=self.aboutScreen, x=5, text='Unnamed Multipong<br/>as envisioned and implemented by<br/>Benjamin Guttman<br/>Joachim Couturier<br/>Philipp Hermann<br/>Mykola Havrikov<br/><br/>This game uses libavg(www.libavg.de) and PyBox2D(http://code.google.com/p/pybox2d/)')
         self.menuButton = self.makeButtonInMiddle('menu', self.aboutScreen, 1, lambda:self.machine.changeState('MainMenu'))
-    
+
     def hideAbout(self):
         self.aboutScreen.unlink(True)
         self.aboutScreen = None
-    
+
     def startPlaying(self):
         # libavg setup
         self.display = self._parentNode
@@ -133,8 +132,17 @@ class Game(gameapp.GameApp):
 
         BatManager(self.field1, self.world, self.renderer)
         BatManager(self.field2, self.world, self.renderer)
+        
+#        Block(self.display, self.renderer, self.world, (5, 5),form = Form.SINGLE)
+#        Block(self.display, self.renderer, self.world, (5, 100),form = Form.DOUBLE)
+#        Block(self.display, self.renderer, self.world, (5, 200),form = Form.TRIPLE)
+#        Block(self.display, self.renderer, self.world, (5, 300),form = Form.EDGE)
+#        Block(self.display, self.renderer, self.world, (5, 400),form = Form.SQUARE)
+#        Block(self.display, self.renderer, self.world, (5, 500),form = Form.LINE)
+#        Block(self.display, self.renderer, self.world, (5, 600),form = Form.SPIECE)
+#        Block(self.display, self.renderer, self.world, (5, 700),form = Form.LPIECE)
+#        Block(self.display, self.renderer, self.world, (5, 800),form = Form.TPIECE)
 
-               
     def win(self, player):
         g_player.clearInterval(self.mainLoop)
         # TODO tear down world and current display
@@ -188,7 +196,7 @@ class Game(gameapp.GameApp):
         for ball in self.balls:
             if ball.body.position[0] > (self.display.size[0] / PPM) + ballRadius: 
                 self.leftPlayer.addPoint()
-                ball.reSpawn()                
+                ball.reSpawn()
             elif ball.body.position[0] < -ballRadius: 
                 self.rightPlayer.addPoint()
                 ball.reSpawn()
@@ -260,18 +268,16 @@ class BatManager:
             vert = [(tr.scale * v[0], tr.scale * v[1]) for v in self.bat.body.fixtures[0].shape.vertices]
             pos1, pos2 = avg.Point2D(vert[0]), avg.Point2D(vert[1])
             length = (pos2 - pos1).getNorm()
-            if length > maxBatSize:
-                self.bat.body.active, self.bat.node.active = False, False
-            else:
-                self.bat.body.active, self.bat.node.active = True, True
-                width = (maxBatSize - length) / 10
-                self.bat.body.fixtures[0].shape.SetAsBox(length / 2, width / 2)
-                self.bat.body.position = tr.pivot / PPM 
-                self.bat.body.position += tr.trans / PPM
-                self.bat.body.angle += tr.rot
-                
-                res = 1.5 - (length / maxBatSize)
-                self.bat.body.fixtures[0].restitution = res
+            self.bat.body.active = self.bat.node.active = length <= maxBatSize 
+            width = (maxBatSize - length) / 10
+            if width < 1 / PPM: width = 1 / PPM
+            self.bat.body.fixtures[0].shape.SetAsBox(length / 2, width / 2)
+            self.bat.body.position = tr.pivot / PPM 
+            self.bat.body.position += tr.trans / PPM
+            self.bat.body.angle += tr.rot
+            
+            res = 1.5 - (length / maxBatSize)
+            self.bat.body.fixtures[0].restitution = res
 
 '''
 class BatManager:
