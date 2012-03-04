@@ -133,15 +133,16 @@ class Game(gameapp.GameApp):
         BatManager(self.field1, self.world, self.renderer)
         BatManager(self.field2, self.world, self.renderer)
         
-#        Block(self.display, self.renderer, self.world, (5, 5),form = Form.SINGLE)
-#        Block(self.display, self.renderer, self.world, (5, 100),form = Form.DOUBLE)
-#        Block(self.display, self.renderer, self.world, (5, 200),form = Form.TRIPLE)
-#        Block(self.display, self.renderer, self.world, (5, 300),form = Form.EDGE)
-#        Block(self.display, self.renderer, self.world, (5, 400),form = Form.SQUARE)
-#        Block(self.display, self.renderer, self.world, (5, 500),form = Form.LINE)
-#        Block(self.display, self.renderer, self.world, (5, 600),form = Form.SPIECE)
-#        Block(self.display, self.renderer, self.world, (5, 700),form = Form.LPIECE)
-#        Block(self.display, self.renderer, self.world, (5, 800),form = Form.TPIECE)
+        # TEST ORGY
+#        Block(self.display, self.renderer, self.world, (5, 5),Form.SINGLE)
+#        Block(self.display, self.renderer, self.world, (5, 100),Form.DOUBLE)
+#        Block(self.display, self.renderer, self.world, (5, 200),Form.TRIPLE)
+#        Block(self.display, self.renderer, self.world, (5, 300),Form.EDGE)
+#        Block(self.display, self.renderer, self.world, (5, 400),Form.SQUARE)
+#        Block(self.display, self.renderer, self.world, (5, 500),Form.LINE)
+#        Block(self.display, self.renderer, self.world, (5, 600),Form.SPIECE)
+#        Block(self.display, self.renderer, self.world, (5, 700),Form.LPIECE)
+#        Block(self.display, self.renderer, self.world, (5, 800),Form.TPIECE)
 
     def win(self, player):
         g_player.clearInterval(self.mainLoop)

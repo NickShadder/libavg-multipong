@@ -6,7 +6,7 @@ Created on 15.02.2012
 
 import random
 import math
-from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize, debug
+from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize
 from libavg import avg, ui
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape
 
@@ -295,14 +295,13 @@ class Material:
     # TODO add others
 
 class Brick(GameObject):
-    def __init__(self, parentBlock, renderer, world, parentNode, pos, mat=None,flip=False,angle=0):
+    def __init__(self, parentBlock, renderer, world, parentNode, pos, mat=None):
         GameObject.__init__(self, renderer, world)
         self.block, self.hitcount, self.material = parentBlock, 0, mat
         self.parentNode=parentNode
         if self.material is None:
             self.material = random.choice(filter(lambda x:type(x).__name__ == 'tuple', Material.__dict__.values())) # XXX hacky
-        # TODO implement flip support     
-        self.node = avg.ImageNode(parent=parentBlock.container, pos=pos,angle=angle)
+        self.node = avg.ImageNode(parent=parentBlock.container, pos=pos)
         self.node.setBitmap(self.material[1][0])
         ui.DragRecognizer(self.node, moveHandler=self.onMove)
     
@@ -337,14 +336,16 @@ class Block(object):
         if form is None:
             self.form = random.choice(filter(lambda x:type(x).__name__ == 'tuple', Form.__dict__.values())) # XXX hacky
         self.brickList = []
-        self.container = avg.DivNode(parent=parentNode)
+        self.container = avg.DivNode(parent=parentNode,pos=position,angle=angle)
+        # XXX maybe set pivot
         brickSizeInPx = brickSize*PPM
         bricks,maxLineLength,offset = self.form
+        rightMostPos = (maxLineLength-1)*brickSizeInPx
         line = -1
         for b in range(bricks):
             posInLine = b % maxLineLength
             if posInLine == 0: line += 1
             posX = (line*offset+posInLine)*brickSizeInPx
+            if flip: posX = rightMostPos - posX
             posY = line*brickSizeInPx
-            pos = position[0]+posX,position[1]+posY
-            self.brickList.append(Brick(self, renderer, world, parentNode, pos, material,flip,angle))
+            self.brickList.append(Brick(self, renderer, world, parentNode, (posX,posY), material))
