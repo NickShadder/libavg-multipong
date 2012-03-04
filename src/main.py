@@ -22,7 +22,7 @@ jegliches gehacke entfernen
 EIGENE!!! bilder fuer die spielelemente erstellen(bricks,bat)
 geister scheuchen implementieren
 KI fuer geisterverhalten schreiben
-bessere fress-effekte (auch für geist frisst ball)
+bessere fress-effekte (auch fuer geist frisst ball)
 geist-schatten fixen
 namen ausdenken fuer das spiel
 

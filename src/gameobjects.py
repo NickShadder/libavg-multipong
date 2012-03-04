@@ -279,6 +279,29 @@ class Bat(GameObject):
 #===========================================================================================================================
 #  
 #===========================================================================================================================
+class Form:
+    SINGLE = 1
+    DOUBLE = 2
+    RECT = 3
+    LINE = 4
+    GAMMA = 5
+    MIDDLE = 6
+    
+    dict = {SINGLE: "single",
+            DOUBLE: "double",
+            RECT: "rect",
+            LINE: "line",
+            GAMMA: "gamma",
+            MIDDLE: "middle"}
+
+
+class Material:
+    GLASS = 1
+    
+    def createBrick(self, parentBlock, renderer, world, parentNode, position, material):
+        if material == GLASS:
+            return GlassBrick(parentBlock, renderer, world, parentNode, position)
+
 
 class Brick(GameObject):
     def __init__(self, parentBlock, renderer, world, parentNode, pos):
@@ -353,28 +376,38 @@ class Block:
             brick.changeRelPos(offset[0], offset[1])
     
     # this Block consists only of one brick
-    def __single(self, position = (self.__position[0] - halfBrickSize, self.__position[1] - halfBrickSize)):
+    def __single(self, position = None):
+        if position == None:
+            position = (self.__position[0] - halfBrickSize, self.__position[1] - halfBrickSize)
         brick = Material.createBrick(self, self.__renderer, self.__world, self.__node, position, self.__material)
         self.brickList.append(brick)
     
     # this Block consists of two bricks
-    def __double(self, position = (self.__position[0] - halfBrickSize, self.__position[1] - brickSize)):
+    def __double(self, position = None):
+        if position == None:
+            position = (self.__position[0] - halfBrickSize, self.__position[1] - brickSize)
         self.__single(position)
         brick = Material.createBrick(self, self.__renderer, self.__world, self.__node, (position[0], position[1] + brickSize), self.__material)
         self.brickList.append(brick)
     
     # this Block consists of four bricks which form an rectangle
-    def __rect(self, position = (self.__position[0] - brickSize, self.__position[1] - brickSize)):
+    def __rect(self, position = None):
+        if position == None:
+            position = (self.__position[0] - brickSize, self.__position[1] - brickSize)
         self.__double(position)
         self.__double((position[0] + brickSize, position[1]))
     
     # this Block consists of four bricks which are arranged in a line
-    def __line(self, position = (self.__position[0] - halfBrickSize, self.__position[1] - 2 * brickSize)):
+    def __line(self, position = None):
+        if position == None:
+            position = (self.__position[0] - halfBrickSize, self.__position[1] - 2 * brickSize)
         self.__double(position)
         self.__double((position[0], position[1] + 2 * brickSize))
     
     #this Block consists of four bricks which are arranged like an uppercase gamma
-    def __gamma(self, position = (self.__position[0] - brickSize, self.__position[1] - 3 * halfBrickSize)):
+    def __gamma(self, position = None):
+        if position == None:
+            position = (self.__position[0] - brickSize, self.__position[1] - 3 * halfBrickSize)
         if self.__angle == 0:       #gamma
             if self.__flip: #right - mirror inverted
                 self.__line(position[0] + brickSize, position[1])
@@ -391,34 +424,12 @@ class Block:
                 self.brickList[-1].changeRelPos(brickSize, -brickSize)
     
     # this Block consists of three bricks which are arranged in a line, in the middle a fourth brick is added
-    def __middle(self, position = (self.__position[0] - brickSize, self.__position[1] - 3 * halfBrickSize)):
+    def __middle(self, position = None):
+        if position == None:
+            position = (self.__position[0] - brickSize, self.__position[1] - 3 * halfBrickSize)
         if self.__flip: #right - mirror inverted
             self.__line(position[0] + brickSize, position[1])
             self.brickList[-1].changeRelPos(-brickSize, - 2 * brickSize)
         else:           #left
             self.__line(position)
             self.brickList[-1].changeRelPos(brickSize, - 2 * brickSize)
-
-
-class Form:
-    SINGLE = 1
-    DOUBLE = 2
-    RECT = 3
-    LINE = 4
-    GAMMA = 5
-    MIDDLE = 6
-    
-    dict = {SINGLE: "single",
-            DOUBLE: "double",
-            RECT: "rect",
-            LINE: "line",
-            GAMMA: "gamma",
-            MIDDLE: "middle"}
-
-
-class Material:
-    GLASS = 1
-    
-    def createBrick(self, parentBlock, renderer, world, parentNode, position, material):
-        if material == GLASS:
-            return GlassBrick(parentBlock, renderer, world, parentNode, position)
