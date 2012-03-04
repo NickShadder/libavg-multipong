@@ -6,7 +6,7 @@ Created on 15.02.2012
 
 import random
 import math
-from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize
+from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize, debug
 from libavg import avg, ui
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape
 
@@ -14,7 +14,7 @@ cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008}
 def dontCollideWith(*categories):
     return reduce(lambda x, y: x ^ y, [cats[el] for el in categories], 0xFFFF)
 
-standardXInertia = 20 * ballRadius # XXX solve more elegantly 
+standardXInertia = 20 * ballRadius # XXX solve more elegantly
 g_player = avg.Player.get()
 
 halfBrickSize = brickSize / 2
@@ -107,10 +107,10 @@ class Ball(GameObject):
         direction = (-standardXInertia, yOffset) if  self.leftPlayer.points > self.rightPlayer.points else (standardXInertia, yOffset)
         self.__appear(lambda:self.nudge(direction))
         
-    def __appear(self,stopAction=None):
-        wAnim = avg.LinearAnim(self.node,'width',300,1,int(self.node.width))
-        hAnim = avg.LinearAnim(self.node,'height',300,1,int(self.node.height))
-        avg.ParallelAnim([wAnim,hAnim],None,stopAction,300).start()
+    def __appear(self, stopAction=None):
+        wAnim = avg.LinearAnim(self.node, 'width', 300, 1, int(self.node.width))
+        hAnim = avg.LinearAnim(self.node, 'height', 300, 1, int(self.node.height))
+        avg.ParallelAnim([wAnim, hAnim], None, stopAction, 300).start()
     
     def zoneOfPlayer(self):
         # XXX I'm sure there is a better way to do this
@@ -189,7 +189,7 @@ class Ghost(GameObject):
         # TODO implement some kind of AI
         g_player.setTimeout(random.randint(500, 2500), self.move)
         if self.body.active: # just to be sure ;)
-            if direction == None:
+            if direction is None:
                 direction = random.randint(-10, 10), random.randint(-10, 10)
             self.body.linearVelocity = direction
 
@@ -275,161 +275,76 @@ class Bat(GameObject):
         w = (ver[-1][1] - ver[0][1])
         self.node.size = avg.Point2D(w, h) * PPM
     
-      
-#===========================================================================================================================
-#  
-#===========================================================================================================================
+# todo we do not need a class for this 
 class Form:
-    SINGLE = 1
-    DOUBLE = 2
-    RECT = 3
-    LINE = 4
-    GAMMA = 5
-    MIDDLE = 6
-    
-    dict = {SINGLE: "single",
-            DOUBLE: "double",
-            RECT: "rect",
-            LINE: "line",
-            GAMMA: "gamma",
-            MIDDLE: "middle"}
+    # (bricks, maxLineLength, offset)
+    SINGLE = 1,1,0
+    DOUBLE = 2,2,0
+    TRIPLE = 3,3,0
+    EDGE = 3,2,0
+    SQUARE = 4,2,0
+    LINE = 4,4,0
+    SPIECE = 4,2,1
+    LPIECE = 4,3,0
+    TPIECE = 4,3,1   
 
-
+# todo we do not need a class for this 
 class Material:
-    GLASS = 1
-    
-    def createBrick(self, parentBlock, renderer, world, parentNode, position, material):
-        if material == GLASS:
-            return GlassBrick(parentBlock, renderer, world, parentNode, position)
-
+    GLASS = 1, [avg.SVG('../data/img/char/glass.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM)),
+                avg.SVG('../data/img/char/glass_shat.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))]
+    # TODO add others
 
 class Brick(GameObject):
-    def __init__(self, parentBlock, renderer, world, parentNode, pos):
+    def __init__(self, parentBlock, renderer, world, parentNode, pos, mat=None,flip=False,angle=0):
         GameObject.__init__(self, renderer, world)
-        self.parentBlock = parentBlock
-        self.renderer = renderer
-        self.world = world
-        self.parentNode = parentNode
-        self.node = avg.ImageNode (parent = parentNode, size = (brickSize * PPM, brickSize * PPM), pos=pos)
+        self.block, self.hitcount, self.material = parentBlock, 0, mat
+        self.parentNode=parentNode
+        if self.material is None:
+            self.material = random.choice(filter(lambda x:type(x).__name__ == 'tuple', Material.__dict__.values())) # XXX hacky
+        # TODO implement flip support     
+        self.node = avg.ImageNode(parent=parentBlock.container, pos=pos,angle=angle)
+        self.node.setBitmap(self.material[1][0])
+        ui.DragRecognizer(self.node, moveHandler=self.onMove)
     
+    def onMove(self, e, offset):
+        self.block.container.pos += offset
+        # todo implement range check
+        
     # spawn a physical object
     def materialze(self, pos=None):
-        if pos == None:
+        if pos is None:
             pos = (self.node.pos + self.node.pivot) / PPM # TODO this looks like trouble
-        data = {'type':'body', 'node':self.node, 'obj':self}
-        fixtureDef = b2FixtureDef (userData='ghost', shape=b2PolygonShape (box=(brickSize / 2, brickSize / 2)),
-                                  density=1, friction=.1, restitution=1, groupIndex=1, categoryBits=cats['brick'])
-        self.body = self.world.CreateKinematicBody(position=pos, fixture=fixtureDef,
-                                            userData=data)
+        self.node.unlink()
+        self.parentNode.append_child(self.node)
+        fixtureDef = b2FixtureDef (userData='brick', shape=b2PolygonShape (box=(halfBrickSize, halfBrickSize)),
+                                  density=1, friction=.1, restitution=1, categoryBits=cats['brick'])
+        self.body = self.world.CreateKinematicBody(position=pos, fixture=fixtureDef, userData=self)
     
-    def changeRelPos (self, x, y):
-        self.node.pos = (self.node.pos[0] + x, self.node.pos[1] + y)
-    
-#=======================================================================================================================
-# TODO solve better! --- what exactly?
-#=======================================================================================================================
-
-    # is called, when the ball or bullet hits the brick
     def hit(self):
-        pass
-        # todo there should be more than this here
+        self.hitcount += 1
+        if self.hitcount < len(self.material[1]):
+            self.node.setBitmap(self.material[1][self.hitcount])
+        else:
+            self.destroy() # XXX maybe override destroy for special effects, or call something like vanish first
 
+    def render(self):
+        pass # XXX move the empty method to GameObject when the game is ready
 
-class GlassBrick(Brick):
-    def __init__(self, parentBlock, renderer, world, parentNode, position):
-        Brick.__init__(self, parentBlock, renderer, world, parentNode, position)
-        svg = avg.SVG('../data/img/char/glass.svg', False)
-        self.node.setBitmap(svg.renderElement('layer1', (brickSize * PPM, brickSize * PPM)))
-        
-        
-        #TODO: counter and destroy-method called, when brick is hit a specified amount of times
-
-
-#TODO: other brickTypes
-
-#===========================================================================================================================
-# TODO The block should stop existing after its bricks have been placed! It should only be a container for the bricks while they are being put into place. ok! 
-#===========================================================================================================================
-
-# appears as building material - consists of bricks - !Superclass! there are several types of Blocks
-# brickList contains the bricks which were not hit so far
-class Block:
-    def __init__(self, parentNode, renderer, world, position, form = None, flip = False, material = Material.GLASS, angle = 0):
-        self.__parentNode = parentNode
-        self.__renderer = renderer
-        self.__world = world
-        self.__position = position
-        self.__form = form
-        self.__flip = flip
-        self.__material = material
-        self.__angle = angle
-        if form == None:
-            self.__form = random.randint(1, 6)
+class Block(object):
+    def __init__(self, parentNode, renderer, world, position, form=None, flip=False, material=None, angle=0):
+        self.parentNode, self.renderer, self.world, self.position = parentNode, renderer, world, position
+        self.form, self.flip, self.material, self.angle = form, flip, material, angle
+        if form is None:
+            self.form = random.choice(filter(lambda x:type(x).__name__ == 'tuple', Form.__dict__.values())) # XXX hacky
         self.brickList = []
-        self.node = avg.DivNode(parent = parentNode)
-        self.dragrecognizer = ui.DragRecognizer(self.node, moveHandler=self.onMove)
-        self.__getattribute__(Form.dict[self.__form])()                                    #function call
-        
-    
-    def onMove(self, event, offset):
-        for brick in self.brickList:
-            brick.changeRelPos(offset[0], offset[1])
-    
-    # this Block consists only of one brick
-    def __single(self, position = None):
-        if position == None:
-            position = (self.__position[0] - halfBrickSize, self.__position[1] - halfBrickSize)
-        brick = Material.createBrick(self, self.__renderer, self.__world, self.__node, position, self.__material)
-        self.brickList.append(brick)
-    
-    # this Block consists of two bricks
-    def __double(self, position = None):
-        if position == None:
-            position = (self.__position[0] - halfBrickSize, self.__position[1] - brickSize)
-        self.__single(position)
-        brick = Material.createBrick(self, self.__renderer, self.__world, self.__node, (position[0], position[1] + brickSize), self.__material)
-        self.brickList.append(brick)
-    
-    # this Block consists of four bricks which form an rectangle
-    def __rect(self, position = None):
-        if position == None:
-            position = (self.__position[0] - brickSize, self.__position[1] - brickSize)
-        self.__double(position)
-        self.__double((position[0] + brickSize, position[1]))
-    
-    # this Block consists of four bricks which are arranged in a line
-    def __line(self, position = None):
-        if position == None:
-            position = (self.__position[0] - halfBrickSize, self.__position[1] - 2 * brickSize)
-        self.__double(position)
-        self.__double((position[0], position[1] + 2 * brickSize))
-    
-    #this Block consists of four bricks which are arranged like an uppercase gamma
-    def __gamma(self, position = None):
-        if position == None:
-            position = (self.__position[0] - brickSize, self.__position[1] - 3 * halfBrickSize)
-        if self.__angle == 0:       #gamma
-            if self.__flip: #right - mirror inverted
-                self.__line(position[0] + brickSize, position[1])
-                self.brickList[-1].changeRelPos(-brickSize, - 3 * brickSize)
-            else:           #left
-                self.__line(position)
-                self.brickList[-1].changeRelPos(brickSize, - 3 * brickSize)
-        elif self.__angle == 180:   #L
-            if self.__flip: #right - mirror inverted
-                self.__line(position[0] + brickSize, position[1])
-                self.brickList[-1].changeRelPos(-brickSize, -brickSize)
-            else:           #left
-                self.__line(position)
-                self.brickList[-1].changeRelPos(brickSize, -brickSize)
-    
-    # this Block consists of three bricks which are arranged in a line, in the middle a fourth brick is added
-    def __middle(self, position = None):
-        if position == None:
-            position = (self.__position[0] - brickSize, self.__position[1] - 3 * halfBrickSize)
-        if self.__flip: #right - mirror inverted
-            self.__line(position[0] + brickSize, position[1])
-            self.brickList[-1].changeRelPos(-brickSize, - 2 * brickSize)
-        else:           #left
-            self.__line(position)
-            self.brickList[-1].changeRelPos(brickSize, - 2 * brickSize)
+        self.container = avg.DivNode(parent=parentNode)
+        brickSizeInPx = brickSize*PPM
+        bricks,maxLineLength,offset = self.form
+        line = -1
+        for b in range(bricks):
+            posInLine = b % maxLineLength
+            if posInLine == 0: line += 1
+            posX = (line*offset+posInLine)*brickSizeInPx
+            posY = line*brickSizeInPx
+            pos = position[0]+posX,position[1]+posY
+            self.brickList.append(Brick(self, renderer, world, parentNode, pos, material,flip,angle))
