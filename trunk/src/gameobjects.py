@@ -40,9 +40,7 @@ class Player:
             self.game.win(self)
 
     def removePoint(self, points=1):
-        self.points -= points
-        if self.points < 0:
-            self.points = 0
+        self.points = max(0,self.points-points)
         self.updateDisplay()
     
     def updateDisplay(self):
@@ -84,7 +82,7 @@ class Ball(GameObject):
         self.node = svg.createImageNode('layer1', dict(parent=parentNode), (self.diameter, self.diameter))
         self.setShadow('FFFF00')
         self.body = world.CreateDynamicBody(position=position, userData=self, active=False, bullet=True) # XXX reevaluate bullet-ness
-        self.body.CreateCircleFixture(radius=radius, density=1, restitution=1, # XXX remove this
+        self.body.CreateCircleFixture(radius=radius, density=1, restitution=.3,
                                       friction=.01, groupIndex=1, categoryBits=cats['ball'],
                                       maskBits=dontCollideWith('ghost'), userData='ball')
         self.body.CreateCircleFixture(radius=radius, userData='ball', isSensor=True)
@@ -204,14 +202,13 @@ class Ghost(GameObject):
 
 class BorderLine:
     body = None
-    def __init__(self, world, pos1, pos2, sensor=False, *noCollisions):
+    def __init__(self, world, pos1, pos2, restitution = 0, sensor=False, *noCollisions):
         """ the positions are expected to be in meters """
         self.world = world
         if BorderLine.body is None:
             BorderLine.body = world.CreateStaticBody(position=(0, 0))
         BorderLine.body.CreateFixture(shape=b2EdgeShape(vertices=[pos1, pos2]), density=1, isSensor=sensor,
-                                categoryBits=cats['border'], maskBits=dontCollideWith(*noCollisions))
-        # XXX add restitution, but beware of bouncing ghosts
+                                restitution=restitution, categoryBits=cats['border'], maskBits=dontCollideWith(*noCollisions))
     def destroy(self):
         if self.body is not None:
             self.world.DestroyBody(self.body)
@@ -239,22 +236,17 @@ class Pill:
         self.body.bullet = True # seriously?
 '''
             
-class Bat(GameObject):
-#    XXX find out why this optimization makes the bat appear slightly above the intended position for a very short time (a single frame?)  
-    batImgLen = maxBatSize * PPM / 2
-    if batImgLen < 1: batImgLen = 1
-    batImgWidth = batImgLen / 10 
-    if batImgWidth < 1: batImgWidth = 1
+class Bat(GameObject):  
+    batImgLen = max(1,maxBatSize * PPM / 2)
+    batImgWidth = max(1,batImgLen / 10)
     blueBat = avg.SVG('../data/img/char/bat_blue.svg', False).renderElement('layer1', (batImgWidth,batImgLen))
     greenBat = avg.SVG('../data/img/char/bat_green.svg', False).renderElement('layer1', (batImgWidth,batImgLen))
     def __init__(self, renderer, world, parentNode, pos):
         GameObject.__init__(self, renderer, world)
         self.zone = parentNode
         vec = pos[1] - pos[0]
-        self.length = vec.getNorm()
-        if self.length < 1: self.length = 1
-        width = (maxBatSize * PPM - self.length) / 10
-        if width < 1: width = 1
+        self.length = max(1,vec.getNorm())
+        width = max(1,(maxBatSize * PPM - self.length) / 10)
         angle = math.atan2(vec.y, vec.x)
         self.node = avg.ImageNode(parent=parentNode,size=(width, self.length),angle=angle)
         self.node.setBitmap(Bat.blueBat if parentNode.pos==(0,0)else Bat.greenBat)
@@ -276,19 +268,6 @@ class Bat(GameObject):
         w = (ver[-1][1] - ver[0][1])
         self.node.size = avg.Point2D(w, h) * PPM
     
-# todo we do not need a class for this 
-class Form:
-    # (bricks, maxLineLength, offset)
-    SINGLE = 1,1,0
-    DOUBLE = 2,2,0
-    TRIPLE = 3,3,0
-    EDGE = 3,2,0
-    SQUARE = 4,2,0
-    LINE = 4,4,0
-    SPIECE = 4,2,1
-    LPIECE = 4,3,0
-    TPIECE = 4,3,1   
-
 # todo we do not need a class for this 
 class Material:
     GLASS = 1, [avg.SVG('../data/img/char/glass.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM)),
@@ -330,12 +309,24 @@ class Brick(GameObject):
     def render(self):
         pass # XXX move the empty method to GameObject when the game is ready
 
-class Block(object):
+class Block:
+    form = dict(
+    # (bricks, maxLineLength, offset)
+    SINGLE = (1,1,0),
+    DOUBLE = (2,2,0),
+    TRIPLE = (3,3,0),
+    EDGE = (3,2,0),
+    SQUARE = (4,2,0),
+    LINE = (4,4,0),
+    SPIECE = (4,2,1),
+    LPIECE = (4,3,0),
+    TPIECE = (4,3,1)
+)
     def __init__(self, parentNode, renderer, world, position, form=None, flip=False, material=None, angle=0):
         self.parentNode, self.renderer, self.world, self.position = parentNode, renderer, world, position
         self.form, self.flip, self.material, self.angle = form, flip, material, angle
         if form is None:
-            self.form = random.choice(filter(lambda x:type(x).__name__ == 'tuple', Form.__dict__.values())) # XXX hacky
+            self.form = random.choice(Block.form.values())
         self.brickList = []
         self.container = avg.DivNode(parent=parentNode,pos=position,angle=angle)
         # XXX maybe set pivot
