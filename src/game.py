@@ -6,7 +6,7 @@ Created on 19.01.2012
 import sys
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
-from gameobjects import Ball, Bat, Ghost, Player, BorderLine, Block, Form
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine, Block
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize
 
 g_player = avg.Player.get()
@@ -115,10 +115,10 @@ class Game(gameapp.GameApp):
         self.world = b2World(gravity=(0, 0), doSleep=True)
         self.listener = ContactListener()
         self.world.contactListener = self.listener
-        BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)))
-        BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)))
-        BorderLine(self.world, a2w((30, 0)), a2w((30, displayHeight)), False, 'ball') # XXX remove hardcode 
-        BorderLine(self.world, a2w((displayWidth - 30, 0)), a2w((displayWidth - 30, displayHeight)), False, 'ball') # XXX remove hardcode
+        BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)),1)
+        BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)),1)
+        BorderLine(self.world, a2w((30, 0)), a2w((30, displayHeight)), 1, False, 'ball') # XXX remove hardcode 
+        BorderLine(self.world, a2w((displayWidth - 30, 0)), a2w((displayWidth - 30, displayHeight)), 1, False, 'ball') # XXX remove hardcode
         
         # game setup
         # create ghosts                                        XXX remove hardcode
@@ -134,15 +134,15 @@ class Game(gameapp.GameApp):
         BatManager(self.field2, self.world, self.renderer)
         
         # TEST ORGY
-#        Block(self.display, self.renderer, self.world, (5, 5),Form.SINGLE)
-#        Block(self.display, self.renderer, self.world, (5, 100),Form.DOUBLE)
-#        Block(self.display, self.renderer, self.world, (5, 200),Form.TRIPLE)
-#        Block(self.display, self.renderer, self.world, (5, 300),Form.EDGE)
-#        Block(self.display, self.renderer, self.world, (5, 400),Form.SQUARE)
-#        Block(self.display, self.renderer, self.world, (5, 500),Form.LINE)
-#        Block(self.display, self.renderer, self.world, (5, 600),Form.SPIECE)
-#        Block(self.display, self.renderer, self.world, (5, 700),Form.LPIECE)
-#        Block(self.display, self.renderer, self.world, (5, 800),Form.TPIECE)
+#        Block(self.display, self.renderer, self.world, (5, 5),Block.form['SINGLE'])
+#        Block(self.display, self.renderer, self.world, (5, 100),Block.form['DOUBLE'])
+#        Block(self.display, self.renderer, self.world, (5, 200),Block.form['TRIPLE'])
+#        Block(self.display, self.renderer, self.world, (5, 300),Block.form['EDGE'])
+#        Block(self.display, self.renderer, self.world, (5, 400),Block.form['SQUARE'])
+#        Block(self.display, self.renderer, self.world, (5, 500),Block.form['LINE'])
+#        Block(self.display, self.renderer, self.world, (5, 600),Block.form['SPIECE'])
+#        Block(self.display, self.renderer, self.world, (5, 700),Block.form['LPIECE'])
+#        Block(self.display, self.renderer, self.world, (5, 800),Block.form['TPIECE'])
 
     def win(self, player):
         g_player.clearInterval(self.mainLoop)
@@ -270,8 +270,7 @@ class BatManager:
             pos1, pos2 = avg.Point2D(vert[0]), avg.Point2D(vert[1])
             length = (pos2 - pos1).getNorm()
             self.bat.body.active = self.bat.node.active = length <= maxBatSize 
-            width = (maxBatSize - length) / 10
-            if width < 1 / PPM: width = 1 / PPM
+            width = max(1/PPM,(maxBatSize - length) / 10)
             self.bat.body.fixtures[0].shape.SetAsBox(length / 2, width / 2)
             self.bat.body.position = tr.pivot / PPM 
             self.bat.body.position += tr.trans / PPM

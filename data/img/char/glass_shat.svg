@@ -15,7 +15,7 @@
    id="svg2"
    version="1.1"
    inkscape:version="0.48.2 r9819"
-   sodipodi:docname="glass.svg">
+   sodipodi:docname="glass_shat.svg">
   <defs
      id="defs4">
     <linearGradient
@@ -139,14 +139,6 @@
        r="71.428574"
        gradientUnits="userSpaceOnUse"
        gradientTransform="matrix(1.6603981e-5,2.3978591,-2.0142097,2.4552088e-8,914.75163,-261.60022)" />
-    <filter
-       inkscape:collect="always"
-       id="filter4111">
-      <feGaussianBlur
-         inkscape:collect="always"
-         stdDeviation="2.5000001"
-         id="feGaussianBlur4113" />
-    </filter>
     <linearGradient
        inkscape:collect="always"
        xlink:href="#linearGradient4019"
@@ -301,11 +293,11 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.4142136"
-     inkscape:cx="207.54288"
-     inkscape:cy="1019.3581"
+     inkscape:zoom="2.0000001"
+     inkscape:cx="40.43416"
+     inkscape:cy="988.13742"
      inkscape:document-units="px"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="g11170"
      showgrid="false"
      inkscape:window-width="1280"
      inkscape:window-height="972"
@@ -320,7 +312,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -332,7 +324,7 @@
        id="g11170"
        transform="translate(-261.17163,-12.399689)">
       <rect
-         style="fill:#23b9ff;fill-opacity:1;fill-rule:nonzero;stroke:none;filter:url(#filter11148)"
+         style="fill:#23b9ff;fill-opacity:1;fill-rule:nonzero;stroke:none;filter:url(#filter11148);opacity:0.6"
          id="rect8665"
          width="142.85715"
          height="142.85715"
