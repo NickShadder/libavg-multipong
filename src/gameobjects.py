@@ -235,6 +235,9 @@ class Bonus:
         self.rightBonus = None
         self.game.bonusstep = 1
         
+    def applyEffect(self, orientation):
+        self.effect(orientation)
+        
 class PersistentBonus(Bonus):
     def __init__(self,parentNode, name, game, effect):
         Bonus.__init__(self, parentNode, name, game, effect)
@@ -263,8 +266,7 @@ class InstantBonus(Bonus):
         self.applyEffect("right")
         self.destroy()  
         
-    def applyEffect(self, orientation):
-        self.effect(orientation)
+
         
         
     
