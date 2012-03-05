@@ -6,7 +6,7 @@ Created on 19.01.2012
 import sys
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
-from gameobjects import Ball, Bat, Ghost, Player, BorderLine, Block
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine, Block, Bonus,PersistentBonus
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize
 
 g_player = avg.Player.get()
@@ -91,6 +91,7 @@ class Game(gameapp.GameApp):
 
     def startPlaying(self):
         # libavg setup
+        self.bonusstep = 0
         self.display = self._parentNode
         self.display.player = None # monkey patch
         (displayWidth, displayHeight) = self.display.size
@@ -132,6 +133,7 @@ class Game(gameapp.GameApp):
 
         BatManager(self.field1, self.world, self.renderer)
         BatManager(self.field2, self.world, self.renderer)
+        self.bonus = None
         
         # TEST ORGY
 #        Block(self.display, self.renderer, self.world, (5, 5),Block.form['SINGLE'])
@@ -143,6 +145,7 @@ class Game(gameapp.GameApp):
 #        Block(self.display, self.renderer, self.world, (5, 600),Block.form['SPIECE'])
 #        Block(self.display, self.renderer, self.world, (5, 700),Block.form['LPIECE'])
 #        Block(self.display, self.renderer, self.world, (5, 800),Block.form['TPIECE'])
+
 
     def win(self, player):
         g_player.clearInterval(self.mainLoop)
@@ -184,13 +187,27 @@ class Game(gameapp.GameApp):
                         else:
                             self.removeBall(ball)
                         break
-                                       
+                    
+    def effect(self,orientation):
+        pass
+                               
+    def manageBonus(self):
+        if self.bonusstep == 65:
+            self.bonus = PersistentBonus(self.display, "Bonus1",self, self.effect)
+            self.bonusstep = -365
+        elif self.bonusstep == 0:
+            self.bonus.destroy()
+                                        
     def step(self):
         self.world.Step(TIME_STEP, 10, 10)
         self.world.ClearForces()
+        self.bonusstep = self.bonusstep + 1
+        self.manageBonus()
+
         self.processBallCollisions()
         self.checkballposition() # XXX get rid of this call sometime
         self.renderer.draw()
+         
 
     # XXX replace by a collisionlistener
     def checkballposition(self):
