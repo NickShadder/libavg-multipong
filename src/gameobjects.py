@@ -25,6 +25,7 @@ class Player:
         self.other = None
         self.game = game
         self.zone = avgNode
+        self.boni = []
         avgNode.player = self # monkey patch
         left = avgNode.pos == (0, 0)
         angle = math.pi / 2 if left else -math.pi / 2
@@ -216,7 +217,57 @@ class BorderLine:
 
 # TODO implement class Bonus
 class Bonus:
-    pass
+    
+    def __init__(self,parentNode, name, game, effect):
+        Bonus = avg.SVG('../data/img/char/'+ name + '.svg', False).renderElement('layer1', (150, 150))
+        self.game = game
+        self.type = name
+        self.effect = effect
+        self.leftBonus = avg.ImageNode(parent=parentNode,pos= (700,450))
+        self.leftBonus.setBitmap(Bonus)    
+        self.rightBonus = avg.ImageNode(parent=parentNode,pos= (1050,450))
+        self.rightBonus.setBitmap(Bonus)
+
+    def destroy(self):
+        self.leftBonus.unlink(True)
+        self.leftBonus = None
+        self.rightBonus.unlink(True)
+        self.rightBonus = None
+        self.game.bonusstep = 1
+        
+class PersistentBonus(Bonus):
+    def __init__(self,parentNode, name, game, effect):
+        Bonus.__init__(self, parentNode, name, game, effect)
+        self.leftBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.leftPersistentTouch())
+        self.rightBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.rightPersistentTouch())
+        
+    def leftPersistentTouch(self):
+        self.game.leftPlayer.boni = self.game.leftPlayer.boni + [self] 
+        self.destroy()
+        
+    def rightPersistentTouch(self):
+        self.game.rightPlayer.boni = self.game.rightPlayer.boni + [self]
+        self.destroy()
+        
+class InstantBonus(Bonus):
+    def __init__(self,parentNode, name, game, effect):
+        self.__init__(self, parentNode, name, game, effect)
+        self.leftBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.leftInstantTouch())
+        self.rightBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.rightInstantTouch())
+        
+    def leftInstantTouch(self):
+        self.applyEffect("left") 
+        self.destroy()
+        
+    def rightInstantTouch(self):
+        self.applyEffect("right")
+        self.destroy()  
+        
+    def applyEffect(self, orientation):
+        self.effect(orientation)
+        
+        
+    
 # TODO create class BallBonus(Bonus)
 # TODO create class WallBonus(Bonus)
 # XXX create class GhostBonus(Bonus)
