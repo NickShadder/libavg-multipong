@@ -249,29 +249,53 @@ class BonusManager:
             nr = random.randint(0,len(self.instantBonusList)-1)
             return self.getInstantBonusByNr(nr)    
      
-    def effect1(self,player):
+    def effect1(self,player,node,entry):
         self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "pinky"))
+        player.boni.remove(entry)
+        node.unlink(True)
+        node = None
         
-    def effect2(self,player):
+    def effect2(self,player,node,entry):
         self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "clyde"))
+        player.boni.remove(entry)
+        node.unlink(True)
+        node = None
         
-    def effect3(self,player):
+    def effect3(self,player,node,entry):
         self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "inky"))
+        player.boni.remove(entry)
+        node.unlink(True)
+        node = None
         
-    def effect4(self,player):
+    def effect4(self,player,node,entry):
         self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "blinky"))
+        player.boni.remove(entry)
+        node.unlink(True)
+        node = None
         
-    def effect5(self,player):
+    def effect5(self,player,node,entry):
         self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "clyde"))
+        player.boni.remove(entry)
+        node.unlink(True)
+        node = None
         
-    def effect6(self,player):
+    def effect6(self,player,node,entry):
         self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "clyde"))
+        player.boni.remove(entry)
+        node.unlink(True)
+        node = None
         
-    def effect7(self,player):
+    def effect7(self,player,node,entry):
         self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "clyde"))
+        player.boni.remove(entry)
+        node.unlink(True)
+        node = None
         
-    def effect8(self,player):
+    def effect8(self,player,node,entry):
         self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "clyde"))
+        player.boni.remove(entry)
+        node.unlink(True)
+        node = None
         
     
 
