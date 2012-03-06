@@ -19,7 +19,7 @@ if __name__ == '__main__':
 ********************* TODO *******************
 
 jegliches gehacke entfernen
-EIGENE!!! bilder fuer die spielelemente erstellen(bricks,bat)
+EIGENE!!! bilder fuer die spielelemente erstellen(bricks,boni)
 geister scheuchen implementieren
 KI fuer geisterverhalten schreiben
 bessere fress-effekte (auch fuer geist frisst ball)

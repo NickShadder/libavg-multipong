@@ -6,7 +6,7 @@ Created on 15.02.2012
 
 import random
 import math
-from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize
+from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize, bonusTime
 from libavg import avg, ui
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape
 
@@ -41,11 +41,34 @@ class Player:
             self.game.win(self)
 
     def removePoint(self, points=1):
-        self.points = max(0,self.points-points)
+        self.points = max(0, self.points - points)
         self.updateDisplay()
     
     def updateDisplay(self):
         self.pointsDisplay.text = 'Points: %d / %d' % (self.points, pointsToWin)
+
+    # TODO coordinate with wall
+    def addBonus(self, bonus):
+        self.boni.append(bonus)
+        self.printBoni()
+
+    # TODO coordinate with wall
+    def useBonus(self,bonus,node):
+        self.boni.remove(bonus)
+        node.active=False # XXX animate?
+        node.unlink(True)
+        bonus.applyEffect(self)
+    
+    # TODO remove as soon as wall comes 
+    def printBoni(self):
+        y = 10
+        left = self.zone.pos==(0,0)
+        for b in self.boni:
+            brSPx = brickSize*PPM
+            node = avg.ImageNode(parent=self.zone,pos=(10 if left else self.zone.width-brSPx-10,y),size=(brSPx,brSPx))
+            node.setBitmap(b.pic)
+            node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.useBonus(b, node))
+            y += brSPx+10
 
 class GameObject:
     def __init__(self, renderer, world):
@@ -110,9 +133,9 @@ class Ball(GameObject):
     def __appear(self, stopAction=None):
         wAnim = avg.LinearAnim(self.node, 'width', 500, 1, int(self.node.width))
         hAnim = avg.LinearAnim(self.node, 'height', 500, 1, int(self.node.height))
-        angle = 0 if self.nextDir[0]>=0 else math.pi
-        aAnim = avg.LinearAnim(self.node, 'angle', 500, math.pi/2, angle)
-        avg.ParallelAnim([wAnim, hAnim,aAnim], None, stopAction, 500).start()
+        angle = 0 if self.nextDir[0] >= 0 else math.pi
+        aAnim = avg.LinearAnim(self.node, 'angle', 500, math.pi / 2, angle)
+        avg.ParallelAnim([wAnim, hAnim, aAnim], None, stopAction, 500).start()
     
     def zoneOfPlayer(self):
         # XXX I'm sure there is a better way to do this
@@ -203,7 +226,7 @@ class Ghost(GameObject):
 
 class BorderLine:
     body = None
-    def __init__(self, world, pos1, pos2, restitution = 0, sensor=False, *noCollisions):
+    def __init__(self, world, pos1, pos2, restitution=0, sensor=False, *noCollisions):
         """ the positions are expected to be in meters """
         self.world = world
         if BorderLine.body is None:
@@ -214,159 +237,89 @@ class BorderLine:
         if self.body is not None:
             self.world.DestroyBody(self.body)
             self.body = None
-        
-class BonusManager:
-    def __init__(self,parentNode,game,world):
-        self.parent = parentNode
-        self.game = game
-        self.world = world
-        
-        self.persistentBonusList = [("Bonus1",self.effect1),                                 
-                                    ("Bonus2",self.effect2),
-                                    ("Bonus3",self.effect3),
-                                    ("Bonus4",self.effect4),
-                                    ("Bonus5",self.effect5),
-                                    ("Bonus6",self.effect6),
-                                    ("Bonus7",self.effect7),
-                                    ("Bonus8",self.effect8)]
-        self.instantBonusList = []
-        
     
-    def getPersistentBonusByNr(self,nr):
-        b = self.persistentBonusList[nr]
-        return PersistentBonus(self.parent,b[0],self.game, self.world,b[1])
-
-    def getInstantBonusByNr(self,nr):
-        b = self.instantBonusList[nr]
-        return InstantBonus(self.parent,b[0],self.game, self.world,b[1])
-    
-    def getNextBonus(self):
-        persistentorinstant = random.randint(0,1)
-        if 1: # TODO WEG DAMIT
-            nr = random.randint(0,len(self.persistentBonusList)-1)
-            return self.getPersistentBonusByNr(nr)
-        else:
-            nr = random.randint(0,len(self.instantBonusList)-1)
-            return self.getInstantBonusByNr(nr)    
-     
-    def effect1(self,player,node,entry):
-        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "pinky"))
-        player.boni.remove(entry)
-        node.unlink(True)
-        node = None
-        
-    def effect2(self,player,node,entry):
-        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "clyde"))
-        player.boni.remove(entry)
-        node.unlink(True)
-        node = None
-        
-    def effect3(self,player,node,entry):
-        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "inky"))
-        player.boni.remove(entry)
-        node.unlink(True)
-        node = None
-        
-    def effect4(self,player,node,entry):
-        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "blinky"))
-        player.boni.remove(entry)
-        node.unlink(True)
-        node = None
-        
-    def effect5(self,player,node,entry):
-        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "clyde"))
-        player.boni.remove(entry)
-        node.unlink(True)
-        node = None
-        
-    def effect6(self,player,node,entry):
-        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "clyde"))
-        player.boni.remove(entry)
-        node.unlink(True)
-        node = None
-        
-    def effect7(self,player,node,entry):
-        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "clyde"))
-        player.boni.remove(entry)
-        node.unlink(True)
-        node = None
-        
-    def effect8(self,player,node,entry):
-        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "clyde"))
-        player.boni.remove(entry)
-        node.unlink(True)
-        node = None
-        
-    
-
-# TODO implement class Bonus
 class Bonus:
-    
-    def __init__(self,parentNode, name, game,world,effect):
-        pic = avg.SVG('../data/img/char/'+ name + '.svg', False).renderElement('layer1', (150, 150))
-        self.game = game
-        self.world = world
-        self.parent = parentNode
-        self.type = name
+    def __init__(self, parentNode, game, world, (name, effect)):
+        self.pic = avg.SVG('../data/img/char/'+ name + '.svg', False).renderElement('layer1', (150, 150)) # TODO remove hardcode
+        self.parentNode,self.game,self.world = parentNode,game,world
         self.effect = effect
-        self.leftBonus = avg.ImageNode(parent=parentNode,pos= (700,450))
-        self.leftBonus.setBitmap(pic)    
-        self.rightBonus = avg.ImageNode(parent=parentNode,pos= (1050,450))
-        self.rightBonus.setBitmap(pic)
-
-    def destroy(self):
-        self.leftBonus.unlink(True)
-        self.leftBonus = None
-        self.rightBonus.unlink(True)
-        self.rightBonus = None
-        self.game.bonusstep = 1
+        self.leftBonus = avg.ImageNode(parent=parentNode,pos=parentNode.pivot-(300,75)) # TODO remove hardcode
+        self.leftBonus.setBitmap(self.pic)
+        self.rightBonus = avg.ImageNode(parent=parentNode,pos=parentNode.pivot+(150,-75)) # TODO remove hardcode
+        self.rightBonus.setBitmap(self.pic)
+        self.leftBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.onClick)
+        self.rightBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.onClick)
+        self.timeout = g_player.setTimeout(bonusTime * 1000, self.vanish)
         
-    def getEffect(self):
-        return self.effect
+    def onClick(self, event):
+        g_player.clearInterval(self.timeout)
+        res = event.node == self.leftBonus
+        self.vanish()
+        return res
+
+    def vanish(self):
+        if self.leftBonus is not None:
+            self.leftBonus.active = False
+            self.leftBonus.unlink(True)
+            self.leftBonus = None
+        if self.rightBonus is not None:
+            self.rightBonus.active = False
+            self.rightBonus.unlink(True)
+            self.rightBonus = None
+        
+    def applyEffect(self, player):
+        self.effect(self,player)
+
+    # TODO get rid of this copypasta somehow 
+    def effect1(self, player):
+        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, (40, 40), "pinky"))
+    def effect2(self, player):
+        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, (40, 40), "pinky"))
+    def effect3(self, player):
+        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, (40, 40), "pinky"))
+    def effect4(self, player):
+        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, (40, 40), "pinky"))
+    def effect5(self, player):
+        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, (40, 40), "pinky"))
+    def effect6(self, player):
+        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, (40, 40), "pinky"))
+    def effect7(self, player):
+        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, (40, 40), "pinky"))
+    def effect8(self, player):
+        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, (40, 40), "pinky"))
         
 class PersistentBonus(Bonus):
-    def __init__(self,parentNode, name, game,world, effect):
-        Bonus.__init__(self, parentNode, name, game,world, effect)
-        self.leftBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.leftPersistentTouch())
-        self.rightBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.rightPersistentTouch())
-        
-    def leftPersistentTouch(self):
-        self.game.leftPlayer.boni.append((self.type,self.effect)) 
-        self.destroy()
-        self.game.printBoni()
-        
-    def rightPersistentTouch(self):
-        self.game.rightPlayer.boni.append((self.type,self.effect))
-        self.destroy()
-        self.game.printBoni()
+    boni = dict(Bonus1=Bonus.effect1,
+            Bonus2=Bonus.effect1,
+            Bonus3=Bonus.effect3,
+            Bonus4=Bonus.effect4,
+            Bonus5=Bonus.effect5,
+            Bonus6=Bonus.effect6,
+            Bonus7=Bonus.effect7,
+            Bonus8=Bonus.effect8)
+    
+    def __init__(self, parentNode, game, world, (name, effect)):
+        Bonus.__init__(self, parentNode, game, world, (name, effect))
+    
+    def onClick(self, event):
+        (self.game.leftPlayer if Bonus.onClick(self,event) else self.game.rightPlayer).addBonus(self)  
         
 class InstantBonus(Bonus):
-    def __init__(self,parentNode, name, game, world,effect):
-        Bonus.__init__(self, parentNode, name, game,world, effect)
-        self.leftBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.leftInstantTouch())
-        self.rightBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.rightInstantTouch())
+    boni = {} # TODO add some
+    def __init__(self, parentNode, game, world, (name, effect)):
+        Bonus.__init__(self, parentNode, game, world, (name, effect))
         
-    def leftInstantTouch(self):
-        self.effect(self.game.leftPlayer) 
-        self.destroy()
-        
-    def rightInstantTouch(self):
-        self.effect(self.game.rightPlayer)
-        self.destroy()  
+    def onClick(self, event):
+        self.applyEffect(self.game.leftPlayer if Bonus.onClick(self,event) else self.game.rightPlayer)
         
 
-        
-        
-    
-# TODO create class BallBonus(Bonus)
-# TODO create class WallBonus(Bonus)
-# XXX create class GhostBonus(Bonus)
+
 
 # XXX create class Turret
 # XXX create class TurretBonus(Bonus)
 '''
 class Pill:
-    # TODO refactor as Pill(BallBonus)
+    # TODO refactor as Pill(BallBonus) or kill completely
     def __init__(self, parentNode, game, world, position, radius=.5):
         self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00", color='000000')
         d = {'type':'body', 'node':self.node}
@@ -378,19 +331,19 @@ class Pill:
 '''
             
 class Bat(GameObject):  
-    batImgLen = max(1,maxBatSize * PPM / 2)
-    batImgWidth = max(1,batImgLen / 10)
-    blueBat = avg.SVG('../data/img/char/bat_blue.svg', False).renderElement('layer1', (batImgWidth,batImgLen))
-    greenBat = avg.SVG('../data/img/char/bat_green.svg', False).renderElement('layer1', (batImgWidth,batImgLen))
+    batImgLen = max(1, maxBatSize * PPM / 2)
+    batImgWidth = max(1, batImgLen / 10)
+    blueBat = avg.SVG('../data/img/char/bat_blue.svg', False).renderElement('layer1', (batImgWidth, batImgLen))
+    greenBat = avg.SVG('../data/img/char/bat_green.svg', False).renderElement('layer1', (batImgWidth, batImgLen))
     def __init__(self, renderer, world, parentNode, pos):
         GameObject.__init__(self, renderer, world)
         self.zone = parentNode
         vec = pos[1] - pos[0]
-        self.length = max(1,vec.getNorm())
-        width = max(1,(maxBatSize * PPM - self.length) / 10)
+        self.length = max(1, vec.getNorm())
+        width = max(1, (maxBatSize * PPM - self.length) / 10)
         angle = math.atan2(vec.y, vec.x)
-        self.node = avg.ImageNode(parent=parentNode,size=(width, self.length),angle=angle)
-        self.node.setBitmap(Bat.blueBat if parentNode.pos==(0,0)else Bat.greenBat)
+        self.node = avg.ImageNode(parent=parentNode, size=(width, self.length), angle=angle)
+        self.node.setBitmap(Bat.blueBat if parentNode.pos == (0, 0)else Bat.greenBat)
         mid = (pos[0] + pos[1]) / (2 * PPM)
         width = width / (2 * PPM)
         length = self.length / (2 * PPM)
@@ -419,7 +372,7 @@ class Brick(GameObject):
     def __init__(self, parentBlock, renderer, world, parentNode, pos, mat=None):
         GameObject.__init__(self, renderer, world)
         self.block, self.hitcount, self.material = parentBlock, 0, mat
-        self.parentNode=parentNode
+        self.parentNode = parentNode
         if self.material is None:
             self.material = random.choice(filter(lambda x:type(x).__name__ == 'tuple', Material.__dict__.values())) # XXX hacky
         self.node = avg.ImageNode(parent=parentBlock.container, pos=pos)
@@ -453,15 +406,15 @@ class Brick(GameObject):
 class Block:
     form = dict(
     # (bricks, maxLineLength, offset)
-    SINGLE = (1,1,0),
-    DOUBLE = (2,2,0),
-    TRIPLE = (3,3,0),
-    EDGE = (3,2,0),
-    SQUARE = (4,2,0),
-    LINE = (4,4,0),
-    SPIECE = (4,2,1),
-    LPIECE = (4,3,0),
-    TPIECE = (4,3,1)
+    SINGLE=(1, 1, 0),
+    DOUBLE=(2, 2, 0),
+    TRIPLE=(3, 3, 0),
+    EDGE=(3, 2, 0),
+    SQUARE=(4, 2, 0),
+    LINE=(4, 4, 0),
+    SPIECE=(4, 2, 1),
+    LPIECE=(4, 3, 0),
+    TPIECE=(4, 3, 1)
 )
     def __init__(self, parentNode, renderer, world, position, form=None, flip=False, material=None, angle=0):
         self.parentNode, self.renderer, self.world, self.position = parentNode, renderer, world, position
@@ -469,16 +422,16 @@ class Block:
         if form is None:
             self.form = random.choice(Block.form.values())
         self.brickList = []
-        self.container = avg.DivNode(parent=parentNode,pos=position,angle=angle)
+        self.container = avg.DivNode(parent=parentNode, pos=position, angle=angle)
         # XXX maybe set pivot
-        brickSizeInPx = brickSize*PPM
-        bricks,maxLineLength,offset = self.form
-        rightMostPos = (maxLineLength-1)*brickSizeInPx
+        brickSizeInPx = brickSize * PPM
+        bricks, maxLineLength, offset = self.form
+        rightMostPos = (maxLineLength - 1) * brickSizeInPx
         line = -1
         for b in range(bricks):
             posInLine = b % maxLineLength
             if posInLine == 0: line += 1
-            posX = (line*offset+posInLine)*brickSizeInPx
+            posX = (line * offset + posInLine) * brickSizeInPx
             if flip: posX = rightMostPos - posX
-            posY = line*brickSizeInPx
-            self.brickList.append(Brick(self, renderer, world, parentNode, (posX,posY), material))
+            posY = line * brickSizeInPx
+            self.brickList.append(Brick(self, renderer, world, parentNode, (posX, posY), material))
