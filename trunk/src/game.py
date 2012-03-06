@@ -206,7 +206,7 @@ class Game(gameapp.GameApp):
             pic = avg.SVG('../data/img/char/'+ b[0] + '.svg', False).renderElement('layer1', (50, 50))
             node = avg.ImageNode(parent=self.display,pos= (10,y))
             node.setBitmap(pic)
-            node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:b[1](self.leftPlayer))
+            node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:b[1](self.leftPlayer,node,b))
             y = y + 60
             
         y = 10            
@@ -214,7 +214,7 @@ class Game(gameapp.GameApp):
             pic = avg.SVG('../data/img/char/'+ b[0] + '.svg', False).renderElement('layer1', (50, 50))
             node = avg.ImageNode(parent=self.display,pos= (1850,y))
             node.setBitmap(pic)
-            node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:b[1](self.rightPlayer))
+            node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:b[1](self.rightPlayer,node,b))
             y = y + 60
                                         
     def step(self):
