@@ -197,13 +197,31 @@ class Game(gameapp.GameApp):
             self.bonusstep = -365
         elif self.bonusstep == 0:
             self.bonus.destroy()
+               
+    def printBoni(self):
+        lpl = self.leftPlayer.boni
+        rpl = self.rightPlayer.boni
+        y = 10
+        for b in lpl:
+            pic = avg.SVG('../data/img/char/'+ b[0] + '.svg', False).renderElement('layer1', (50, 50))
+            node = avg.ImageNode(parent=self.display,pos= (10,y))
+            node.setBitmap(pic)
+            node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:b[1](self.leftPlayer))
+            y = y + 60
+            
+        y = 10            
+        for b in rpl:
+            pic = avg.SVG('../data/img/char/'+ b[0] + '.svg', False).renderElement('layer1', (50, 50))
+            node = avg.ImageNode(parent=self.display,pos= (1850,y))
+            node.setBitmap(pic)
+            node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:b[1](self.rightPlayer))
+            y = y + 60
                                         
     def step(self):
         self.world.Step(TIME_STEP, 10, 10)
         self.world.ClearForces()
         self.bonusstep = self.bonusstep + 1
         self.manageBonus()
-
         self.processBallCollisions()
         self.checkballposition() # XXX get rid of this call sometime
         self.renderer.draw()

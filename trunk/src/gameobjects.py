@@ -223,14 +223,13 @@ class BonusManager:
         
         self.persistentBonusList = [("Bonus1",self.effect1),                                 
                                     ("Bonus2",self.effect2),
-                                    ("Bonus3",self.effect3)]
-   
-        
-        self.instantBonusList = [("Bonus4",self.effect4),
-                                ("Bonus5",self.effect5),
-                                ("Bonus6",self.effect6),
-                                ("Bonus7",self.effect7),
-                                ("Bonus8",self.effect8)]
+                                    ("Bonus3",self.effect3),
+                                    ("Bonus4",self.effect4),
+                                    ("Bonus5",self.effect5),
+                                    ("Bonus6",self.effect6),
+                                    ("Bonus7",self.effect7),
+                                    ("Bonus8",self.effect8)]
+        self.instantBonusList = []
         
     
     def getPersistentBonusByNr(self,nr):
@@ -243,7 +242,7 @@ class BonusManager:
     
     def getNextBonus(self):
         persistentorinstant = random.randint(0,1)
-        if persistentorinstant:
+        if 1: # TODO WEG DAMIT
             nr = random.randint(0,len(self.persistentBonusList)-1)
             return self.getPersistentBonusByNr(nr)
         else:
@@ -251,16 +250,16 @@ class BonusManager:
             return self.getInstantBonusByNr(nr)    
      
     def effect1(self,player):
-        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "clyde"))
+        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "pinky"))
         
     def effect2(self,player):
         self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "clyde"))
         
     def effect3(self,player):
-        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "clyde"))
+        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "inky"))
         
     def effect4(self,player):
-        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "clyde"))
+        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "blinky"))
         
     def effect5(self,player):
         self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parent, (40, 40), "clyde"))
@@ -280,16 +279,16 @@ class BonusManager:
 class Bonus:
     
     def __init__(self,parentNode, name, game,world,effect):
-        Bonus = avg.SVG('../data/img/char/'+ name + '.svg', False).renderElement('layer1', (150, 150))
+        pic = avg.SVG('../data/img/char/'+ name + '.svg', False).renderElement('layer1', (150, 150))
         self.game = game
         self.world = world
         self.parent = parentNode
         self.type = name
         self.effect = effect
         self.leftBonus = avg.ImageNode(parent=parentNode,pos= (700,450))
-        self.leftBonus.setBitmap(Bonus)    
+        self.leftBonus.setBitmap(pic)    
         self.rightBonus = avg.ImageNode(parent=parentNode,pos= (1050,450))
-        self.rightBonus.setBitmap(Bonus)
+        self.rightBonus.setBitmap(pic)
 
     def destroy(self):
         self.leftBonus.unlink(True)
@@ -308,12 +307,14 @@ class PersistentBonus(Bonus):
         self.rightBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.rightPersistentTouch())
         
     def leftPersistentTouch(self):
-        self.game.leftPlayer.boni.append(self.type) 
+        self.game.leftPlayer.boni.append((self.type,self.effect)) 
         self.destroy()
+        self.game.printBoni()
         
     def rightPersistentTouch(self):
-        self.game.rightPlayer.boni.append(self.type)
+        self.game.rightPlayer.boni.append((self.type,self.effect))
         self.destroy()
+        self.game.printBoni()
         
 class InstantBonus(Bonus):
     def __init__(self,parentNode, name, game, world,effect):
