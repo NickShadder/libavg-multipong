@@ -6,7 +6,7 @@ Created on 19.01.2012
 import sys
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
-from gameobjects import Ball, Bat, Ghost, Player, BorderLine, Block, Bonus,PersistentBonus
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine, Block, BonusManager
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize
 
 g_player = avg.Player.get()
@@ -127,6 +127,8 @@ class Game(gameapp.GameApp):
                        Ghost(self.renderer, self.world, self.display, (40, 10), "pinky"),
                        Ghost(self.renderer, self.world, self.display, (23, 40), "inky"),
                        Ghost(self.renderer, self.world, self.display, (40, 40), "clyde")]
+        
+        
         # create balls
         self.startpos = a2w(self.display.pivot) # TODO remove this
         self.balls = [Ball(self.renderer, self.world, self.display, self.startpos, self.leftPlayer, self.rightPlayer)]
@@ -187,13 +189,11 @@ class Game(gameapp.GameApp):
                         else:
                             self.removeBall(ball)
                         break
-                    
-    def effect(self,orientation):
-        pass
-                               
+                                                   
     def manageBonus(self):
+        bm = BonusManager(self.display,self,self.world)
         if self.bonusstep == 65:
-            self.bonus = PersistentBonus(self.display, "Bonus1",self, self.effect)
+            self.bonus = bm.getNextBonus()
             self.bonusstep = -365
         elif self.bonusstep == 0:
             self.bonus.destroy()

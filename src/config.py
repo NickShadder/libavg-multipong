@@ -29,3 +29,4 @@ ballRadius = 1.2 # the radius of a pacman in meters
 
 # ****************** ghost config ******************
 ghostRadius = 1.8 # the radius of a ghost in meters
+bonusMaximum = 10
