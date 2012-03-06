@@ -3,10 +3,10 @@ Created on 19.01.2012
 
 @author: 2526240
 '''
-import sys
+import sys,random
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
-from gameobjects import Ball, Bat, Ghost, Player, BorderLine, Block, BonusManager
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine, Block, PersistentBonus
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize
 
 g_player = avg.Player.get()
@@ -91,8 +91,7 @@ class Game(gameapp.GameApp):
 
     def startPlaying(self):
         # libavg setup
-        self.bonusstep = 0
-        self.display = self._parentNode
+        self.display = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
         self.display.player = None # monkey patch
         (displayWidth, displayHeight) = self.display.size
         widthThird = displayWidth / 3
@@ -135,7 +134,8 @@ class Game(gameapp.GameApp):
 
         BatManager(self.field1, self.world, self.renderer)
         BatManager(self.field2, self.world, self.renderer)
-        self.bonus = None
+        
+        g_player.setTimeout(1000,self.bonusJob)
         
         # TEST ORGY
 #        Block(self.display, self.renderer, self.world, (5, 5),Block.form['SINGLE'])
@@ -147,7 +147,12 @@ class Game(gameapp.GameApp):
 #        Block(self.display, self.renderer, self.world, (5, 600),Block.form['SPIECE'])
 #        Block(self.display, self.renderer, self.world, (5, 700),Block.form['LPIECE'])
 #        Block(self.display, self.renderer, self.world, (5, 800),Block.form['TPIECE'])
-
+    
+    def bonusJob(self):
+        PersistentBonus(self.display,self,self.world,random.choice(PersistentBonus.boni.items()))
+        # the timeout must not be shorter than config.bonusTime
+        # TODO get the bonusTime out of the config and out of the user's control 
+        g_player.setTimeout(random.choice([3000,4000,5000]),self.bonusJob)
 
     def win(self, player):
         g_player.clearInterval(self.mainLoop)
@@ -189,39 +194,10 @@ class Game(gameapp.GameApp):
                         else:
                             self.removeBall(ball)
                         break
-                                                   
-    def manageBonus(self):
-        bm = BonusManager(self.display,self,self.world)
-        if self.bonusstep == 65:
-            self.bonus = bm.getNextBonus()
-            self.bonusstep = -365
-        elif self.bonusstep == 0:
-            self.bonus.destroy()
-               
-    def printBoni(self):
-        lpl = self.leftPlayer.boni
-        rpl = self.rightPlayer.boni
-        y = 10
-        for b in lpl:
-            pic = avg.SVG('../data/img/char/'+ b[0] + '.svg', False).renderElement('layer1', (50, 50))
-            node = avg.ImageNode(parent=self.display,pos= (10,y))
-            node.setBitmap(pic)
-            node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:b[1](self.leftPlayer,node,b))
-            y = y + 60
-            
-        y = 10            
-        for b in rpl:
-            pic = avg.SVG('../data/img/char/'+ b[0] + '.svg', False).renderElement('layer1', (50, 50))
-            node = avg.ImageNode(parent=self.display,pos= (1850,y))
-            node.setBitmap(pic)
-            node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:b[1](self.rightPlayer,node,b))
-            y = y + 60
-                                        
+                                            
     def step(self):
         self.world.Step(TIME_STEP, 10, 10)
         self.world.ClearForces()
-        self.bonusstep = self.bonusstep + 1
-        self.manageBonus()
         self.processBallCollisions()
         self.checkballposition() # XXX get rid of this call sometime
         self.renderer.draw()
