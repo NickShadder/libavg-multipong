@@ -61,14 +61,14 @@ class Player:
     
     # TODO remove as soon as wall comes 
     def printBoni(self):
-        y = 10
+        brSPx = brickSize*PPM
         left = self.zone.pos==(0,0)
-        for b in self.boni:
-            brSPx = brickSize*PPM
-            node = avg.ImageNode(parent=self.zone,pos=(10 if left else self.zone.width-brSPx-10,y),size=(brSPx,brSPx))
-            node.setBitmap(b.pic)
-            node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.useBonus(b, node))
-            y += brSPx+10
+        x = 10 if left else self.zone.width-brSPx-10
+        y = len(self.boni)*brSPx+10
+        node = avg.ImageNode(parent=self.zone,pos=(x,y),size=(brSPx,brSPx))
+        node.setBitmap(self.boni[-1].pic)
+        # normalerweise sollte hier noch Nachruecken sein, aber da diese methode eh weggeht, habe ich keinen bock drauf ;) 
+        node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e,bonus=self.boni[-1],node=node:self.useBonus(bonus, node))
 
 class GameObject:
     def __init__(self, renderer, world):
