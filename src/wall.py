@@ -9,6 +9,9 @@ class Wall (AVGApp):
                                elementoutlinecolor='FFFFFF',crop=False)
         self.div1 = avg.DivNode(parent=self.div,size=(25,25),elementoutlinecolor='FFFFFF')
         self.div2 = avg.DivNode(parent=self.div,size=(100,100),pos=(30,30),elementoutlinecolor='FFFFFF')
+        self.node = avg.ImageNode(parent=self.div, pos=(150, 150))
+        self.node.setBitmap(avg.SVG('../data/img/char/glass.svg', False).renderElement('layer1', (100, 100)))
+        self.node.intensity = (0, 1, 0)
         
         self.cid = None
         

@@ -6,7 +6,7 @@ Created on 15.02.2012
 
 import random
 import math
-from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize, bonusTime
+from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize, bonusTime, bricksPerLine, brickLines
 from libavg import avg, ui
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape
 
@@ -33,6 +33,7 @@ class Player:
         # XXX gameobects may obstruct view of the points!
         self.pointsDisplay = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=pos, angle=angle,
                                            text='Points: 0 / %d' % pointsToWin)
+        self.raster = [[None for i in xrange(bricksPerLine)] for i in xrange(brickLines)]   #Brick-raster
     
     def addPoint(self, points=1):
         self.points += points
@@ -330,7 +331,7 @@ class Pill:
         self.body.bullet = True # seriously?
 '''
             
-class Bat(GameObject):  
+class Bat(GameObject):
     batImgLen = max(1, maxBatSize * PPM / 2)
     batImgWidth = max(1, batImgLen / 10)
     blueBat = avg.SVG('../data/img/char/bat_blue.svg', False).renderElement('layer1', (batImgWidth, batImgLen))
@@ -377,12 +378,24 @@ class Brick(GameObject):
             self.material = random.choice(filter(lambda x:type(x).__name__ == 'tuple', Material.__dict__.values())) # XXX hacky
         self.node = avg.ImageNode(parent=parentBlock.container, pos=pos)
         self.node.setBitmap(self.material[1][0])
-        ui.DragRecognizer(self.node, moveHandler=self.onMove)
+        ui.DragRecognizer(self.node, moveHandler=self.onMove, endHandler = self.block.moveEnd)
+        self.assigned = False
     
     def onMove(self, e, offset):
         self.block.container.pos += offset
-        # todo implement range check
-        
+        widthDisplay = self.parentNode.size[1]
+        widthThird = widthDisplay / 3
+        if self.assigned:
+            self.block.testInsertion()
+        else:
+            if e.pos[0] < widthThird:
+                self.assigned = True
+                self.block.onLeft = True
+            elif e.pos[0] > widthDisplay - widthThird:
+                self.assigned = True
+            else:
+                self.block.alive = False
+
     # spawn a physical object
     def materialze(self, pos=None):
         if pos is None:
@@ -416,9 +429,10 @@ class Block:
     LPIECE=(4, 3, 0),
     TPIECE=(4, 3, 1)
 )
-    def __init__(self, parentNode, renderer, world, position, form=None, flip=False, material=None, angle=0):
+    def __init__(self, parentNode, renderer, world, position, player, form=None, flip=False, material=None, angle=0):
         self.parentNode, self.renderer, self.world, self.position = parentNode, renderer, world, position
         self.form, self.flip, self.material, self.angle = form, flip, material, angle
+        self.leftPlayer, self.rightPlayer = player
         if form is None:
             self.form = random.choice(Block.form.values())
         self.brickList = []
@@ -435,3 +449,79 @@ class Block:
             if flip: posX = rightMostPos - posX
             posY = line * brickSizeInPx
             self.brickList.append(Brick(self, renderer, world, parentNode, (posX, posY), material))
+        self.onLeft = False
+        self.alive = True
+    
+    def testInsertion(self):
+        cellList = []
+        possible = True
+        for b in self.brickList:
+            (x, y) = self.__calculateIndices(b.node.pos)
+            if (x >= brickLines):
+                possible = False
+            else:
+                if x < 0:
+                    x = 0
+                if self.onLeft:
+                    cellList.append(self.leftPlayer.raster[x][y])
+                else:
+                    cellList.append(self.rightPlayer.raster[x][y])
+        if possible:
+            for co in cellList:
+                if co != None:
+                    possible = False
+                    break
+        if possible:
+            self.__colourGreen()
+        else:
+            self.__colourRed()
+    
+    def __calculateIndices(self, position):
+        pixelBrickSize = brickSize * PPM
+        if self.onLeft:
+            x = int(round((position[0] + self.container.pos[0]) / pixelBrickSize))
+        else:
+            x = int(round((self.parentNode.size[0] - position[0] - self.container.pos[0]) / pixelBrickSize))
+            if x != 0:
+                x -= 1
+        y = int(round((position[1] + self.container.pos[1]) / pixelBrickSize))
+        if y >= bricksPerLine:
+            y = bricksPerLine - 1
+        elif y < 0:
+            y = 0
+        return (x, y)
+    
+    def __colourRed(self):
+        for b in self.brickList:
+            b.node.intensity = (1, 0, 0)
+            self.alive = False
+    
+    def __colourGreen(self):
+        for b in self.brickList:
+            b.node.intensity = (0, 1, 0)
+            self.alive = True
+    
+    def __vanish(self): #TODO: destroy also Block!
+        for b in self.brickList:
+            if b.node is not None:
+                b.node.active = False
+                b.node.unlink(True)
+                b.node = None
+    
+    def moveEnd(self, e):
+        pixelBrickSize = brickSize * PPM
+        if not self.alive:
+            self.__vanish()
+        else:
+            for b in self.brickList:
+                b.node.intensity = (1, 1, 1)
+                (x, y) = self.__calculateIndices(b.node.pos)
+                if x < 0:
+                    x = 0
+                if self.onLeft:
+                    x, y = x * pixelBrickSize, y * pixelBrickSize
+                else:
+                    x, y = self.parentNode.size[0] - (x + 1) * pixelBrickSize, y * pixelBrickSize
+                b.node.pos = (x, y)
+                b.node.sensitive = False
+        self.container.pos = (0, 0)
