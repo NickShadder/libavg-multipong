@@ -34,6 +34,14 @@ class Player:
         self.pointsDisplay = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=pos, angle=angle,
                                            text='Points: 0 / %d' % pointsToWin)
         self.raster = [[None for i in xrange(bricksPerLine)] for i in xrange(brickLines)]   #Brick-raster
+        self.nodeRaster = []                    #rectNodes to display the margins of the raster
+        pixelBrickSize = brickSize * PPM
+        for x in xrange(brickLines):
+            for y in xrange(bricksPerLine):
+                xPos, yPos = x * pixelBrickSize, y * pixelBrickSize
+                if not left:
+                    xPos = avgNode.size[0] - xPos - pixelBrickSize
+                self.nodeRaster.append(avg.RectNode(parent = avgNode, pos = (xPos, yPos), size = (pixelBrickSize, pixelBrickSize), active = False))
     
     def addPoint(self, points=1):
         self.points += points
@@ -391,8 +399,10 @@ class Brick(GameObject):
             if e.pos[0] < widthThird:
                 self.assigned = True
                 self.block.onLeft = True
+                self.block.displayRaster(True)
             elif e.pos[0] > widthDisplay - widthThird:
                 self.assigned = True
+                self.block.displayRaster(True)
             else:
                 self.block.alive = False
 
@@ -518,10 +528,21 @@ class Block:
                 (x, y) = self.__calculateIndices(b.node.pos)
                 if x < 0:
                     x = 0
+                xPos, yPos = x * pixelBrickSize, y * pixelBrickSize
                 if self.onLeft:
-                    x, y = x * pixelBrickSize, y * pixelBrickSize
+                    self.leftPlayer.raster[x][y] = b
                 else:
-                    x, y = self.parentNode.size[0] - (x + 1) * pixelBrickSize, y * pixelBrickSize
-                b.node.pos = (x, y)
+                    xPos = self.parentNode.size[0] - xPos - pixelBrickSize
+                    self.rightPlayer.raster[x][y] = b
+                b.node.pos = (xPos, yPos)
                 b.node.sensitive = False
         self.container.pos = (0, 0)
+        self.displayRaster(False)
+    
+    def displayRaster(self, on):
+        if self.onLeft:
+            raster = self.leftPlayer.nodeRaster
+        else:
+            raster = self.rightPlayer.nodeRaster
+        for n in raster:
+                n.active = on

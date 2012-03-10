@@ -18,7 +18,7 @@ maxBatSize = 17 # maximal bat size in meters XXX should be dependent on the actu
 #size has to be an even number!!!
 brickSize = 2 # the size of a brick in meter XXX should be dependent on the actual resolution / bricksPerLine
 bricksPerLine = 16
-brickLines = 2
+brickLines = 3
 initialNumberOfBlocks = 10
 maxNumberOfBlocks = 30
 
