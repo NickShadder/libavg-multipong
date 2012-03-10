@@ -139,12 +139,12 @@ class Game(gameapp.GameApp):
         
         # TEST ORGY
 #        Block(self.display, self.renderer, self.world, (5, 5), (self.leftPlayer, self.rightPlayer), Block.form['SINGLE'])
-#        Block(self.display, self.renderer, self.world, (5, 50), (self.leftPlayer, self.rightPlayer), Block.form['DOUBLE'])
-#        Block(self.display, self.renderer, self.world, (widthThird + 10, 200), (self.leftPlayer, self.rightPlayer), Block.form['TRIPLE'])
+#        #Block(self.display, self.renderer, self.world, (5, 50), (self.leftPlayer, self.rightPlayer), Block.form['DOUBLE'])
+#        #Block(self.display, self.renderer, self.world, (widthThird + 10, 200), (self.leftPlayer, self.rightPlayer), Block.form['TRIPLE'])
 #        Block(self.display, self.renderer, self.world, (5, 150), (self.leftPlayer, self.rightPlayer), Block.form['EDGE'])
-#        Block(self.display, self.renderer, self.world, (widthThird + 20, 400), (self.leftPlayer, self.rightPlayer), Block.form['SQUARE'])
-#        Block(self.display, self.renderer, self.world, (5, 250), (self.leftPlayer, self.rightPlayer), Block.form['LINE'])
-#        Block(self.display, self.renderer, self.world, (5, 350), (self.leftPlayer, self.rightPlayer), Block.form['SPIECE'])
+#        #Block(self.display, self.renderer, self.world, (widthThird + 20, 400), (self.leftPlayer, self.rightPlayer), Block.form['SQUARE'])
+#        #Block(self.display, self.renderer, self.world, (5, 250), (self.leftPlayer, self.rightPlayer), Block.form['LINE'])
+#        #Block(self.display, self.renderer, self.world, (5, 350), (self.leftPlayer, self.rightPlayer), Block.form['SPIECE'])
 #        Block(self.display, self.renderer, self.world, (displayWidth - widthThird + 10, 200), (self.leftPlayer, self.rightPlayer), Block.form['DOUBLE'])
 #        Block(self.display, self.renderer, self.world, (displayWidth - widthThird + 20, 400), (self.leftPlayer, self.rightPlayer), Block.form['TPIECE'])
     
