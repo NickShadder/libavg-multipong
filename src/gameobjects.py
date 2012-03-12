@@ -386,32 +386,13 @@ class Brick(GameObject):
             self.material = random.choice(filter(lambda x:type(x).__name__ == 'tuple', Material.__dict__.values())) # XXX hacky
         self.node = avg.ImageNode(parent=parentBlock.container, pos=pos)
         self.node.setBitmap(self.material[1][0])
-        ui.DragRecognizer(self.node, moveHandler=self.onMove, endHandler = self.block.moveEnd)
-        self.assigned = False
-    
-    def onMove(self, e, offset):
-        self.block.container.pos += offset
-        widthDisplay = self.parentNode.size[1]
-        widthThird = widthDisplay / 3
-        if self.assigned:
-            self.block.testInsertion()
-        else:
-            if e.pos[0] < widthThird:
-                self.assigned = True
-                self.block.onLeft = True
-                self.block.displayRaster(True)
-            elif e.pos[0] > widthDisplay - widthThird:
-                self.assigned = True
-                self.block.displayRaster(True)
-            else:
-                self.block.alive = False
 
     # spawn a physical object
-    def materialze(self, pos=None):
+    def materialize(self, pos=None):        #TODO: rejection of Pacman does not work
         if pos is None:
             pos = (self.node.pos + self.node.pivot) / PPM # TODO this looks like trouble
         self.node.unlink()
-        self.parentNode.append_child(self.node)
+        self.parentNode.appendChild(self.node)
         fixtureDef = b2FixtureDef (userData='brick', shape=b2PolygonShape (box=(halfBrickSize, halfBrickSize)),
                                   density=1, friction=.1, restitution=1, categoryBits=cats['brick'])
         self.body = self.world.CreateKinematicBody(position=pos, fixture=fixtureDef, userData=self)
@@ -461,6 +442,25 @@ class Block:
             self.brickList.append(Brick(self, renderer, world, parentNode, (posX, posY), material))
         self.onLeft = False
         self.alive = True
+        self.assigned = False
+        ui.DragRecognizer(self.container, moveHandler=self.onMove, endHandler = self.moveEnd, coordSysNode = self.brickList[0].node)
+    
+    def onMove(self, e, offset):
+        self.container.pos += offset
+        widthDisplay = self.parentNode.size[1]
+        widthThird = widthDisplay / 3
+        if self.assigned:
+            self.testInsertion()
+        else:
+            if e.pos[0] < widthThird:
+                self.assigned = True
+                self.onLeft = True
+                self.displayRaster(True)
+            elif e.pos[0] > widthDisplay - widthThird:
+                self.assigned = True
+                self.displayRaster(True)
+            else:
+                self.block.alive = False
     
     def testInsertion(self):
         cellList = []
@@ -536,7 +536,8 @@ class Block:
                     self.rightPlayer.raster[x][y] = b
                 b.node.pos = (xPos, yPos)
                 b.node.sensitive = False
-        self.container.pos = (0, 0)
+                b.materialize()
+        #self.container.pos = (0, 0) - not necessary anymore
         self.displayRaster(False)
     
     def displayRaster(self, on):
