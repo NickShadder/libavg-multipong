@@ -33,7 +33,8 @@ class Player:
         # XXX gameobects may obstruct view of the points!
         self.pointsDisplay = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=pos, angle=angle,
                                            text='Points: 0 / %d' % pointsToWin)
-        self.raster = [[None for i in xrange(bricksPerLine)] for i in xrange(brickLines)]   #Brick-raster
+        # TODO does it have to be initialized with so many Nones?! there is no test of the form if raster[x][y] is None!
+        self.raster = [[None]*bricksPerLine]*brickLines #Brick-raster
         self.nodeRaster = []                    #rectNodes to display the margins of the raster
         pixelBrickSize = brickSize * PPM
         for x in xrange(brickLines):
@@ -166,14 +167,14 @@ class Ball(GameObject):
         self.render()
 
 class Ghost(GameObject):
-    d = 2 * ghostRadius * PPM
+    d = 2 * ghostRadius * PPM # TODO make somehow uniform e.g. by prohibiting other ghost radii
     blue = avg.SVG('../data/img/char/blue.svg', False).renderElement('layer1', (d, d))
-    def __init__(self, renderer, world, parentNode, position, name, mortality=1, radius=ghostRadius): # make somehow uniform e.g. by prohibiting other ghost radii
+    def __init__(self, renderer, world, parentNode, position, name, mortal=1, radius=ghostRadius):
         GameObject.__init__(self, renderer, world)
         self.parentNode = parentNode
         self.spawnPoint = position
         self.name = name
-        self.mortal = mortality
+        self.mortal = mortal
         self.diameter = 2 * radius * PPM
         self.colored = avg.SVG('../data/img/char/' + name + '.svg', False).renderElement('layer1', (self.diameter, self.diameter))
         self.node = avg.ImageNode(parent=parentNode, opacity=.85)
@@ -193,9 +194,8 @@ class Ghost(GameObject):
         self.body.position = event.pos / PPM
             
     def flipState(self):
-        if self.body.active: # only flip if the ghost is currently persistent
-            self.mortal ^= 1
-            self.node.setBitmap(self.blue if self.mortal else self.colored)
+        self.mortal ^= 1
+        self.node.setBitmap(self.blue if self.mortal else self.colored)
         
     def render(self):
         pos = self.body.position * PPM - self.node.size / 2
@@ -388,14 +388,15 @@ class Brick(GameObject):
         self.node.setBitmap(self.material[1][0])
 
     # spawn a physical object
-    def materialize(self, pos=None):        #TODO: rejection of Pacman does not work
+    def materialize(self, pos=None):
         if pos is None:
             pos = (self.node.pos + self.node.pivot) / PPM # TODO this looks like trouble
         self.node.unlink()
         self.parentNode.appendChild(self.node)
         fixtureDef = b2FixtureDef (userData='brick', shape=b2PolygonShape (box=(halfBrickSize, halfBrickSize)),
-                                  density=1, friction=.1, restitution=1, categoryBits=cats['brick'])
-        self.body = self.world.CreateKinematicBody(position=pos, fixture=fixtureDef, userData=self)
+                                  density=1, friction=.03, restitution=1, categoryBits=cats['brick'])
+        self.body = self.world.CreateStaticBody(position=pos, userData=self)
+        self.body.CreateFixture(fixtureDef)
     
     def hit(self):
         self.hitcount += 1

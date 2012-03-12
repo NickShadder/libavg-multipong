@@ -26,8 +26,20 @@ class Renderer:
             obj.render()
 
 class ContactListener(b2ContactListener):
-    def __init__(self):
+    def __init__(self,hitset):
         b2ContactListener.__init__(self)
+        self.hitset = hitset
+    def EndContact(self, contact):
+        fA, fB = contact.fixtureA, contact.fixtureB
+        dA, dB = fA.userData, fB.userData
+        ball, brick = None, None
+        if dA == 'ball' and dB == 'brick':
+            ball, brick = fA.body.userData, fB.body.userData
+        elif dA == 'brick' and dB == 'ball':
+            brick, ball = fA.body.userData, fB.body.userData
+        if brick and ball:
+            self.hitset.add(brick)
+        
     def PreSolve(self, contact, oldManifold):
         fA, fB = contact.fixtureA, contact.fixtureB
         dA, dB = fA.userData, fB.userData
@@ -113,7 +125,8 @@ class Game(gameapp.GameApp):
         
         # pybox2d setup
         self.world = b2World(gravity=(0, 0), doSleep=True)
-        self.listener = ContactListener()
+        self.hitset = set()
+        self.listener = ContactListener(self.hitset)
         self.world.contactListener = self.listener
         BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)),1)
         BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)),1)
@@ -135,7 +148,7 @@ class Game(gameapp.GameApp):
         BatManager(self.field1, self.world, self.renderer)
         BatManager(self.field2, self.world, self.renderer)
         
-        g_player.setTimeout(1000,self.bonusJob)
+        # g_player.setTimeout(1000,self.bonusJob) # TODO reenable
         
         # TEST ORGY
 #        Block(self.display, self.renderer, self.world, (5, 5), (self.leftPlayer, self.rightPlayer), Block.form['SINGLE'])
@@ -166,8 +179,14 @@ class Game(gameapp.GameApp):
     def removeBall(self, ball):
         self.balls.remove(ball)
         ball.destroy()
-    
-    def processBallCollisions(self):
+
+
+    def _processBallvsBrick(self,hitset):
+        for brick in hitset:
+            brick.hit()
+        hitset.clear()
+        
+    def _processBallvsGhost(self):
         for ball in self.balls:
             for ce in ball.body.contacts:
                 contact = ce.contact
@@ -175,7 +194,7 @@ class Game(gameapp.GameApp):
                 if contact.fixtureA.userData == 'ghost':
                     ghost = contact.fixtureA.body.userData
                 elif contact.fixtureB.userData == 'ghost':
-                    ghost = contact.fixtureB.body.userData                
+                    ghost = contact.fixtureB.body.userData                    
                 if ghost is not None:
                     if ghost.mortal:
                         # ball eats ghost
@@ -194,17 +213,8 @@ class Game(gameapp.GameApp):
                         else:
                             self.removeBall(ball)
                         break
-                                            
-    def step(self):
-        self.world.Step(TIME_STEP, 10, 10)
-        self.world.ClearForces()
-        self.processBallCollisions()
-        self.checkballposition() # XXX get rid of this call sometime
-        self.renderer.draw()
-         
 
-    # XXX replace by a collisionlistener
-    def checkballposition(self):
+    def _checkBallPosition(self):
         for ball in self.balls:
             if ball.body.position[0] > (self.display.size[0] / PPM) + ballRadius: 
                 self.leftPlayer.addPoint()
@@ -212,6 +222,14 @@ class Game(gameapp.GameApp):
             elif ball.body.position[0] < -ballRadius: 
                 self.rightPlayer.addPoint()
                 ball.reSpawn()
+                                        
+    def step(self):
+        self.world.Step(TIME_STEP, 10, 10)
+        self.world.ClearForces()
+        self._processBallvsBrick(self.hitset)
+        self._processBallvsGhost()
+        self._checkBallPosition()
+        self.renderer.draw()             
 
 class BatManager:
     # XXX remove all the assertions some time
