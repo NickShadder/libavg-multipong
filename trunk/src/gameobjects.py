@@ -441,29 +441,55 @@ class Block:
             if flip: posX = rightMostPos - posX
             posY = line * brickSizeInPx
             self.brickList.append(Brick(self, renderer, world, parentNode, (posX, posY), material))
-        self.onLeft = False
-        self.alive = True
-        self.assigned = False
-        ui.DragRecognizer(self.container, moveHandler=self.onMove, endHandler = self.moveEnd, coordSysNode = self.brickList[0].node)
+        self.__onLeft = False
+        self.__alive = False
+        self.__assigned = False
+        self.__timeCall = None
+#        ui.DragRecognizer(self.container, moveHandler=self.__onMove, endHandler = self.__moveEnd, coordSysNode = self.brickList[0].node)
+        ui.TransformRecognizer(self.container, moveHandler = self.__onTransform, endHandler = self.__moveEnd, coordSysNode = self.brickList[0].node)
     
-    def onMove(self, e, offset):
-        self.container.pos += offset
+#    def __onMove(self, e, offset):
+#        self.container.pos += offset
+#        widthDisplay = self.parentNode.size[1]
+#        widthThird = widthDisplay / 3
+#        if self.__assigned:
+#            self.__testInsertion()
+#        else:
+#            if e.pos[0] < widthThird:
+#                self.__assigned = True
+#                self.__onLeft = True
+#                self.__displayRaster(True)
+#            elif e.pos[0] > widthDisplay - widthThird:
+#                self.__assigned = True
+#                self.__displayRaster(True)
+#            else:
+#                self.__colourRed()
+    
+    def __onTransform(self, tr):
+        if self.__timeCall is not None:
+            g_player.clearInterval(self.__timeCall)
+            self.__timeCall = None
+        self.container.pos += tr.trans
         widthDisplay = self.parentNode.size[1]
         widthThird = widthDisplay / 3
-        if self.assigned:
-            self.testInsertion()
-        else:
-            if e.pos[0] < widthThird:
-                self.assigned = True
-                self.onLeft = True
-                self.displayRaster(True)
-            elif e.pos[0] > widthDisplay - widthThird:
-                self.assigned = True
-                self.displayRaster(True)
+        for b in self.brickList:
+            if self.__assigned:
+                break
             else:
-                self.block.alive = False
+                if b.node.pos[0] + self.container.pos[0] < widthThird:
+                    self.__assigned = True
+                    self.__onLeft = True
+                    self.__displayRaster(True)        
+                elif b.node.pos[0] + self.container.pos[0] > widthDisplay - widthThird - brickSize * PPM:
+                    self.__assigned = True
+                    self.__displayRaster(True)
+        if self.__assigned:
+            self.__testInsertion()
+        else:
+            self.__colourRed()
+        self.container.angle += tr.rot
     
-    def testInsertion(self):
+    def __testInsertion(self):
         cellList = []
         possible = True
         for b in self.brickList:
@@ -473,7 +499,7 @@ class Block:
             else:
                 if x < 0:
                     x = 0
-                if self.onLeft:
+                if self.__onLeft:
                     cellList.append(self.leftPlayer.raster[x][y])
                 else:
                     cellList.append(self.rightPlayer.raster[x][y])
@@ -489,7 +515,7 @@ class Block:
     
     def __calculateIndices(self, position):
         pixelBrickSize = brickSize * PPM
-        if self.onLeft:
+        if self.__onLeft:
             x = int(round((position[0] + self.container.pos[0]) / pixelBrickSize))
         else:
             x = int(round((self.parentNode.size[0] - position[0] - self.container.pos[0]) / pixelBrickSize))
@@ -505,24 +531,26 @@ class Block:
     def __colourRed(self):
         for b in self.brickList:
             b.node.intensity = (1, 0, 0)
-            self.alive = False
+            self.__alive = False
     
     def __colourGreen(self):
         for b in self.brickList:
             b.node.intensity = (0, 1, 0)
-            self.alive = True
+            self.__alive = True
     
-    def __vanish(self): #TODO: destroy also Block!
+    def __vanish(self):
         for b in self.brickList:
             if b.node is not None:
                 b.node.active = False
                 b.node.unlink(True)
                 b.node = None
+        self.__displayRaster(False)
     
-    def moveEnd(self, e):
+    def __moveEnd(self, tr):
+        self.container.angle = round(2 * self.container.angle / math.pi) * math.pi / 2
         pixelBrickSize = brickSize * PPM
-        if not self.alive:
-            self.__vanish()
+        if not self.__alive:
+            self.__timeCall = g_player.setTimeout(1000, self.__vanish)
         else:
             for b in self.brickList:
                 b.node.intensity = (1, 1, 1)
@@ -530,7 +558,7 @@ class Block:
                 if x < 0:
                     x = 0
                 xPos, yPos = x * pixelBrickSize, y * pixelBrickSize
-                if self.onLeft:
+                if self.__onLeft:
                     self.leftPlayer.raster[x][y] = b
                 else:
                     xPos = self.parentNode.size[0] - xPos - pixelBrickSize
@@ -538,11 +566,10 @@ class Block:
                 b.node.pos = (xPos, yPos)
                 b.node.sensitive = False
                 b.materialize()
-        #self.container.pos = (0, 0) - not necessary anymore
-        self.displayRaster(False)
+            self.__displayRaster(False)
     
-    def displayRaster(self, on):
-        if self.onLeft:
+    def __displayRaster(self, on):
+        if self.__onLeft:
             raster = self.leftPlayer.nodeRaster
         else:
             raster = self.rightPlayer.nodeRaster

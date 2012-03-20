@@ -104,6 +104,8 @@ class Game(gameapp.GameApp):
     def startPlaying(self):
         # libavg setup
         self.display = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
+        background = avg.ImageNode(parent = self.display)
+        background.setBitmap(avg.SVG('../data/img/char/background.svg', False).renderElement('layer1', self.display.size))
         self.display.player = None # monkey patch
         (displayWidth, displayHeight) = self.display.size
         widthThird = displayWidth / 3

@@ -15,12 +15,9 @@ class Wall (AVGApp):
         
         self.cid = None
         
-        ui.DragRecognizer(self.div1,moveHandler=self.onMove)
+        #ui.DragRecognizer(self.div,moveHandler=self.onMove, coordSysNode = self.div1)
+        ui.TransformRecognizer(self.div, moveHandler=self.xyz, coordSysNode = self.div1)
         ui.DragRecognizer(self.div2,moveHandler=self.onMove)
-        
-        self.node = avg.ImageNode(parent=self.div, pos=(150, 150))
-        self.node.setBitmap(avg.SVG('../data/img/char/glass.svg', False).renderElement('layer1', (100, 100)))
-        self.node.intensity = (.5, 1, .5)
         
         self.node1 = avg.ImageNode(parent=self.div, pos=(300, 300))
         self.node1.setBitmap(avg.SVG('../data/img/char/glass.svg', False).renderElement('layer1', (100, 100)))
@@ -35,12 +32,20 @@ class Wall (AVGApp):
         
     def onMove(self,e,o):
         self.div.pos += o
+        print 'yes'
             
     def onUp(self,e):
         if self.cid == e.cursorid:
             print 'releasing',self.cid
             self.div.releaseEventCapture(self.cid)
             self.cid = None
+    
+    def xyz(self, tr):
+        self.div.pos += tr.trans
+        print tr.pivot
+    
+    def xyz3(self, e, o):
+        pass
         
 if __name__ == '__main__':
     Wall.start (resolution = (1024, 768))
