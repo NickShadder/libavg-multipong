@@ -322,6 +322,9 @@ class SemiPermeabelShield(GameObject):
             
     def ownedByLeft(self):
         return self.left
+    
+    
+
 
 class Ghost(GameObject):
     d = 2 * ghostRadius * PPM # TODO make somehow uniform e.g. by prohibiting other ghost radii 
@@ -418,7 +421,71 @@ class Ghost(GameObject):
         g_player.setTimeout(random.choice([2000, 3000, 4000, 5000, 6000]), self.changeMortality) # XXX store ids for stopping when one player wins
         if self.body and self.body.active: # just to be sure ;)
             self.flipState()
-                    
+            
+'''
+
+TOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+
+- Bessere Grafiken
+- Weitere Boni implementieren
+- Bestehende Boni verbessern
+    - Anzahl der Geister abfragen(ein Bonus killt alle, einer fügt welche hinzu)
+        - "Nonefehler" verhindern
+    - Zeiten der Boni entscheiden (Dauer des Effekts, Dauer bis zum nächsten Bonus)
+- Tetris und Boni verbinden
+
+
+DERZEITIG SINNVOLLSTE BONUSLISTE
+
+SCHUTZ
+
+-    Geschützturm [x]
+-     Tetrisblock [x]
+-    Kraftfeld [x]
+
+ANGRIFF
+
+-     PACMAN-Dreier-Shot [x]
+-    Wand ausschalten
+-    Gegnerischen Schläger ausschalten 
+-    Startpunkt für PAC zufällig und Richtung immer nur in eine Richtung, Gegner
+-     Schwarzer PACMAN, frisst anderen PACMAN, Spieler bekommt Punkt
+-     Nebel über gegnerischem Feld
+
+    
+Allgemein
+
+-    PACMAN invertiert seine flugrichtung [x]
+-     Geister stoppen kurz [x]
+-    PACMAN wird kleiner [x]
+-    Extra Geist, der nur einen Spieler beeinflusst [x]
+-    Geister halten sich nur auf der anderen Seite auf [x]
+-    Ball fliegt auf der eigenen Hälfte langsamer
+-    1 Punkt                                
+-    Shuffle
+-    Pongmode
+-    Pacmanmode
+
+Eher nicht:
+
+-    PAC frisst auch farbige Geister
+-     Schwarzes Loch saugt Geister auf, lenk Ball ab
+-    PAC stirbt durch blaue Geister
+-     PAC bekommt die Farbe eines Geists
+-    1/2 Gesammelte Punkte
+-     Alle Geister verschwinden, für ein paar Sekunden
+-     Alle Geister werden wieder unsterblich oder umgekehrt
+-    Die Wand verdoppelt sich
+-     Asteroidenhagel
+-    Siegeskarte 
+-    Die Hälfte der Wand verschwindet
+
+ETSILSUNOB ETSLLOVNNIS GITIEZRED
+
+OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOT
+
+'''    
+                                
 class BorderLine(GameObject):
     body = None
     def __init__(self, world, pos1, pos2, restitution=0, sensor=False, *noCollisions):
