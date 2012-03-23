@@ -6,8 +6,14 @@ Created on 19.01.2012
 import sys,random
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
-from gameobjects import Ball, Bat, Ghost, Player, BorderLine, Block, PersistentBonus
-from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine, Block, PersistentBonus, InstantBonus,SemiPermeabelShield,Cloud,Tower, RedBall
+from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize,ghostRadius,\
+    brickSize
+from md5 import blocksize
+
+cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008, 'redball':0x0010,'semiborder':0x0012}
+def dontCollideWith(*categories):
+    return reduce(lambda x, y: x ^ y, [cats[el] for el in categories], 0xFFFF)
 
 g_player = avg.Player.get()
 
@@ -33,13 +39,13 @@ class ContactListener(b2ContactListener):
         fA, fB = contact.fixtureA, contact.fixtureB
         dA, dB = fA.userData, fB.userData
         ball, brick = None, None
-        if dA == 'ball' and dB == 'brick':
+        if (dA == 'redball' or dA == 'ball') and dB == 'brick':
             ball, brick = fA.body.userData, fB.body.userData
-        elif dA == 'brick' and dB == 'ball':
+        elif dA == 'brick' and (dB == 'redball' or dB == 'ball') :
             brick, ball = fA.body.userData, fB.body.userData
         if brick and ball:
             self.hitset.add(brick)
-        
+            
     def PreSolve(self, contact, oldManifold):
         fA, fB = contact.fixtureA, contact.fixtureB
         dA, dB = fA.userData, fB.userData
@@ -48,8 +54,20 @@ class ContactListener(b2ContactListener):
             ball, bat = fA.body.userData, fB.body.userData
         elif dA == 'bat' and dB == 'ball':
             bat, ball = fA.body.userData, fB.body.userData
+        elif (dA == 'semiborder' and dB == 'ball' and fB.body.userData.lastPlayer and fB.body.userData.lastPlayer.isLeft() and fA.body.userData.ownedByLeft()):
+            contact.enabled=False
+        elif (dA == 'semiborder' and dB == 'ball' and fB.body.userData.lastPlayer and not fB.body.userData.lastPlayer.isLeft() and not fA.body.userData.ownedByLeft()):
+            contact.enabled=False
+
+        elif (dA == 'semiborder' and dB == 'ghost' and fB.body.userData.getDir()[0] >= 0 and fA.body.userData.ownedByLeft()):
+            contact.enabled=False
+        
+        elif (dA == 'semiborder' and dB == 'ghost' and fB.body.userData.getDir()[0] < 0 and not fA.body.userData.ownedByLeft()):
+            contact.enabled=False
+            
         if bat and ball:
             ball.lastPlayer = bat.zone.player
+        
                         
 class Game(gameapp.GameApp):
     def init(self):
@@ -73,11 +91,12 @@ class Game(gameapp.GameApp):
         return ui.TouchButton(upNode, downNode, clickHandler=pyFunc, parent=node, pos=position)
 
     def showMenu(self):
-        self.menuScreen = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
-        self.startButton = self.makeButtonInMiddle('start', self.menuScreen, -1, lambda:self.machine.changeState('Playing'))
-        self.tutorialButton = self.makeButtonInMiddle('help', self.menuScreen, 0, lambda:self.machine.changeState('Tutorial'))
-        self.aboutButton = self.makeButtonInMiddle('about', self.menuScreen, 1, lambda:self.machine.changeState('About'))
-        self.exitButton = self.makeButtonInMiddle('exit', self.menuScreen, 2, lambda:exit(0))
+        self.startPlaying()
+#        self.menuScreen = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
+#        self.startButton = self.makeButtonInMiddle('start', self.menuScreen, -1, lambda:self.machine.changeState('Playing'))
+#        self.tutorialButton = self.makeButtonInMiddle('help', self.menuScreen, 0, lambda:self.machine.changeState('Tutorial'))
+#        self.aboutButton = self.makeButtonInMiddle('about', self.menuScreen, 1, lambda:self.machine.changeState('About'))
+#        self.exitButton = self.makeButtonInMiddle('exit', self.menuScreen, 2, lambda:exit(0))
 
     def hideMenu(self):
         # XXX find out if we need to tear down all the buttons first
@@ -113,7 +132,7 @@ class Game(gameapp.GameApp):
         self.field1 = avg.DivNode(parent=self.display, size=fieldSize)
         self.field2 = avg.DivNode(parent=self.display, size=fieldSize, pos=(displayWidth - widthThird, 0))
         
-        self.leftPlayer, self.rightPlayer = Player(self, self.field1), Player(self, self.field2)
+        self.leftPlayer, self.rightPlayer = Player(self, self.field1, 1), Player(self, self.field2)
         self.leftPlayer.other, self.rightPlayer.other = self.rightPlayer, self.leftPlayer # monkey patch ftw =)
         
         avg.LineNode(parent=self.display, pos1=(0, 1), pos2=(displayWidth, 1))
@@ -130,41 +149,56 @@ class Game(gameapp.GameApp):
         self.hitset = set()
         self.listener = ContactListener(self.hitset)
         self.world.contactListener = self.listener
-        BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)),1)
-        BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)),1)
-        BorderLine(self.world, a2w((30, 0)), a2w((30, displayHeight)), 1, False, 'ball') # XXX remove hardcode 
-        BorderLine(self.world, a2w((displayWidth - 30, 0)), a2w((displayWidth - 30, displayHeight)), 1, False, 'ball') # XXX remove hardcode
+        BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)),1,False,'redball')
+        BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)),1,False,'redball')
+        
+        BorderLine(self.world, a2w((0, 0)), a2w((0, displayHeight)), 1, False, 'redball','ball') 
+        BorderLine(self.world, a2w((displayWidth, 0)), a2w((displayWidth, displayHeight)), 1, False, 'redball','ball')
         
         # game setup
-        # create ghosts                                        XXX remove hardcode
-        self.ghosts = [Ghost(self.renderer, self.world, self.display, (23, 10), "blinky"),
-                       Ghost(self.renderer, self.world, self.display, (40, 10), "pinky"),
-                       Ghost(self.renderer, self.world, self.display, (23, 40), "inky"),
-                       Ghost(self.renderer, self.world, self.display, (40, 40), "clyde")]
         
+        self.middleX = self.display.size[0]/2
+        self.middleY = self.display.size[1]/2
+        self.middle = a2w((self.middleX,self.middleY))
         
+        # create ghosts
+        self.createGhosts()
+       
         # create balls
-        self.startpos = a2w(self.display.pivot) # TODO remove this
-        self.balls = [Ball(self.renderer, self.world, self.display, self.startpos, self.leftPlayer, self.rightPlayer)]
-
+        self.balls = [Ball(self.renderer, self.world, self.display, self.middle - (30,0), self.leftPlayer, self.rightPlayer)]
+        
         BatManager(self.field1, self.world, self.renderer)
-        BatManager(self.field2, self.world, self.renderer)
+        BatManager(self.field2, self.world, self.renderer)    
+        g_player.setTimeout(1000,self.bonusJob)
         
-        # g_player.setTimeout(1000,self.bonusJob) # TODO reenable
+    def createGhosts(self):
+        self.ghosts = [Ghost(self.renderer, self.world, self.display, self.middle - (0,(ballRadius+ghostRadius)*2), "blinky"),
+                       Ghost(self.renderer, self.world, self.display, self.middle - (0,(ballRadius+ghostRadius)*2), "pinky"),
+                       Ghost(self.renderer, self.world, self.display, self.middle - (0,(ballRadius+ghostRadius)*2), "inky"),
+                       Ghost(self.renderer, self.world, self.display, self.middle - (0,(ballRadius+ghostRadius)*2), "clyde")]   
         
-        # TEST ORGY
-#        Block(self.display, self.renderer, self.world, (5, 5), (self.leftPlayer, self.rightPlayer), Block.form['SINGLE'])
-#        #Block(self.display, self.renderer, self.world, (5, 50), (self.leftPlayer, self.rightPlayer), Block.form['DOUBLE'])
-#        #Block(self.display, self.renderer, self.world, (widthThird + 10, 200), (self.leftPlayer, self.rightPlayer), Block.form['TRIPLE'])
-#        Block(self.display, self.renderer, self.world, (5, 150), (self.leftPlayer, self.rightPlayer), Block.form['EDGE'])
-#        #Block(self.display, self.renderer, self.world, (widthThird + 20, 400), (self.leftPlayer, self.rightPlayer), Block.form['SQUARE'])
-#        #Block(self.display, self.renderer, self.world, (5, 250), (self.leftPlayer, self.rightPlayer), Block.form['LINE'])
-#        #Block(self.display, self.renderer, self.world, (5, 350), (self.leftPlayer, self.rightPlayer), Block.form['SPIECE'])
-#        Block(self.display, self.renderer, self.world, (displayWidth - widthThird + 10, 200), (self.leftPlayer, self.rightPlayer), Block.form['DOUBLE'])
-#        Block(self.display, self.renderer, self.world, (displayWidth - widthThird + 20, 400), (self.leftPlayer, self.rightPlayer), Block.form['TPIECE'])
+    def killGhosts(self):
+        for g in self.getGhosts():
+            g.destroy()  
+                
+    def getMiddleX(self):
+        return self.middleX
     
+    def getMiddleY(self):
+        return self.middleY
+    
+    def getBalls(self):
+        return self.balls
+    
+    def getGhosts(self):
+        return self.ghosts
+        
     def bonusJob(self):
-        PersistentBonus(self.display,self,self.world,random.choice(PersistentBonus.boni.items()))
+        persistentBonusWanted = random.randint(0,1)
+        if persistentBonusWanted:
+            PersistentBonus(self.display,self,self.world,random.choice(PersistentBonus.boni.items()))
+        else:
+            InstantBonus(self.display,self,self.world,random.choice(InstantBonus.boni.items()))
         # the timeout must not be shorter than config.bonusTime
         # TODO get the bonusTime out of the config and out of the user's control 
         g_player.setTimeout(random.choice([3000,4000,5000]),self.bonusJob)
@@ -176,7 +210,7 @@ class Game(gameapp.GameApp):
       
     def addBall(self):
         if len(self.balls) < maxBalls:
-            self.balls.append(Ball(self.renderer, self.world, self.display, self.startpos, self.leftPlayer, self.rightPlayer))
+            self.balls.append(Ball(self.renderer, self.world, self.display, self.middle, self.leftPlayer, self.rightPlayer))
     
     def removeBall(self, ball):
         self.balls.remove(ball)
@@ -208,7 +242,7 @@ class Game(gameapp.GameApp):
                     else:
                         # ghost eats ball
                         player = ball.zoneOfPlayer()
-                        if player is not None:
+                        if player is not None and ghost.getOwner() != player:
                             player.removePoint()                        
                         if len(self.balls) <= 1:    # XXX maybe introduce minBalls
                             ball.reSpawn()
