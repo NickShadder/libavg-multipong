@@ -429,9 +429,9 @@ TOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOODOOOOOOOO
 - Bessere Grafiken
 - Weitere Boni implementieren
 - Bestehende Boni verbessern
-    - Anzahl der Geister abfragen(ein Bonus killt alle, einer fügt welche hinzu)
+    - Anzahl der Geister abfragen(ein Bonus killt alle, einer fuegt welche hinzu)
         - "Nonefehler" verhindern
-    - Zeiten der Boni entscheiden (Dauer des Effekts, Dauer bis zum nächsten Bonus)
+    - Zeiten der Boni entscheiden (Dauer des Effekts, Dauer bis zum naechsten Bonus)
 - Tetris und Boni verbinden
 
 
@@ -439,7 +439,7 @@ DERZEITIG SINNVOLLSTE BONUSLISTE
 
 SCHUTZ
 
--    Geschützturm [x]
+-    Geschuetzturm [x]
 -     Tetrisblock [x]
 -    Kraftfeld [x]
 
@@ -447,10 +447,10 @@ ANGRIFF
 
 -     PACMAN-Dreier-Shot [x]
 -    Wand ausschalten
--    Gegnerischen Schläger ausschalten 
--    Startpunkt für PAC zufällig und Richtung immer nur in eine Richtung, Gegner
+-    Gegnerischen Schlaeger ausschalten 
+-    Startpunkt fuer PAC zufaellig und Richtung immer nur in eine Richtung, Gegner
 -     Schwarzer PACMAN, frisst anderen PACMAN, Spieler bekommt Punkt
--     Nebel über gegnerischem Feld
+-     Nebel ueber gegnerischem Feld
 
     
 Allgemein
@@ -460,7 +460,7 @@ Allgemein
 -    PACMAN wird kleiner [x]
 -    Extra Geist, der nur einen Spieler beeinflusst [x]
 -    Geister halten sich nur auf der anderen Seite auf [x]
--    Ball fliegt auf der eigenen Hälfte langsamer
+-    Ball fliegt auf der eigenen Haelfte langsamer
 -    1 Punkt                                
 -    Shuffle
 -    Pongmode
@@ -473,12 +473,12 @@ Eher nicht:
 -    PAC stirbt durch blaue Geister
 -     PAC bekommt die Farbe eines Geists
 -    1/2 Gesammelte Punkte
--     Alle Geister verschwinden, für ein paar Sekunden
+-     Alle Geister verschwinden, fuer ein paar Sekunden
 -     Alle Geister werden wieder unsterblich oder umgekehrt
 -    Die Wand verdoppelt sich
 -     Asteroidenhagel
 -    Siegeskarte 
--    Die Hälfte der Wand verschwindet
+-    Die Haelfte der Wand verschwindet
 
 ETSILSUNOB ETSLLOVNNIS GITIEZRED
 
