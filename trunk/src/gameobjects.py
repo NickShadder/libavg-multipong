@@ -575,12 +575,12 @@ class Bonus(GameObject):
         g_player.setTimeout(4000,s.destroy)
      
 class PersistentBonus(Bonus):
-    boni = dict(#pacShot=Bonus.pacShot,
-                #stopGhosts=Bonus.stopGhosts,
-                #flipGhosts=Bonus.flipGhostStates,
-                wheel=Bonus.setTowers)
-               # onlyPong=Bonus.buildShild,
-               # pacman=Bonus.newOwnBall)
+    boni = dict(pacShot=Bonus.pacShot,
+                stopGhosts=Bonus.stopGhosts,
+                flipGhosts=Bonus.flipGhostStates,
+                wheel=Bonus.setTowers,
+                onlyPong=Bonus.buildShild,
+                pacman=Bonus.newOwnBall)
         
     def __init__(self, parentNode, game, world, (name, effect)):
         Bonus.__init__(self, parentNode, game, world, (name, effect))
@@ -590,13 +590,13 @@ class PersistentBonus(Bonus):
         
 class InstantBonus(Bonus):
     
-    boni = dict(#invertPac=Bonus.invertPac,
-                newBlock=Bonus.newBlock)
-                #addClyde=Bonus.addGhost,
+    boni = dict(invertPac=Bonus.invertPac,
+                newBlock=Bonus.newBlock,
+                addClyde=Bonus.addGhost,
 #                Bonus4=Bonus.hideGhosts,
 #                Bonus5=Bonus.bringBackGhosts,
-              #  Bonus6=Bonus.setGhostToOpponent,
-              #  pacman=Bonus.newOwnBall)
+                Bonus6=Bonus.setGhostToOpponent,
+                pacman=Bonus.newOwnBall)
         
     def __init__(self, parentNode, game, world, (name, effect)):
         Bonus.__init__(self, parentNode, game, world, (name, effect))
