@@ -11,7 +11,7 @@ from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize,ghostRadius,
     brickSize
 from md5 import blocksize
 
-cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008, 'redball':0x0010,'semiborder':0x0012}
+cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008, 'redball':0x0010,'semiborder':0x0012, 'ownball':0x0014}
 def dontCollideWith(*categories):
     return reduce(lambda x, y: x ^ y, [cats[el] for el in categories], 0xFFFF)
 
@@ -32,6 +32,7 @@ class Renderer:
             obj.render()
 
 class ContactListener(b2ContactListener):
+   
     def __init__(self,hitset):
         b2ContactListener.__init__(self)
         self.hitset = hitset
@@ -45,7 +46,17 @@ class ContactListener(b2ContactListener):
             brick, ball = fA.body.userData, fB.body.userData
         if brick and ball:
             self.hitset.add(brick)
+        
+#        if dA == 'ownball' and dB == 'ball':
+#            fA.body.userData.destroy()
+#            
+#        elif dB == 'ownball' and dA == 'ball':
+#            print 'hello2'
             
+        
+            
+            
+                
     def PreSolve(self, contact, oldManifold):
         fA, fB = contact.fixtureA, contact.fixtureB
         dA, dB = fA.userData, fB.userData
@@ -64,6 +75,8 @@ class ContactListener(b2ContactListener):
         
         elif (dA == 'semiborder' and dB == 'ghost' and fB.body.userData.getDir()[0] < 0 and not fA.body.userData.ownedByLeft()):
             contact.enabled=False
+            
+        
             
         if bat and ball:
             ball.lastPlayer = bat.zone.player
@@ -123,8 +136,8 @@ class Game(gameapp.GameApp):
     def startPlaying(self):
         # libavg setup
         self.display = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
-        background = avg.ImageNode(parent = self.display)
-        background.setBitmap(avg.SVG('../data/img/char/background.svg', False).renderElement('layer1', self.display.size))
+#        background = avg.ImageNode(parent = self.display)
+#        background.setBitmap(avg.SVG('../data/img/char/background.svg', False).renderElement('layer1', self.display.size))
         self.display.player = None # monkey patch
         (displayWidth, displayHeight) = self.display.size
         widthThird = displayWidth / 3
@@ -149,11 +162,11 @@ class Game(gameapp.GameApp):
         self.hitset = set()
         self.listener = ContactListener(self.hitset)
         self.world.contactListener = self.listener
-        BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)),1,False,'redball')
-        BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)),1,False,'redball')
+        BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)),1,0,'redball')
+        BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)),1,0,'redball')
         
-        BorderLine(self.world, a2w((0, 0)), a2w((0, displayHeight)), 1, False, 'redball','ball') 
-        BorderLine(self.world, a2w((displayWidth, 0)), a2w((displayWidth, displayHeight)), 1, False, 'redball','ball')
+        BorderLine(self.world, a2w((0, 0)), a2w((0, displayHeight)), 1, 0, 'redball','ball') 
+        BorderLine(self.world, a2w((displayWidth, 0)), a2w((displayWidth, displayHeight)), 1, 0, 'redball','ball')
         
         # game setup
         
@@ -199,7 +212,7 @@ class Game(gameapp.GameApp):
             PersistentBonus(self.display,self,self.world,random.choice(PersistentBonus.boni.items()))
         else:
             InstantBonus(self.display,self,self.world,random.choice(InstantBonus.boni.items()))
-        # the timeout must not be shorter than config.bonusTime
+        # the timeout must not be shorter than config.bonuesTime
         # TODO get the bonusTime out of the config and out of the user's control 
         g_player.setTimeout(random.choice([3000,4000,5000]),self.bonusJob)
 
@@ -222,15 +235,35 @@ class Game(gameapp.GameApp):
             brick.hit()
         hitset.clear()
         
+    def ballball(self):
+        for ball in self.balls:
+            for ce in ball.body.contacts:
+                contact = ce.contact
+                
+                if contact.fixtureA.userData == 'ownball' and contact.fixtureB.userData == 'ball':  
+                    if ball.lastPlayer != contact.fixtureA.body.userData.getOwner() and ball.lastPlayer:
+                        ball.lastPlayer.removePoint()
+                    self.removeBall(ball)
+                    contact.fixtureA.body.userData.destroy()
+                    
+                elif contact.fixtureB.userData == 'ownball' and contact.fixtureA.userData == 'ball' and ball.lastPlayer:
+                    if ball.lastPlayer != contact.fixtureB.body.userData.getOwner():
+                        ball.lastPlayer.removePoint()
+                    self.removeBall(ball)
+                    contact.fixtureB.body.userData.destroy()
+                break
+        
     def _processBallvsGhost(self):
         for ball in self.balls:
             for ce in ball.body.contacts:
                 contact = ce.contact
-                ghost = None
+                ghost = None        
                 if contact.fixtureA.userData == 'ghost':
                     ghost = contact.fixtureA.body.userData
+                
                 elif contact.fixtureB.userData == 'ghost':
-                    ghost = contact.fixtureB.body.userData                    
+                    ghost = contact.fixtureB.body.userData
+                            
                 if ghost is not None:
                     if ghost.mortal:
                         # ball eats ghost
@@ -243,12 +276,13 @@ class Game(gameapp.GameApp):
                         # ghost eats ball
                         player = ball.zoneOfPlayer()
                         if player is not None and ghost.getOwner() != player:
-                            player.removePoint()                        
+                            player.removePoint()   
                         if len(self.balls) <= 1:    # XXX maybe introduce minBalls
                             ball.reSpawn()
                         else:
                             self.removeBall(ball)
                         break
+                
 
     def _checkBallPosition(self):
         for ball in self.balls:
@@ -264,6 +298,7 @@ class Game(gameapp.GameApp):
         self.world.ClearForces()
         self._processBallvsBrick(self.hitset)
         self._processBallvsGhost()
+        self.ballball()
         self._checkBallPosition()
         self.renderer.draw()             
 
