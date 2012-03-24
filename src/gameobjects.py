@@ -10,9 +10,8 @@ from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatS
 from libavg import avg, ui
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape
 
-cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008, 'redball':0x0010,'semiborder':0x0012, 'ownball':0x0014}
-def dontCollideWith(*categories):
-    return reduce(lambda x, y: x ^ y, [cats[el] for el in categories], 0xFFFF)
+cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008, 'redball':0x0010, 'semiborder':0x0020, 'ownball':0x0040}
+def dontCollideWith(*categories): return reduce(lambda x, y: x ^ y, [cats[el] for el in categories], 0xFFFF)
 
 standardXInertia = 20 * ballRadius # XXX solve more elegantly
 g_player = avg.Player.get()
@@ -20,13 +19,13 @@ g_player = avg.Player.get()
 halfBrickSize = brickSize / 2
 
 class Player:
-    def __init__(self, game, avgNode,left=0):
+    def __init__(self, game, avgNode):
         self.points = 0
         self.other = None
         self.game = game
         self.zone = avgNode
         self.boni = []
-        self.left = left
+        self.left = avgNode.pos == (0, 0)
         avgNode.player = self # monkey patch
         left = avgNode.pos == (0, 0)
         angle = math.pi / 2 if left else -math.pi / 2
@@ -35,7 +34,7 @@ class Player:
         self.pointsDisplay = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=pos, angle=angle,
                                            text='Points: 0 / %d' % pointsToWin)
         # TODO does it have to be initialized with so many Nones?! there is no test of the form if raster[x][y] is None!
-        self.raster = [[None]*bricksPerLine]*brickLines #Brick-raster
+        self.raster = [[None] * bricksPerLine] * brickLines #Brick-raster
         self.nodeRaster = []                    #rectNodes to display the margins of the raster
         pixelBrickSize = brickSize * PPM
         for x in xrange(brickLines):
@@ -43,7 +42,7 @@ class Player:
                 xPos, yPos = x * pixelBrickSize, y * pixelBrickSize
                 if not left:
                     xPos = avgNode.size[0] - xPos - pixelBrickSize
-                self.nodeRaster.append(avg.RectNode(parent = avgNode, pos = (xPos, yPos), size = (pixelBrickSize, pixelBrickSize), active = False))
+                self.nodeRaster.append(avg.RectNode(parent=avgNode, pos=(xPos, yPos), size=(pixelBrickSize, pixelBrickSize), active=False))
     
     def isLeft(self):
         return self.left
@@ -67,22 +66,22 @@ class Player:
         self.printBoni()
 
     # TODO coordinate with wall
-    def useBonus(self,bonus,node):
+    def useBonus(self, bonus, node):
         self.boni.remove(bonus)
-        node.active=False # XXX animate?
+        node.active = False # XXX animate?
         node.unlink(True)
         bonus.applyEffect(self)
     
     # TODO remove as soon as wall comes 
     def printBoni(self):
-        brSPx = brickSize*PPM
-        left = self.zone.pos==(0,0)
-        x = 10 if left else self.zone.width-brSPx-10
-        y = len(self.boni)*brSPx+10
-        node = avg.ImageNode(parent=self.zone,pos=(x,y),size=(brSPx,brSPx))
+        brSPx = brickSize * PPM
+        left = self.zone.pos == (0, 0)
+        x = 10 if left else self.zone.width - brSPx - 10
+        y = len(self.boni) * brSPx + 10
+        node = avg.ImageNode(parent=self.zone, pos=(x, y), size=(brSPx, brSPx))
         node.setBitmap(self.boni[-1].pic)
         # normalerweise sollte hier noch Nachruecken sein, aber da diese methode eh weggeht, habe ich keinen bock drauf ;) 
-        node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e,bonus=self.boni[-1],node=node:self.useBonus(bonus, node))
+        node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e, bonus=self.boni[-1], node=node:self.useBonus(bonus, node))
 
 class GameObject:
     def __init__(self, renderer, world):
@@ -108,119 +107,52 @@ class GameObject:
             self.node.unlink(True)
             self.node = None
             
-class GhostBall(GameObject):
-    def __init__(self, world, parentNode, y, left ,radius=ballRadius):
+class GhostBall:
+    d = 2 * ballRadius * PPM # TODO make somehow uniform e.g. by prohibiting other ball radii
+    pic = avg.SVG('../data/img/char/pacman.svg', False).renderElement('layer1', (d, d))     
+    def __init__(self, parentNode, y, left , radius=ballRadius):
         self.diameter = 2 * radius * PPM
         self.width = parentNode.size[0]
-        if left:
-            svg = avg.SVG('../data/img/char/pacman.svg', False)
-            self.node = svg.createImageNode('layer1', dict(parent=parentNode, pos = (0,y)), (self.diameter, self.diameter))
-            anim = avg.LinearAnim(self.node, 'pos', int(self.width), (int(self.node.pos[0]),int(self.node.pos[1])), (int(self.width),int(self.node.pos[1])),False,None,self.destroy) 
+        self.node = avg.ImageNode(parent=parentNode, size=(self.diameter, self.diameter))
+        self.node.setBitmap(GhostBall.pic)
+        # TODO simplify - get rid of left
+        if left: 
+            self.node.pos = 0, y
+            anim = avg.LinearAnim(self.node, 'pos', int(self.width), (int(self.node.pos[0]), int(self.node.pos[1])), (int(self.width), int(self.node.pos[1])), False, None, self.destroy) 
         else:
-            svg = avg.SVG('../data/img/char/pacman_left.svg', False)
-            self.node = svg.createImageNode('layer1', dict(parent=parentNode, pos = (int(self.width),y)), (self.diameter, self.diameter))
-            anim = avg.LinearAnim(self.node, 'pos',  int(self.width), (int(self.width),int(self.node.pos[1])), (-self.diameter,int(self.node.pos[1])), False,None,self.destroy)    
+            self.node.pos = self.width, y
+            self.node.angle = math.pi
+            anim = avg.LinearAnim(self.node, 'pos', int(self.width), (int(self.width), int(self.node.pos[1])), (-self.diameter, int(self.node.pos[1])), False, None, self.destroy)    
         anim.start()
         
     def destroy(self):
         if self.node is not None:
             self.node.active = False
             self.node.unlink(True)
-            self.node = None
+            self.node = None   
 
-class RedBall(GameObject):
-    def __init__(self, renderer, world, parentNode, position, leftPlayer, rightPlayer,left, radius=ballRadius):
-        GameObject.__init__(self, renderer, world)
-        self.spawnPoint = parentNode.pivot / PPM 
-        self.leftPlayer = leftPlayer
-        self.parent = parentNode
-        self.rightPlayer = rightPlayer
-        self.lastPlayer = None
-        self.left = left
-        self.diameter = 2 * radius * PPM
-        svg = avg.SVG('../data/img/char/redpacman.svg', False)
-        self.node = svg.createImageNode('layer1', dict(parent=parentNode), (self.diameter, self.diameter))
-        self.setShadow('FFFF00')
-        self.body = world.CreateDynamicBody(position=position, userData=self, active=False, bullet=True)
-        self.body.CreateCircleFixture(radius=radius, density=1, restitution=1,
-                                      friction=1, groupIndex=1, categoryBits=cats['redball'],
-                                      maskBits=dontCollideWith('ghost'), userData='redball')
-        self.body.CreateCircleFixture(radius=radius, userData='redball', isSensor=True)
-        self.startMoving()
-    
-    def startMoving(self):   
-        self.body.active = True
-        self.body.angularVelocity = 0
-        self.body.angle = 0
-        if self.left:
-            self.body.linearVelocity = (self.parent.size[0]/30,0) # XXX maybe other than 30
-        else:
-            self.body.linearVelocity = (-self.parent.size[0]/30,0) # XXX maybe other than 30
-        
-        
-                
-    def render(self):
-        pos = self.body.position * PPM - self.node.size / 2
-        self.node.pos = (pos[0], pos[1])
-        angle = self.body.angle + math.pi if self.body.linearVelocity[0] < 0 else self.body.angle
-        self.node.angle = angle     
-
-#class OwnBall(GameObject):
-#    def __init__(self, world, parentNode, left,radius=ballRadius):
-#        self.spawnPoint = parentNode.pivot / PPM # XXX maybe make a static class variable
-#        self.left = left
-#        self.parentNode = parentNode
-#        self.lastPlayer = None
-#        self.diameter = 2 * radius * PPM
-#        if left:
-#            svg = avg.SVG('../data/img/char/bluepacman.svg', False)
-#        else:
-#            svg = avg.SVG('../data/img/char/greenpacman.svg', False)
-#        
-#        self.node = svg.createImageNode('layer1', dict(parent=parentNode), (self.diameter, self.diameter))
-#        self.setShadow('FFFF00')
-#        
-#        if left:
-#            self.body = world.CreateDynamicBody(position=((self.parentNode.size[0]/3)/PPM,(self.parentNode.size[1]/2)/PPM), userData=self, active=False, bullet=True) # XXX reevaluate bullet-ness
-#        else:
-#            self.body = world.CreateDynamicBody(position=((2*self.parentNode.size[0]/3)/PPM,(self.parentNode.size[1]/2)/PPM), userData=self, active=False, bullet=True) # XXX reevaluate bullet-ness
-#            
-#        
-#        self.body.CreateCircleFixture(radius=radius, density=1, restitution=1,
-#                                      friction=1, groupIndex=-1, categoryBits=cats['ownball'],
-#                                      maskBits=dontCollideWith('ghost'), userData='ownball')
-#        
-#        self.body.CreateCircleFixture(radius=radius, userData='ownball', isSensor=True)
-#        
-#        pos = self.body.position*PPM
-#        self.node.pos = (pos[0], pos[1])
-#                
-#    def isLeft(self):
-#        return self.left
-        
-        
-        
 class Ball(GameObject):
-    def __init__(self, renderer, world, parentNode, position, leftPlayer, rightPlayer, radius=ballRadius):
+    diameter = 2 * ballRadius * PPM
+    pic = avg.SVG('../data/img/char/pacman.svg', False).renderElement('layer1', (diameter, diameter))
+    def __init__(self, game, renderer, world, parentNode, position):
         GameObject.__init__(self, renderer, world)
+        self.game = game
         self.spawnPoint = parentNode.pivot / PPM # XXX maybe make a static class variable
-        self.leftPlayer = leftPlayer
-        self.rightPlayer = rightPlayer
+        self.leftPlayer = game.leftPlayer
+        self.rightPlayer = game.rightPlayer
         self.lastPlayer = None
-        self.diameter = 2 * radius * PPM
-        svg = avg.SVG('../data/img/char/pacman.svg', False)
-        self.node = svg.createImageNode('layer1', dict(parent=parentNode), (self.diameter, self.diameter))
+        self.node = avg.ImageNode(parent=parentNode)
+        self.node.setBitmap(Ball.pic)
         self.setShadow('FFFF00')
         self.body = world.CreateDynamicBody(position=position, userData=self, active=False, bullet=True) # XXX reevaluate bullet-ness
-        self.body.CreateCircleFixture(radius=radius, density=1, restitution=1,
-                                      friction=1, groupIndex=1, categoryBits=cats['ball'],
+        self.body.CreateCircleFixture(radius=ballRadius, density=1, restitution=.3,
+                                      friction=.01, groupIndex=1, categoryBits=cats['ball'],
                                       maskBits=dontCollideWith('ghost'), userData='ball')
-        self.body.CreateCircleFixture(radius=radius, userData='ball', isSensor=True)
-        # self.nextDir = (random.choice([standardXInertia, -standardXInertia]), random.randint(-10, 10))
-        self.nextDir = (-5,0)
+        self.body.CreateCircleFixture(radius=ballRadius, userData='ball', isSensor=True)
+        self.nextDir = (random.choice([standardXInertia, -standardXInertia]), random.randint(-10, 10))
         self.__appear(lambda:self.nudge())
-        self.node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.reSpawn()) # XXX remove
-        self.done = 0
+        #self.node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.reSpawn()) # XXX remove
+        # self.done = 0
         # g_player.setTimeout(10,self.startPositionCheck)
         
         
@@ -248,8 +180,7 @@ class Ball(GameObject):
             pos = self.spawnPoint
         self.body.position = pos
         yOffset = random.randint(-10, 10)
-        #self.nextDir = (-standardXInertia, yOffset) if  self.leftPlayer.points > self.rightPlayer.points else (standardXInertia, yOffset)
-        self.nextDir = (-5,0)
+        self.nextDir = (-standardXInertia, yOffset) if  self.leftPlayer.points > self.rightPlayer.points else (standardXInertia, yOffset)
         self.__appear(lambda:self.nudge())
         
     def __appear(self, stopAction=None):
@@ -270,7 +201,8 @@ class Ball(GameObject):
             return None
         
     def invert(self):
-        self.body.linearVelocity = (-self.body.linearVelocity[0],-self.body.linearVelocity[1])
+        self.body.linearVelocity = -self.body.linearVelocity
+        #self.body.linearVelocity = (-self.body.linearVelocity[0],-self.body.linearVelocity[1])
         
     def nudge(self, direction=None):
         self.body.active = True
@@ -280,39 +212,79 @@ class Ball(GameObject):
             direction = self.nextDir
         self.body.linearVelocity = direction
         self.render()
+
+class OwnBall(Ball):
+    leftPic = avg.SVG('../data/img/char/bluepacman.svg', False).renderElement('layer1', (Ball.diameter, Ball.diameter))
+    rightPic = avg.SVG('../data/img/char/greenpacman.svg', False).renderElement('layer1', (Ball.diameter, Ball.diameter))
+    def __init__(self, game, parentNode, owner):
+        Ball.__init__(self, game, game.renderer, game.world, parentNode,game.middle)
+        self.owner = owner
+        self.node.setBitmap(OwnBall.leftPic if owner.isLeft() else OwnBall.rightPic)        
+        self.body.userData = self
+        for fix in self.body.fixtures:
+            fix.userData = 'ownball'
+            #fix.groupIndex = -2 # XXX test
+            fix.categoryBits = cats['ownball']
+            
+    def getOwner(self):
+        return self.owner 
         
-        
+class RedBall(Ball):
+    pic = avg.SVG('../data/img/char/redpacman.svg', False).renderElement('layer1', (Ball.diameter, Ball.diameter))
+    def __init__(self, game, parentNode, position,left):
+        Ball.__init__(self, game, game.renderer, game.world, parentNode, position)
+        self.node.setBitmap(RedBall.pic)
+        self.left = left
+        self.parentNode = parentNode
+        self.body.userData = self
+        for fix in self.body.fixtures:
+            fix.userData = 'redball'
+            #fix.groupIndex = -3 # XXX test
+            fix.categoryBits = cats['redball']
+    
+    # Override
+    def nudge(self, direction=None):
+        self.body.active = True
+        self.body.angularVelocity = 0
+        self.body.angle = 0
+        if self.left:
+            self.body.linearVelocity = (self.parentNode.size[0] / 30, 0) # XXX maybe other than 30
+        else:
+            self.body.linearVelocity = (-self.parentNode.size[0] / 30, 0) # XXX maybe other than 30
+              
+
 class Cloud(GameObject):
-    def __init__(self,world,parentNode,game,left,*noCollisions):
+    def __init__(self, world, parentNode, game, left, *noCollisions):
         self.world = world
         self.game = game
         self.parentNode = parentNode
         self.pic = avg.SVG('../data/img/char/cloud.svg', False).renderElement('layer1', (500, 1000))
-        self.node = avg.ImageNode(parent=parentNode, opacity=1,pos=(0,0))
+        self.node = avg.ImageNode(parent=parentNode, opacity=1, pos=(0, 0))
         self.node.setBitmap(self.pic)
                 
-class SemiPermeabelShield(GameObject):
-    def __init__(self,world,parentNode,game,left,*noCollisions):
+class SemipermeableShield(GameObject):
+    def __init__(self, world, parentNode, game, left, *noCollisions):
         self.world = world
         self.game = game
         self.parentNode = parentNode
         self.left = left
         
+        # TODO no need for two different images - just rotate ;)
         if left:
-            self.pic = avg.SVG('../data/img/char/semiperleft.svg', False).renderElement('layer1', (PPM*2, parentNode.size[1]))
-            self.x = parentNode.size[0]/3
+            self.pic = avg.SVG('../data/img/char/semiperleft.svg', False).renderElement('layer1', (PPM * 2, parentNode.size[1]))
+            self.x = parentNode.size[0] / 3
             self.w = 2
         else:
-            self.pic = avg.SVG('../data/img/char/semiperright.svg', False).renderElement('layer1', (PPM*2, parentNode.size[1]))
-            self.x = 2*parentNode.size[0]/3 - (PPM*2)
+            self.pic = avg.SVG('../data/img/char/semiperright.svg', False).renderElement('layer1', (PPM * 2, parentNode.size[1]))
+            self.x = 2 * parentNode.size[0] / 3 - (PPM * 2)
             self.w = 0        
         
-        self.node = avg.ImageNode(parent=parentNode, opacity=1,pos=(self.x,0))
+        self.node = avg.ImageNode(parent=parentNode, opacity=1, pos=(self.x, 0))
         self.node.setBitmap(self.pic)
         
-        self.body = world.CreateStaticBody(position=(0, 0),userData=self)
-        self.body.CreateFixture(shape=b2EdgeShape(vertices=[(self.x/PPM+self.w,0), (self.x/PPM+self.w,self.parentNode.size[1]/PPM)]), density=1, isSensor=False,
-                                restitution=1, categoryBits=cats['semiborder'],userData='semiborder', maskBits=dontCollideWith(*noCollisions))
+        self.body = world.CreateStaticBody(position=(0, 0), userData=self)
+        self.body.CreateFixture(shape=b2EdgeShape(vertices=[(self.x / PPM + self.w, 0), (self.x / PPM + self.w, self.parentNode.size[1] / PPM)]), density=1,
+                                restitution=1, categoryBits=cats['semiborder'], userData='semiborder', maskBits=dontCollideWith(*noCollisions))
     
 
     def destroy(self):
@@ -326,14 +298,11 @@ class SemiPermeabelShield(GameObject):
             
     def ownedByLeft(self):
         return self.left
-    
-    
-
 
 class Ghost(GameObject):
-    d = 2 * ghostRadius * PPM # TODO make somehow uniform e.g. by prohibiting other ghost radii 
-    blue = avg.SVG('../data/img/char/blue.svg', False).renderElement('layer1', (d, d))
-    def __init__(self, renderer, world, parentNode, position, name, owner=None, mortal=1,radius=ghostRadius):
+    diameter = 2 * ghostRadius * PPM 
+    blue = avg.SVG('../data/img/char/blue.svg', False).renderElement('layer1', (diameter, diameter))
+    def __init__(self, renderer, world, parentNode, position, name, owner=None, mortal=1):
         GameObject.__init__(self, renderer, world)
         self.parentNode = parentNode
         self.spawnPoint = position
@@ -341,13 +310,12 @@ class Ghost(GameObject):
         self.trend = 'None'
         self.owner = owner
         self.mortal = mortal
-        self.diameter = 2 * radius * PPM
-        self.colored = avg.SVG('../data/img/char/' + name + '.svg', False).renderElement('layer1', (self.diameter, self.diameter))
+        self.colored = avg.SVG('../data/img/char/' + name + '.svg', False).renderElement('layer1', (Ghost.diameter, Ghost.diameter)) # TODO make this faster (use static dict)
         self.node = avg.ImageNode(parent=parentNode, opacity=.85)
         self.setShadow('ADD8E6')
-        ghostUpper = b2FixtureDef(userData='ghost', shape=b2CircleShape(radius=radius),
+        ghostUpper = b2FixtureDef(userData='ghost', shape=b2CircleShape(radius=ghostRadius),
                                   density=1, groupIndex= -1, categoryBits=cats['ghost'], maskBits=dontCollideWith('ball'))
-        ghostLower = b2FixtureDef(userData='ghost', shape=b2PolygonShape(box=(radius, radius / 2, (0, -radius / 2), 0)),
+        ghostLower = b2FixtureDef(userData='ghost', shape=b2PolygonShape(box=(ghostRadius, ghostRadius / 2, (0, -ghostRadius / 2), 0)),
                                   density=1, groupIndex= -1, categoryBits=cats['ghost'], maskBits=dontCollideWith('ball'))
         self.body = world.CreateDynamicBody(position=position, fixtures=[ghostUpper, ghostLower],
                                             userData=self, fixedRotation=True)
@@ -356,17 +324,16 @@ class Ghost(GameObject):
         self.stopFlag = 0
         self.move()
         
-        ui.DragRecognizer(self.node, moveHandler=self.onMove) # XXX just for debugging and fun
+#        ui.DragRecognizer(self.node, moveHandler=self.onMove) # XXX just for debugging and fun
+#    def onMove(self, event, offset):
+#        self.body.position = event.pos / PPM
     
     def getDir(self):
         return self.body.linearVelocity
     
     def getOwner(self):
         return self.owner
-    
-    def onMove(self, event, offset):
-        self.body.position = event.pos / PPM
-                
+             
     def flipState(self):
         self.mortal ^= 1
         self.node.setBitmap(self.blue if self.mortal else self.colored)
@@ -375,8 +342,7 @@ class Ghost(GameObject):
         pos = self.body.position * PPM - self.node.size / 2
         self.node.pos = (pos[0], pos[1])
         self.node.angle = self.body.angle
-        
-        
+             
     def reSpawn(self, pos=None):
         self.body.active = False 
         if pos is None:
@@ -392,7 +358,8 @@ class Ghost(GameObject):
         self.mortal = 0 # ghost respawns in immortal state XXX rerender this?
         self.render()
         self.node.active = True
-        avg.fadeIn(self.node, 1000, .85, lambda:self.body.__setattr__('active', True))
+        avg.fadeIn(self.node, 1000, .85, lambda:self.body.__setattr__('active', True)) 
+        # TODO fix bug: sometimes body is None
         
     def move(self, direction=None):
         # TODO implement some kind of AI
@@ -408,12 +375,12 @@ class Ghost(GameObject):
                         direction = random.randint(-10, 10), random.randint(-10, 10)
                 self.body.linearVelocity = direction
     
-    def setTrend(self,trend):
+    def setTrend(self, trend):
         self.trend = trend
     
     def stop(self):
         self.stopFlag = 1
-        self.body.linearVelocity = (0,0)
+        self.body.linearVelocity = (0, 0)
         g_player.setTimeout(2000, self.deactivateStopFlag)
     
     def deactivateStopFlag(self):
@@ -425,41 +392,6 @@ class Ghost(GameObject):
         g_player.setTimeout(random.choice([2000, 3000, 4000, 5000, 6000]), self.changeMortality) # XXX store ids for stopping when one player wins
         if self.body and self.body.active: # just to be sure ;)
             self.flipState()
-            
-class OwnBall(GameObject):
-    d = 2 * ghostRadius * PPM # TODO make somehow uniform e.g. by prohibiting other ghost radii 
-    def __init__(self, renderer, world, parentNode, position, owner, left,radius=ghostRadius):
-        GameObject.__init__(self, renderer, world)
-        self.parentNode = parentNode
-        self.trend = 'None'
-        self.owner = owner
-        self.diameter = 2 * radius * PPM
-        self.left = left
-        if left:
-            self.colored = avg.SVG('../data/img/char/bluepacman.svg', False).renderElement('layer1', (self.diameter, self.diameter))
-        else:
-            self.colored = avg.SVG('../data/img/char/greenpacman.svg', False).renderElement('layer1', (self.diameter, self.diameter))
-        self.node = avg.ImageNode(parent=parentNode, opacity=.85)
-        self.node.setBitmap(self.colored)
-        self.setShadow('ADD8E6')
-        ghostUpper = b2FixtureDef(userData='ownball', shape=b2CircleShape(radius=radius),
-                                  density=1, groupIndex= -2, categoryBits=cats['ownball'], maskBits=dontCollideWith('ghost'))
-        ghostLower = b2FixtureDef(userData='ownball', shape=b2PolygonShape(box=(radius, radius / 2, (0, -radius / 2), 0)),
-                                  density=1, groupIndex= -2, categoryBits=cats['ownball'], maskBits=dontCollideWith('ghost'))
-        self.body = world.CreateDynamicBody(position=position, fixtures=[ghostUpper, ghostLower],
-                                            userData=self, fixedRotation=True)
-       
-        self.render()
-        
-    def getOwner(self):
-        return self.owner
-
-    def render(self):
-        pos = self.body.position * PPM - self.node.size / 2
-        self.node.pos = (pos[0], pos[1])
-        self.node.angle = self.body.angle
-        
-        
     
 '''
 
@@ -524,7 +456,7 @@ OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOODOOOOOOOO
 
 '''    
                                 
-class BorderLine(GameObject):
+class BorderLine:
     body = None
     def __init__(self, world, pos1, pos2, restitution=0, sensor=False, *noCollisions):
         """ the positions are expected to be in meters """
@@ -539,54 +471,57 @@ class BorderLine(GameObject):
             self.body = None
             
         
-class Tower(GameObject):
-    def __init__(self, world,game,parentNode,position,number,left=0):
-        self.size = (150,150)
-        self.pos = (0,0)
-        self.pic = avg.SVG('../data/img/char/Wheel.svg', False).renderElement('layer1', self.size)
-        self.parentNode,self.game,self.world = parentNode,game,world
+class Tower:
+    def __init__(self, world, game, parentNode, position, number, left=False):
+        self.size = (150, 150) # XXX I don't like explicit numbers like these
+        self.pos = (0, 0)
+        self.pic = avg.SVG('../data/img/char/Wheel.svg', False).renderElement('layer1', self.size) # TODO make faster
+        self.parentNode, self.game, self.world = parentNode, game, world
         self.left = left
         if left:
-            self.node = avg.ImageNode(parent=parentNode, pos = (position[0]-self.size[0],position[1]-self.size[1]),angle = 0)
-            self.pos = (position[0]-self.size[0],position[1]-self.size[1])
+            self.node = avg.ImageNode(parent=parentNode, pos=(position[0] - self.size[0], position[1] - self.size[1]), angle=0)
+            self.pos = (position[0] - self.size[0], position[1] - self.size[1])
         else:
-            self.node = avg.ImageNode(parent=parentNode, pos = (position[0],position[1]-self.size[1]),angle = 0)
-            self.pos = (position[0],position[1]-self.size[1])
+            self.node = avg.ImageNode(parent=parentNode, pos=(position[0], position[1] - self.size[1]), angle=0)
+            self.pos = (position[0], position[1] - self.size[1])
             
         self.node.setBitmap(self.pic)
-        self.anim = avg.LinearAnim(self.node, 'angle',2000,0,3.14,False,None,self.restartanim).start()
-        g_player.setTimeout(10000+(number*1000), self.fire)
-        g_player.setTimeout(30000+(number*1000), self.destroy)
+        self.anim = avg.LinearAnim(self.node, 'angle', 2000, 0, 3.14, False, None, self.restartanim).start()
+        g_player.setTimeout(10000 + (number * 1000), self.fire)
+        g_player.setTimeout(30000 + (number * 1000), self.destroy)
         
     def restartanim(self):
-        if self.node:
-            self.anim = avg.LinearAnim(self.node, 'angle',2000,0,3.14,False,None,self.restartanim).start()
+        if self.node is not None:
+            self.anim = avg.LinearAnim(self.node, 'angle', 2000, 0, 3.14, False, None, self.restartanim).start()
     
     def fire(self):
-        if self.node:
-            RedBall(self.game.renderer, self.world, self.parentNode, (self.pos[0]/PPM+(self.size[0])/(2*PPM),self.pos[1]/PPM+(self.size[1]/(2*PPM))), self.game.leftPlayer, self.game.rightPlayer,self.left)
-            g_player.setTimeout(10000, self.fire)
+        if self.node is not None:
+            RedBall(self.game,self.parentNode, 
+                    (self.pos[0] / PPM + (self.size[0]) / (2 * PPM), self.pos[1] / PPM + (self.size[1] / (2 * PPM))),
+                    self.left)
+            g_player.setTimeout(3000, self.fire)
         
     def destroy(self):
-        self.anim = None
+        if self.anim is not None:
+            self.anim.abort()
+            self.anim = None
         if self.node is not None:
             self.node.active = False
             self.node.unlink(True)
             self.node = None
         
-
-            
+      
 class Bonus(GameObject):
     def __init__(self, parentNode, game, world, (name, effect)):
         displayWidth = parentNode.size[0]
         displayHeight = parentNode.size[1] 
-        self.size = (displayWidth/15,parentNode.size[0]/15)
-        self.pic = avg.SVG('../data/img/char/'+ name + '.svg', False).renderElement('layer1', self.size) 
-        self.parentNode,self.game,self.world = parentNode,game,world
+        self.size = (displayWidth / 15, parentNode.size[0] / 15)
+        self.pic = avg.SVG('../data/img/char/' + name + '.svg', False).renderElement('layer1', self.size) # TODO this has to get significantly faster! (use static dict) 
+        self.parentNode, self.game, self.world = parentNode, game, world
         self.effect = effect
-        self.leftBonus = avg.ImageNode(parent=parentNode,pos=(displayWidth/3,displayHeight/2-(self.size[1]/2)))
+        self.leftBonus = avg.ImageNode(parent=parentNode, pos=(displayWidth / 3, displayHeight / 2 - (self.size[1] / 2)))
         self.leftBonus.setBitmap(self.pic)
-        self.rightBonus = avg.ImageNode(parent=parentNode,pos=(2*displayWidth/3-self.size[0],displayHeight/2-(self.size[1]/2)))
+        self.rightBonus = avg.ImageNode(parent=parentNode, pos=(2 * displayWidth / 3 - self.size[0], displayHeight / 2 - (self.size[1] / 2)))
         self.rightBonus.setBitmap(self.pic)
         self.leftBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.onClick)
         self.rightBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.onClick)
@@ -609,13 +544,13 @@ class Bonus(GameObject):
             self.rightBonus = None
         
     def applyEffect(self, player):
-        self.effect(self,player)
+        self.effect(self, player)
         
     def pacShot(self, player):
         height = self.parentNode.size[1]
-        GhostBall(self.world, self.parentNode, (1*height)/4 ,self.game.leftPlayer == player)
-        GhostBall(self.world, self.parentNode, (2*height)/4,self.game.leftPlayer == player)
-        GhostBall(self.world, self.parentNode, (3*height)/4,self.game.leftPlayer == player)
+        GhostBall(self.parentNode, (1 * height) / 4, player.isLeft())
+        GhostBall(self.parentNode, (2 * height) / 4, player.isLeft())
+        GhostBall(self.parentNode, (3 * height) / 4, player.isLeft())
         
     def flipGhostStates(self, player=None):    
         if self.game.getGhosts():
@@ -632,91 +567,88 @@ class Bonus(GameObject):
         for b in self.game.getBalls():
             b.invert()
             
-    def hideGhosts(self, player = None):
+    def hideGhosts(self, player=None):
         self.game.killGhosts()
         
-    def bringBackGhosts(self, player = None):
+    def bringBackGhosts(self, player=None):
         self.game.createGhosts()
          
     def addGhost(self, player):
         if player.isLeft():
-            self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, self.game.middle - (0,(ballRadius+ghostRadius)*2), "blue2",player))
+            self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, self.game.middle - (0, (ballRadius + ghostRadius) * 2), "blue2", player))
         else:
-            self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, self.game.middle - (0,(ballRadius+ghostRadius)*2), "green",player))
+            self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, self.game.middle - (0, (ballRadius + ghostRadius) * 2), "green", player))
         
-    def setGhostToOpponent(self,player):
+    def setGhostToOpponent(self, player):
         for g in self.game.getGhosts():
             if player.isLeft():
                 g.setTrend('right')
             else:
                 g.setTrend('left')
                                   
-    def setTowers(self,player):
+    def setTowers(self, player):
         x = self.parentNode.size[0]
         y = self.parentNode.size[1]
         n = 3
-        if self.game.leftPlayer == player:
+        if player.isLeft():
             for i in (1, n):  
-                Tower(self.world, self.game,self.parentNode,(x/3,i*y/3),i,1)
+                Tower(self.world, self.game, self.parentNode, (x / 3, i * y / 3), i, 1)
         else:
             for i in (1, n):  
-                Tower(self.world, self.game,self.parentNode,(2*x/3,i*y/3),i, 0)
+                Tower(self.world, self.game, self.parentNode, (2 * x / 3, i * y / 3), i, True)
             
 
     def newOwnBall(self, player=None):
-        if player.isLeft():
-            OwnBall(self.game.renderer, self.world, self.parentNode, (random.randint(0,self.parentNode.size[0]/PPM),random.randint(0,self.parentNode.size[1]/PPM)),player,1)
-        else:
-            OwnBall(self.game.renderer, self.world, self.parentNode, (random.randint(0,self.parentNode.size[0]/PPM),random.randint(0,self.parentNode.size[1]/PPM)),player,0)
+        OwnBall(self.game, self.parentNode, player)
         
-    def newBlock(self,player): 
-        height = (self.parentNode.size[1]/2)-(brickSize*PPM)
+        
+    def newBlock(self, player): 
+        height = (self.parentNode.size[1] / 2) - (brickSize * PPM)
         
         width = self.parentNode.size[0]
         if player.isLeft():
-            Block(self.game.display, self.game.renderer, self.world, (width / 3 - (brickSize*5*PPM),height), (self.game.leftPlayer, self.game.rightPlayer),  random.choice(Block.form.values()))
+            Block(self.game.display, self.game.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height), (self.game.leftPlayer, self.game.rightPlayer), random.choice(Block.form.values()))
         else:
-            Block(self.game.display, self.game.renderer, self.world, (2*width / 3, height), (self.game.leftPlayer, self.game.rightPlayer),  random.choice(Block.form.values()))
-        
-    
-    def buildShild(self,player):
-        s= SemiPermeabelShield(self.game.world,self.parentNode,self.game,player.isLeft())
-        g_player.setTimeout(10000,s.destroy)
+            Block(self.game.display, self.game.renderer, self.world, (2 * width / 3, height), (self.game.leftPlayer, self.game.rightPlayer), random.choice(Block.form.values()))
+            
+    def buildShield(self, player):
+        s = SemipermeableShield(self.game.world, self.parentNode, self.game, player.isLeft(),'ghost')
+        g_player.setTimeout(10000, s.destroy)
      
 class PersistentBonus(Bonus):
-#    boni = dict(pacShot=Bonus.pacShot,
-#                stopGhosts=Bonus.stopGhosts,
-#                flipGhosts=Bonus.flipGhostStates,
-#                wheel=Bonus.setTowers,
-#                onlyPong=Bonus.buildShild,
-#                pacman=Bonus.newOwnBall)
+    boni = dict(pacShot=Bonus.pacShot,
+                stopGhosts=Bonus.stopGhosts,
+                flipGhosts=Bonus.flipGhostStates,
+                wheel=Bonus.setTowers,
+                onlyPong=Bonus.buildShield,
+                pacman=Bonus.newOwnBall)
 
-    boni = dict(pacman=Bonus.newOwnBall)
+#    boni = dict(onlyPong=Bonus.buildShield)
       
         
     def __init__(self, parentNode, game, world, (name, effect)):
         Bonus.__init__(self, parentNode, game, world, (name, effect))
     
     def onClick(self, event):
-        (self.game.leftPlayer if Bonus.onClick(self,event) else self.game.rightPlayer).addBonus(self)  
+        (self.game.leftPlayer if Bonus.onClick(self, event) else self.game.rightPlayer).addBonus(self)  
         
 class InstantBonus(Bonus):
     
-#    boni = dict(invertPac=Bonus.invertPac,
-#                newBlock=Bonus.newBlock,
-#                addClyde=Bonus.addGhost,
-#                Bonus4=Bonus.hideGhosts,
-#                Bonus5=Bonus.bringBackGhosts,
-#                Bonus6=Bonus.setGhostToOpponent,
-#                pacman=Bonus.newOwnBall)
+    boni = dict(invertPac=Bonus.invertPac,
+                newBlock=Bonus.newBlock,
+                addClyde=Bonus.addGhost,
+                Bonus4=Bonus.hideGhosts,
+                Bonus5=Bonus.bringBackGhosts,
+                Bonus6=Bonus.setGhostToOpponent,
+                pacman=Bonus.newOwnBall)
     
-    boni = dict(pacman=Bonus.newOwnBall)
+#    boni = dict(wheel=Bonus.setTowers)
           
     def __init__(self, parentNode, game, world, (name, effect)):
         Bonus.__init__(self, parentNode, game, world, (name, effect))
         
     def onClick(self, event):
-        self.applyEffect(self.game.leftPlayer if Bonus.onClick(self,event) else self.game.rightPlayer)
+        self.applyEffect(self.game.leftPlayer if Bonus.onClick(self, event) else self.game.rightPlayer)
         
 '''
 class Pill:
@@ -838,7 +770,7 @@ class Block:
         self.__assigned = False
         self.__timeCall = None
 #        ui.DragRecognizer(self.container, moveHandler=self.__onMove, endHandler = self.__moveEnd, coordSysNode = self.brickList[0].node)
-        ui.TransformRecognizer(self.container, moveHandler = self.__onTransform, endHandler = self.__moveEnd, coordSysNode = self.brickList[0].node)
+        ui.TransformRecognizer(self.container, moveHandler=self.__onTransform, endHandler=self.__moveEnd, coordSysNode=self.brickList[0].node)
     
 #    def __onMove(self, e, offset):
 #        self.container.pos += offset
