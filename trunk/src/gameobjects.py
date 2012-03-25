@@ -148,8 +148,10 @@ class Ball(GameObject):
         self.body.CreateCircleFixture(radius=ballRadius, density=1, restitution=.3,
                                       friction=.01, groupIndex=1, categoryBits=cats['ball'],
                                       maskBits=dontCollideWith('ghost'), userData='ball')
+
         self.body.CreateCircleFixture(radius=ballRadius, userData='ball', isSensor=True)
         self.nextDir = (random.choice([standardXInertia, -standardXInertia]), random.randint(-10, 10))
+
         self.__appear(lambda:self.nudge())
         #self.node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.reSpawn()) # XXX remove
         # self.done = 0
@@ -180,7 +182,10 @@ class Ball(GameObject):
             pos = self.spawnPoint
         self.body.position = pos
         yOffset = random.randint(-10, 10)
+
+
         self.nextDir = (-standardXInertia, yOffset) if  self.leftPlayer.points > self.rightPlayer.points else (standardXInertia, yOffset)
+
         self.__appear(lambda:self.nudge())
         
     def __appear(self, stopAction=None):
@@ -384,6 +389,48 @@ class Ghost(GameObject):
         self.changing = g_player.setTimeout(random.choice([2000, 3000, 4000, 5000, 6000]), self.changeMortality) # XXX store ids for stopping when one player wins
         if self.body and self.body.active: # just to be sure ;)
             self.flipState()
+
+            
+#class OwnBall(GameObject):
+#    d = 2 * ghostRadius * PPM 
+#    def __init__(self, renderer, world, parentNode, position, owner, left,radius=ghostRadius):
+#        GameObject.__init__(self, renderer, world)
+#        self.parentNode = parentNode
+#        self.trend = 'None'
+#        self.owner = owner
+#        self.diameter = 2 * radius * PPM
+#        self.left = left
+#        if left:
+#            self.colored = avg.SVG('../data/img/char/bluepacman.svg', False).renderElement('layer1', (self.diameter, self.diameter))
+#        else:
+#            self.colored = avg.SVG('../data/img/char/greenpacman.svg', False).renderElement('layer1', (self.diameter, self.diameter))
+#        self.node = avg.ImageNode(parent=parentNode, opacity=.85)
+#        self.node.setBitmap(self.colored)
+#        self.setShadow('ADD8E6')
+##        ghostUpper = b2FixtureDef(userData='ownball', shape=b2CircleShape(radius=radius),
+##                                  density=1, groupIndex= -2, categoryBits=cats['ownball'], maskBits=dontCollideWith('ghost'))
+##        ghostLower = b2FixtureDef(userData='ownball', shape=b2PolygonShape(box=(radius, radius / 2, (0, -radius / 2), 0)),
+##                                  density=1, groupIndex= -2, categoryBits=cats['ownball'], maskBits=dontCollideWith('ghost'))
+##        self.body = world.CreateDynamicBody(position=position, fixtures=[ghostUpper, ghostLower],
+##                                            userData=self, fixedRotation=True)
+#        fixtureDef = b2FixtureDef (userData='ownball', shape=b2CircleShape(radius=radius), density=1, groupIndex= -2, categoryBits=cats['ownball'], maskBits=dontCollideWith('ghost'),
+#                                  friction=.03, restitution=1)
+#        self.body = self.world.CreateStaticBody(position=position, userData=self)
+#        self.body.CreateFixture(fixtureDef)
+#        
+#       
+#        self.render()
+#        
+#    def getOwner(self):
+#        return self.owner
+#
+#    def render(self):
+#        pos = self.body.position * PPM - self.node.size / 2
+#        self.node.pos = (pos[0], pos[1])
+#        self.node.angle = self.body.angle
+        
+        
+
     
 '''
 
@@ -627,7 +674,8 @@ class PersistentBonus(Bonus):
                 onlyPong=Bonus.buildShield,
                 pacman=Bonus.newOwnBall)
 
-#    boni = dict(onlyPong=Bonus.buildShield)
+    #   boni = dict(onlyPong=Bonus.buildShield)
+
       
         
     def __init__(self, game, (name, effect)):
@@ -647,6 +695,7 @@ class InstantBonus(Bonus):
                 pacman=Bonus.newOwnBall)
     
 #    boni = dict(wheel=Bonus.setTowers)
+
           
     def __init__(self, game, (name, effect)):
         Bonus.__init__(self, game, (name, effect))

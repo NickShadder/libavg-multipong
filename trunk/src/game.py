@@ -19,6 +19,7 @@ class Renderer:
         self.objects = set()
     def register(self, *pyboxObjects):
         self.objects.update(pyboxObjects)
+    
     def deregister(self, *pyboxObjects):
         self.objects.difference_update(pyboxObjects)
     def draw(self):
@@ -68,7 +69,14 @@ class ContactListener(b2ContactListener):
             semi = fB.body.userData
             found = True
         if not found: return
+        elif dA == 'ownball' and dB == 'ball' and fA.body.userData.getOwner() == fB.body.userData.lastPlayer:
+            contact.enabled=False
         
+
+        elif dB == 'ownball' and dA == 'ball' and fB.body.userData.getOwner() == fA.body.userData.lastPlayer:
+            contact.enabled=False
+            
+
         if bat and ball:
             ball.lastPlayer = bat.zone.player
             return
@@ -175,7 +183,7 @@ class Game(gameapp.GameApp):
         self.middle = a2w((self.middleX, self.middleY))
         
         # create ghosts
-        self.createGhosts()
+        #self.createGhosts()
        
         # create balls
         self.balls = [Ball(self, self.renderer, self.world, self.display, self.middle)]
@@ -249,15 +257,16 @@ class Game(gameapp.GameApp):
                 if contact.fixtureA.userData == 'ownball' and contact.fixtureB.userData == 'ball':  
                     if ball.lastPlayer != contact.fixtureA.body.userData.getOwner() and ball.lastPlayer:
                         ball.lastPlayer.removePoint()
-                    self.removeBall(ball)
-                    contact.fixtureA.body.userData.destroy()
+                        ball.reSpawn()
+                        contact.fixtureA.body.userData.destroy()
                     break 
+                    
                     
                 elif contact.fixtureB.userData == 'ownball' and contact.fixtureA.userData == 'ball' and ball.lastPlayer:
                     if ball.lastPlayer != contact.fixtureB.body.userData.getOwner():
                         ball.lastPlayer.removePoint()
-                    self.removeBall(ball)
-                    contact.fixtureB.body.userData.destroy()
+                        ball.reSpawn()
+                        contact.fixtureB.body.userData.destroy()
                     break
         
     def _processBallvsGhost(self):
