@@ -6,7 +6,7 @@ Created on 19.01.2012
 import sys, random
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
-from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Bonus
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize, ghostRadius, brickSize, brickLines
 
 g_player = avg.Player.get()
@@ -82,6 +82,8 @@ class ContactListener(b2ContactListener):
 
 class Game(gameapp.GameApp):
     def init(self):
+        w = self._parentNode.size[0]//15
+        Bonus.bonusSize = w,w
         self.machine = statemachine.StateMachine('BEMOCK', 'MainMenu')
         self.machine.addState('MainMenu', ['Playing', 'Tutorial', 'About'], enterFunc=self.showMenu, leaveFunc=self.hideMenu)
         self.machine.addState('Tutorial', ['MainMenu', 'Playing', 'Tutorial'], enterFunc=self.startTutorial, leaveFunc=self.hideTutorial)
@@ -209,15 +211,18 @@ class Game(gameapp.GameApp):
     def bonusJob(self):
         persistentBonusWanted = random.randint(0, 1)
         if persistentBonusWanted:
-            PersistentBonus(self.display, self, self.world, random.choice(PersistentBonus.boni.items()))
+            PersistentBonus(self, random.choice(PersistentBonus.boni.items()))
         else:
-            InstantBonus(self.display, self, self.world, random.choice(InstantBonus.boni.items()))
+            InstantBonus(self, random.choice(InstantBonus.boni.items()))
         # the timeout must not be shorter than config.bonusTime
         # TODO get the bonusTime out of the config and out of the user's control 
         g_player.setTimeout(random.choice([3000, 4000, 5000]), self.bonusJob)
 
     def win(self, player):
         g_player.clearInterval(self.mainLoop)
+        for ghost in self.ghosts:
+            g_player.clearInterval(ghost.movement)
+            g_player.clearInterval(ghost.changing)
         # abort all anims and intervals
         # TODO tear down world and current display
         # TODO show winner/revanche screen
