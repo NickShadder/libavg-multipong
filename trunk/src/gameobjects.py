@@ -253,40 +253,38 @@ class RedBall(Ball):
             self.body.linearVelocity = (-self.parentNode.size[0] / 30, 0) # XXX maybe other than 30
               
 
-class Cloud(GameObject):
-    def __init__(self, world, parentNode, game, left, *noCollisions):
-        self.world = world
-        self.game = game
+class Cloud:    
+    pic = avg.SVG('../data/img/char/cloud.svg', False).renderElement('layer1', (500, 1000)) # XXX remove hardcode
+    def __init__(self, parentNode):
         self.parentNode = parentNode
-        self.pic = avg.SVG('../data/img/char/cloud.svg', False).renderElement('layer1', (500, 1000))
         self.node = avg.ImageNode(parent=parentNode, opacity=1, pos=(0, 0))
-        self.node.setBitmap(self.pic)
+        self.node.setBitmap(Cloud.pic)
+        # TODO this can't be it
                 
 class SemipermeableShield(GameObject):
-    def __init__(self, world, parentNode, game, left, *noCollisions):
-        self.world = world
+    def __init__(self, game, left, *noCollisions):
+        self.world = game.world
         self.game = game
-        self.parentNode = parentNode
+        self.parentNode = game.display
         self.left = left
         
         # TODO no need for two different images - just rotate ;)
         if left:
-            self.pic = avg.SVG('../data/img/char/semiperleft.svg', False).renderElement('layer1', (PPM * 2, parentNode.size[1]))
-            self.x = parentNode.size[0] / 3
+            self.pic = avg.SVG('../data/img/char/semiperleft.svg', False).renderElement('layer1', (PPM * 2, self.parentNode.size[1]))
+            self.x = self.parentNode.size[0] / 3
             self.w = 2
         else:
-            self.pic = avg.SVG('../data/img/char/semiperright.svg', False).renderElement('layer1', (PPM * 2, parentNode.size[1]))
-            self.x = 2 * parentNode.size[0] / 3 - (PPM * 2)
+            self.pic = avg.SVG('../data/img/char/semiperright.svg', False).renderElement('layer1', (PPM * 2, self.parentNode.size[1]))
+            self.x = 2 * self.parentNode.size[0] / 3 - (PPM * 2)
             self.w = 0        
         
-        self.node = avg.ImageNode(parent=parentNode, opacity=1, pos=(self.x, 0))
+        self.node = avg.ImageNode(parent=self.parentNode, opacity=1, pos=(self.x, 0))
         self.node.setBitmap(self.pic)
         
-        self.body = world.CreateStaticBody(position=(0, 0), userData=self)
+        self.body = self.world.CreateStaticBody(position=(0, 0), userData=self)
         self.body.CreateFixture(shape=b2EdgeShape(vertices=[(self.x / PPM + self.w, 0), (self.x / PPM + self.w, self.parentNode.size[1] / PPM)]), density=1,
                                 restitution=1, categoryBits=cats['semiborder'], userData='semiborder', maskBits=dontCollideWith(*noCollisions))
     
-
     def destroy(self):
         if self.body is not None:
             self.world.DestroyBody(self.body)
@@ -307,7 +305,7 @@ class Ghost(GameObject):
         self.parentNode = parentNode
         self.spawnPoint = position
         self.name = name
-        self.trend = 'None'
+        self.trend = None
         self.owner = owner
         self.mortal = mortal
         self.colored = avg.SVG('../data/img/char/' + name + '.svg', False).renderElement('layer1', (Ghost.diameter, Ghost.diameter)) # TODO make this faster (use static dict)
@@ -321,7 +319,6 @@ class Ghost(GameObject):
                                             userData=self, fixedRotation=True)
         self.changeMortality()
         self.render()
-        self.stopFlag = 0
         self.move()
         
 #        ui.DragRecognizer(self.node, moveHandler=self.onMove) # XXX just for debugging and fun
@@ -354,42 +351,37 @@ class Ghost(GameObject):
         g_player.setTimeout(3000, lambda:self.__reAppear(pos)) # XXX adjust timeout or make it configgable 
     
     def __reAppear(self, pos):
+        # TODO fix bug: sometimes body is None
         self.body.position = pos
         self.mortal = 0 # ghost respawns in immortal state XXX rerender this?
         self.render()
         self.node.active = True
         avg.fadeIn(self.node, 1000, .85, lambda:self.body.__setattr__('active', True)) 
-        # TODO fix bug: sometimes body is None
         
     def move(self, direction=None):
         # TODO implement some kind of AI
-        if not self.stopFlag:
-            g_player.setTimeout(random.randint(500, 2500), self.move)
-            if self.body and self.body.active: # just to be sure ;)
-                if direction is None:
-                    if self.trend == 'left':
-                        direction = random.randint(-10, 0), random.randint(-10, 10)
-                    elif self.trend == 'right':
-                        direction = random.randint(0, 10), random.randint(-10, 10)
-                    else:
-                        direction = random.randint(-10, 10), random.randint(-10, 10)
-                self.body.linearVelocity = direction
+        self.movement = g_player.setTimeout(random.randint(500, 2500), self.move)
+        if self.body is not None and self.body.active: # just to be sure ;)
+            if direction is None:
+                if self.trend == 'left':
+                    direction = random.randint(-10, 0), random.randint(-10, 10)
+                elif self.trend == 'right':
+                    direction = random.randint(0, 10), random.randint(-10, 10)
+                else:
+                    direction = random.randint(-10, 10), random.randint(-10, 10)
+            self.body.linearVelocity = direction
     
     def setTrend(self, trend):
         self.trend = trend
     
     def stop(self):
-        self.stopFlag = 1
+        g_player.clearInterval(self.movement)
         self.body.linearVelocity = (0, 0)
-        g_player.setTimeout(2000, self.deactivateStopFlag)
-    
-    def deactivateStopFlag(self):
-        self.stopFlag = 0
-        self.move()
+        g_player.setTimeout(2000, self.move)    
         
     def changeMortality(self):
         # TODO implement some kind of AI
-        g_player.setTimeout(random.choice([2000, 3000, 4000, 5000, 6000]), self.changeMortality) # XXX store ids for stopping when one player wins
+        self.changing = g_player.setTimeout(random.choice([2000, 3000, 4000, 5000, 6000]), self.changeMortality) # XXX store ids for stopping when one player wins
         if self.body and self.body.active: # just to be sure ;)
             self.flipState()
     
@@ -469,8 +461,7 @@ class BorderLine:
         if self.body is not None:
             self.world.DestroyBody(self.body)
             self.body = None
-            
-        
+
 class Tower:
     def __init__(self, world, game, parentNode, position, number, left=False):
         self.size = (150, 150) # XXX I don't like explicit numbers like these
@@ -509,15 +500,30 @@ class Tower:
             self.node.active = False
             self.node.unlink(True)
             self.node = None
-        
-      
-class Bonus(GameObject):
-    def __init__(self, parentNode, game, world, (name, effect)):
+
+class Bonus:
+    bonusSize = (50,50)
+    pics = dict(
+                invertPac=avg.SVG('../data/img/char/invertPac.svg', False).renderElement('layer1', bonusSize),
+                newBlock=avg.SVG('../data/img/char/newBlock.svg', False).renderElement('layer1', bonusSize),
+                addClyde=avg.SVG('../data/img/char/addClyde.svg', False).renderElement('layer1', bonusSize),
+                Bonus4=avg.SVG('../data/img/char/Bonus4.svg', False).renderElement('layer1', bonusSize),
+                Bonus5=avg.SVG('../data/img/char/Bonus5.svg', False).renderElement('layer1', bonusSize),
+                Bonus6=avg.SVG('../data/img/char/Bonus6.svg', False).renderElement('layer1', bonusSize),
+                pacman=avg.SVG('../data/img/char/pacman.svg', False).renderElement('layer1', bonusSize),
+                pacShot=avg.SVG('../data/img/char/pacShot.svg', False).renderElement('layer1', bonusSize),
+                stopGhosts=avg.SVG('../data/img/char/stopGhosts.svg', False).renderElement('layer1', bonusSize),
+                flipGhosts=avg.SVG('../data/img/char/flipGhosts.svg', False).renderElement('layer1', bonusSize),
+                wheel=avg.SVG('../data/img/char/wheel.svg', False).renderElement('layer1', bonusSize),
+                onlyPong=avg.SVG('../data/img/char/onlyPong.svg', False).renderElement('layer1', bonusSize)
+                )
+    def __init__(self, game, (name, effect)):
+        parentNode = game.display
         displayWidth = parentNode.size[0]
         displayHeight = parentNode.size[1] 
         self.size = (displayWidth / 15, parentNode.size[0] / 15)
-        self.pic = avg.SVG('../data/img/char/' + name + '.svg', False).renderElement('layer1', self.size) # TODO this has to get significantly faster! (use static dict) 
-        self.parentNode, self.game, self.world = parentNode, game, world
+        self.pic = Bonus.pics[name]
+        self.parentNode, self.game, self.world = parentNode, game, game.world
         self.effect = effect
         self.leftBonus = avg.ImageNode(parent=parentNode, pos=(displayWidth / 3, displayHeight / 2 - (self.size[1] / 2)))
         self.leftBonus.setBitmap(self.pic)
@@ -597,10 +603,8 @@ class Bonus(GameObject):
             for i in (1, n):  
                 Tower(self.world, self.game, self.parentNode, (2 * x / 3, i * y / 3), i, True)
             
-
     def newOwnBall(self, player=None):
         OwnBall(self.game, self.parentNode, player)
-        
         
     def newBlock(self, player): 
         height = (self.parentNode.size[1] / 2) - (brickSize * PPM)
@@ -612,8 +616,8 @@ class Bonus(GameObject):
             Block(self.game.display, self.game.renderer, self.world, (2 * width / 3, height), (self.game.leftPlayer, self.game.rightPlayer), random.choice(Block.form.values()))
             
     def buildShield(self, player):
-        s = SemipermeableShield(self.game.world, self.parentNode, self.game, player.isLeft(),'ghost')
-        g_player.setTimeout(10000, s.destroy)
+        s = SemipermeableShield(self.game, player.isLeft(),'ghost')
+        g_player.setTimeout(10000, s.destroy) # XXX tweak time
      
 class PersistentBonus(Bonus):
     boni = dict(pacShot=Bonus.pacShot,
@@ -626,8 +630,8 @@ class PersistentBonus(Bonus):
 #    boni = dict(onlyPong=Bonus.buildShield)
       
         
-    def __init__(self, parentNode, game, world, (name, effect)):
-        Bonus.__init__(self, parentNode, game, world, (name, effect))
+    def __init__(self, game, (name, effect)):
+        Bonus.__init__(self, game, (name, effect))
     
     def onClick(self, event):
         (self.game.leftPlayer if Bonus.onClick(self, event) else self.game.rightPlayer).addBonus(self)  
@@ -644,8 +648,8 @@ class InstantBonus(Bonus):
     
 #    boni = dict(wheel=Bonus.setTowers)
           
-    def __init__(self, parentNode, game, world, (name, effect)):
-        Bonus.__init__(self, parentNode, game, world, (name, effect))
+    def __init__(self, game, (name, effect)):
+        Bonus.__init__(self, game, (name, effect))
         
     def onClick(self, event):
         self.applyEffect(self.game.leftPlayer if Bonus.onClick(self, event) else self.game.rightPlayer)
