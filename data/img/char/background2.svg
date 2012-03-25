@@ -92,6 +92,105 @@
        xlink:href="#linearGradient3037"
        gradientUnits="userSpaceOnUse"
        gradientTransform="matrix(0.33783784,0,0,0.23712737,-0.96525104,802.8183)" />
+    <filter
+       x="0"
+       y="0"
+       width="1"
+       height="1"
+       color-interpolation-filters="sRGB"
+       id="filter3062">
+      <feColorMatrix
+         result="result2"
+         type="luminanceToAlpha"
+         id="feColorMatrix3064" />
+      <feComposite
+         in2="SourceGraphic"
+         operator="arithmetic"
+         k1="0"
+         k2="0"
+         k3="2"
+         k4="0"
+         in="result2"
+         result="result4"
+         id="feComposite3066" />
+      <feBlend
+         in2="result2"
+         mode="multiply"
+         in="result4"
+         result="result3"
+         id="feBlend3068" />
+      <feComposite
+         in2="SourceGraphic"
+         operator="in"
+         in="result3"
+         id="feComposite3070" />
+    </filter>
+    <filter
+       x="0"
+       y="0"
+       width="1"
+       height="1"
+       color-interpolation-filters="sRGB"
+       id="filter3072">
+      <feColorMatrix
+         result="result2"
+         type="luminanceToAlpha"
+         id="feColorMatrix3074" />
+      <feComposite
+         in2="SourceGraphic"
+         operator="arithmetic"
+         k1="0"
+         k2="0"
+         k3="2"
+         k4="0"
+         in="result2"
+         result="result4"
+         id="feComposite3076" />
+      <feBlend
+         in2="result2"
+         mode="multiply"
+         in="result4"
+         result="result3"
+         id="feBlend3078" />
+      <feComposite
+         in2="SourceGraphic"
+         operator="in"
+         in="result3"
+         id="feComposite3080" />
+    </filter>
+    <filter
+       x="0"
+       y="0"
+       width="1"
+       height="1"
+       color-interpolation-filters="sRGB"
+       id="filter3082">
+      <feColorMatrix
+         result="result2"
+         type="luminanceToAlpha"
+         id="feColorMatrix3084" />
+      <feComposite
+         in2="SourceGraphic"
+         operator="arithmetic"
+         k1="0"
+         k2="0"
+         k3="2"
+         k4="0"
+         in="result2"
+         result="result4"
+         id="feComposite3086" />
+      <feBlend
+         in2="result2"
+         mode="multiply"
+         in="result4"
+         result="result3"
+         id="feBlend3088" />
+      <feComposite
+         in2="SourceGraphic"
+         operator="in"
+         in="result3"
+         id="feComposite3090" />
+    </filter>
   </defs>
   <metadata
      id="metadata7">
@@ -114,7 +213,7 @@
        x="0"
        y="802.36218"
        id="rect3035"
-       style="fill:url(#linearGradient3012);fill-opacity:1" />
+       style="fill:url(#linearGradient3012);fill-opacity:1;filter:url(#filter3082)" />
   </g>
   <g
      transform="translate(0,-308.2677)"
@@ -125,7 +224,7 @@
        x="0"
        y="802.36218"
        id="rect3074"
-       style="fill:url(#linearGradient3082);fill-opacity:1" />
+       style="fill:url(#linearGradient3082);fill-opacity:1;filter:url(#filter3072)" />
   </g>
   <g
      transform="translate(0,-308.2677)"
@@ -136,6 +235,6 @@
        x="0"
        y="802.36218"
        id="rect3085"
-       style="fill:url(#linearGradient3010);fill-opacity:1" />
+       style="fill:url(#linearGradient3010);fill-opacity:1;filter:url(#filter3062)" />
   </g>
 </svg>
