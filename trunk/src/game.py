@@ -237,7 +237,7 @@ class Game(gameapp.GameApp):
             brick.hit()
         hitset.clear()
         
-    def ballball(self):
+    def ballball(self):     #TODO: try to find an appropriate method-name
         for ball in self.balls:
             for ce in ball.body.contacts:
                 contact = ce.contact

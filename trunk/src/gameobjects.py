@@ -427,7 +427,7 @@ Allgemein
 
 -    PACMAN invertiert seine flugrichtung [x]
 -     Geister stoppen kurz [x]
--    PACMAN wird kleiner [x]
+-    PACMAN wird kleiner [x]                                                         - Achtung! - koennte in der Wand "stecken" bleiben
 -    Extra Geist, der nur einen Spieler beeinflusst [x]
 -    Geister halten sich nur auf der anderen Seite auf [x]
 -    Ball fliegt auf der eigenen Haelfte langsamer
@@ -769,49 +769,74 @@ class Block:
         self.__alive = False
         self.__assigned = False
         self.__timeCall = None
-#        ui.DragRecognizer(self.container, moveHandler=self.__onMove, endHandler = self.__moveEnd, coordSysNode = self.brickList[0].node)
-        ui.TransformRecognizer(self.container, moveHandler=self.__onTransform, endHandler=self.__moveEnd, coordSysNode=self.brickList[0].node)
+        self.__cursor1 = None
+        self.__cursor2 = None
+        self.container.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.__cursorReg)
+        self.container.setEventHandler(avg.CURSOROUT, avg.TOUCH, self.__cursorDeReg)
+        ui.DragRecognizer(self.container, moveHandler=self.__onMove, coordSysNode = self.brickList[0].node)
+        ui.TransformRecognizer(self.container, moveHandler=self.__onTransform, endHandler=self.__moveEnd)
     
-#    def __onMove(self, e, offset):
-#        self.container.pos += offset
-#        widthDisplay = self.parentNode.size[1]
-#        widthThird = widthDisplay / 3
-#        if self.__assigned:
-#            self.__testInsertion()
-#        else:
-#            if e.pos[0] < widthThird:
-#                self.__assigned = True
-#                self.__onLeft = True
-#                self.__displayRaster(True)
-#            elif e.pos[0] > widthDisplay - widthThird:
-#                self.__assigned = True
-#                self.__displayRaster(True)
-#            else:
-#                self.__colourRed()
+    def __onMove(self, e, offset):
+        if self.__cursor2 is None:
+            if self.__timeCall is not None:
+                g_player.clearInterval(self.__timeCall)
+                self.__timeCall = None
+            self.container.pos += offset
+            widthDisplay = self.parentNode.size[1]
+            widthThird = widthDisplay / 3
+            if self.__assigned:
+                self.__testInsertion()
+            else:
+                if e.pos[0] < widthThird:
+                    self.__assigned = True
+                    self.__onLeft = True
+                    self.__displayRaster(True)
+                elif e.pos[0] > widthDisplay - widthThird:
+                    self.__assigned = True
+                    self.__displayRaster(True)
+                else:
+                    self.__colourRed()
+    
+    def __cursorReg(self, event):
+        if self.__cursor1 is None:
+            self.__cursor1 = event.cursorid
+        else:
+            self.__cursor2 = event.cursorid
+    
+    def __cursorDeReg(self, event):
+        if self.__cursor2 is event.cursorid:
+            self.__cursor2 = None
+        else:
+            self.__cursor1 = self.__cursor2
+            self.__cursor2 = None
     
     def __onTransform(self, tr):
         if self.__timeCall is not None:
             g_player.clearInterval(self.__timeCall)
             self.__timeCall = None
-        self.container.pos += tr.trans
-        widthDisplay = self.parentNode.size[1]
-        widthThird = widthDisplay / 3
-        for b in self.brickList:
-            if self.__assigned:
-                break
-            else:
-                if b.node.pos[0] + self.container.pos[0] < widthThird:
-                    self.__assigned = True
-                    self.__onLeft = True
-                    self.__displayRaster(True)        
-                elif b.node.pos[0] + self.container.pos[0] > widthDisplay - widthThird - brickSize * PPM:
-                    self.__assigned = True
-                    self.__displayRaster(True)
-        if self.__assigned:
-            self.__testInsertion()
-        else:
-            self.__colourRed()
-        self.container.angle += tr.rot
+#        if self.__cursor2 is None:
+#            # only one touch -> no intent to rotate -> move
+#            self.container.pos += tr.trans
+#            widthDisplay = self.parentNode.size[1]
+#            widthThird = widthDisplay / 3
+#            for b in self.brickList:
+#                if self.__assigned:
+#                    break
+#                else:
+#                    if b.node.pos[0] + self.container.pos[0] < widthThird:
+#                        self.__assigned = True
+#                        self.__onLeft = True
+#                        self.__displayRaster(True)        
+#                    elif b.node.pos[0] + self.container.pos[0] > widthDisplay - widthThird - brickSize * PPM:
+#                        self.__assigned = True
+#                        self.__displayRaster(True)
+#            if self.__assigned:
+#                self.__testInsertion()
+#            else:
+#                self.__colourRed()
+#        else:
+        if self.__cursor2 is not None:
+            self.container.angle += tr.rot
     
     def __testInsertion(self):
         cellList = []
@@ -869,6 +894,8 @@ class Block:
                 b.node.unlink(True)
                 b.node = None
         self.__displayRaster(False)
+        if self.__timeCall is not None:
+            self.__timeCall = None
     
     def __moveEnd(self, tr):
         self.container.angle = round(2 * self.container.angle / math.pi) * math.pi / 2
