@@ -802,9 +802,10 @@ class Brick(GameObject):
             self.material = random.choice(filter(lambda x:type(x).__name__ == 'tuple', Material.__dict__.values())) # XXX hacky
         self.node = avg.ImageNode(parent=parentBlock.container, pos=pos)
         self.node.setBitmap(self.material[1][0])
+        self.__index = None
 
     # spawn a physical object
-    def materialize(self, pos=None):
+    def materialize(self, onLeft, x, y, pos=None):
         if pos is None:
             pos = (self.node.pos + self.node.pivot) / PPM # TODO this looks like trouble
         self.node.unlink()
@@ -813,12 +814,18 @@ class Brick(GameObject):
                                   density=1, friction=.03, restitution=1, categoryBits=cats['brick'])
         self.body = self.world.CreateStaticBody(position=pos, userData=self)
         self.body.CreateFixture(fixtureDef)
+        self.__index = (x, y)
     
     def hit(self):
         self.hitcount += 1
         if self.hitcount < len(self.material[1]):
             self.node.setBitmap(self.material[1][self.hitcount])
         else:
+            if self.block.onLeft:
+                player = self.block.leftPlayer
+            else:
+                player = self.block.rightPlayer
+            player.raster[self.__index[0]][self.__index[1]] = None
             self.destroy() # XXX maybe override destroy for special effects, or call something like vanish first
 
     def render(self):
@@ -857,7 +864,7 @@ class Block:
             if flip: posX = rightMostPos - posX
             posY = line * brickSizeInPx
             self.brickList.append(Brick(self, renderer, world, parentNode, (posX, posY), material))
-        self.__onLeft = False
+        self.onLeft = False
         self.__alive = False
         self.__assigned = False
         self.__timeCall = None
@@ -881,7 +888,7 @@ class Block:
             else:
                 if e.pos[0] < widthThird:
                     self.__assigned = True
-                    self.__onLeft = True
+                    self.onLeft = True
                     self.__displayRaster(True)
                 elif e.pos[0] > widthDisplay - widthThird:
                     self.__assigned = True
@@ -917,7 +924,7 @@ class Block:
 #                else:
 #                    if b.node.pos[0] + self.container.pos[0] < widthThird:
 #                        self.__assigned = True
-#                        self.__onLeft = True
+#                        self.onLeft = True
 #                        self.__displayRaster(True)        
 #                    elif b.node.pos[0] + self.container.pos[0] > widthDisplay - widthThird - brickSize * PPM:
 #                        self.__assigned = True
@@ -938,9 +945,7 @@ class Block:
             if (x >= brickLines):
                 possible = False
             else:
-                if x < 0:
-                    x = 0
-                if self.__onLeft:
+                if self.onLeft:
                     cellList.append(self.leftPlayer.raster[x][y])
                 else:
                     cellList.append(self.rightPlayer.raster[x][y])
@@ -956,17 +961,17 @@ class Block:
     
     def __calculateIndices(self, position):
         pixelBrickSize = brickSize * PPM
-        if self.__onLeft:
+        if self.onLeft:
             x = int(round((position[0] + self.container.pos[0]) / pixelBrickSize))
         else:
-            x = int(round((self.parentNode.size[0] - position[0] - self.container.pos[0]) / pixelBrickSize))
-            if x != 0:
-                x -= 1
+            x = int(round((self.parentNode.size[0] - position[0] - self.container.pos[0] - pixelBrickSize) / pixelBrickSize))
         y = int(round((position[1] + self.container.pos[1]) / pixelBrickSize))
         if y >= bricksPerLine:
             y = bricksPerLine - 1
         elif y < 0:
             y = 0
+        if x < 0:
+            x = 0
         return (x, y)
     
     def __colourRed(self):
@@ -998,21 +1003,19 @@ class Block:
             for b in self.brickList:
                 b.node.intensity = (1, 1, 1)
                 (x, y) = self.__calculateIndices(b.node.pos)
-                if x < 0:
-                    x = 0
                 xPos, yPos = x * pixelBrickSize, y * pixelBrickSize
-                if self.__onLeft:
+                if self.onLeft:
                     self.leftPlayer.raster[x][y] = b
                 else:
                     xPos = self.parentNode.size[0] - xPos - pixelBrickSize
                     self.rightPlayer.raster[x][y] = b
                 b.node.pos = (xPos, yPos)
                 b.node.sensitive = False
-                b.materialize()
+                b.materialize(self.onLeft, x, y)
             self.__displayRaster(False)
     
     def __displayRaster(self, on):
-        if self.__onLeft:
+        if self.onLeft:
             raster = self.leftPlayer.nodeRaster
         else:
             raster = self.rightPlayer.nodeRaster
