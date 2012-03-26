@@ -24,7 +24,6 @@ class Player:
         self.other = None
         self.game = game
         self.zone = avgNode
-        self.boni = []
         self.left = avgNode.pos == (0, 0)
         avgNode.player = self # monkey patch
         left = avgNode.pos == (0, 0)
@@ -60,28 +59,20 @@ class Player:
     def updateDisplay(self):
         self.pointsDisplay.text = 'Points: %d / %d' % (self.points, pointsToWin)
 
-    # TODO coordinate with wall
-    def addBonus(self, bonus):
-        self.boni.append(bonus)
-        self.printBoni()
-
-    # TODO coordinate with wall
-    def useBonus(self, bonus, node):
-        self.boni.remove(bonus)
-        node.active = False # XXX animate?
-        node.unlink(True)
-        bonus.applyEffect(self)
+    def freeBrick(self):
+        for x in xrange(brickLines):
+            for y in xrange(bricksPerLine):
+                brick = self.raster[x][y]
+                if brick is not None:
+                    if brick.getBonus() is None:
+                        return brick
+        return None
     
-    # TODO remove as soon as wall comes 
-    def printBoni(self):
-        brSPx = brickSize * PPM
-        left = self.zone.pos == (0, 0)
-        x = 10 if left else self.zone.width - brSPx - 10
-        y = len(self.boni) * brSPx + 10
-        node = avg.ImageNode(parent=self.zone, pos=(x, y), size=(brSPx, brSPx))
-        node.setBitmap(self.boni[-1].pic)
-        # normalerweise sollte hier noch Nachruecken sein, aber da diese methode eh weggeht, habe ich keinen bock drauf ;) 
-        node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e, bonus=self.boni[-1], node=node:self.useBonus(bonus, node))
+    def addBonus(self, bonus):
+        brick = self.freeBrick()
+        if brick is not None:
+            brick.setBonus(bonus)
+            bonus.saveBonus(brick)
 
 class GameObject:
     def __init__(self, renderer, world):
@@ -612,6 +603,7 @@ class Bonus:
         self.leftBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.onClick)
         self.rightBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.onClick)
         self.timeout = g_player.setTimeout(bonusTime * 1000, self.vanish)
+        self.__node = None
         
     def onClick(self, event):
         g_player.clearInterval(self.timeout)
@@ -631,6 +623,23 @@ class Bonus:
         
     def applyEffect(self, player):
         self.effect(self, player)
+    
+    def saveBonus(self, brick):
+        hSize = brickSize * PPM / 2
+        position = hSize / 2
+        self.__node = avg.ImageNode(parent = brick.getDivNode(), pos = (position, position), size = (hSize, hSize))
+        self.__node.setBitmap(self.pic)
+        self.__node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e: self.__useBonus(brick))
+    
+    def destroy(self, brick):
+        brick.removeBonus()
+        self.__node.active = False # XXX animate?
+        self.__node.unlink(True)
+    
+    def __useBonus(self, brick):
+        self.destroy(brick)
+        self.applyEffect(brick.getPlayer())
+        #brick.getPlayer.moveTogetherBoni()        XXX
         
     def pacShot(self, player):
         height = self.parentNode.size[1]
@@ -802,7 +811,9 @@ class Brick(GameObject):
             self.material = random.choice(filter(lambda x:type(x).__name__ == 'tuple', Material.__dict__.values())) # XXX hacky
         self.node = avg.ImageNode(parent=parentBlock.container, pos=pos)
         self.node.setBitmap(self.material[1][0])
+        self.__divNode = None
         self.__index = None
+        self.__bonus = None
 
     # spawn a physical object
     def materialize(self, onLeft, x, y, pos=None):
@@ -810,6 +821,7 @@ class Brick(GameObject):
             pos = (self.node.pos + self.node.pivot) / PPM # TODO this looks like trouble
         self.node.unlink()
         self.parentNode.appendChild(self.node)
+        self.__divNode = avg.DivNode(parent = self.parentNode, pos = self.node.pos, size = self.node.size)
         fixtureDef = b2FixtureDef (userData='brick', shape=b2PolygonShape (box=(halfBrickSize, halfBrickSize)),
                                   density=1, friction=.03, restitution=1, categoryBits=cats['brick'])
         self.body = self.world.CreateStaticBody(position=pos, userData=self)
@@ -821,12 +833,25 @@ class Brick(GameObject):
         if self.hitcount < len(self.material[1]):
             self.node.setBitmap(self.material[1][self.hitcount])
         else:
-            if self.block.onLeft:
-                player = self.block.leftPlayer
-            else:
-                player = self.block.rightPlayer
-            player.raster[self.__index[0]][self.__index[1]] = None
+            self.block.getPlayer().raster[self.__index[0]][self.__index[1]] = None
+            if self.__bonus is not None:
+                self.__bonus.destroy(self)
             self.destroy() # XXX maybe override destroy for special effects, or call something like vanish first
+    
+    def getBonus(self):
+        return self.__bonus
+    
+    def setBonus(self, bonus):
+        self.__bonus = bonus
+    
+    def removeBonus(self):
+        self.__bonus = None
+    
+    def getDivNode(self):
+        return self.__divNode
+    
+    def getPlayer(self):
+        return self.block.getPlayer()
 
     def render(self):
         pass # XXX move the empty method to GameObject when the game is ready
@@ -942,8 +967,9 @@ class Block:
         possible = True
         for b in self.brickList:
             (x, y) = self.__calculateIndices(b.node.pos)
-            if (x >= brickLines):
+            if (x >= brickLines or y >= bricksPerLine or x < 0 or y < 0):
                 possible = False
+                break
             else:
                 if self.onLeft:
                     cellList.append(self.leftPlayer.raster[x][y])
@@ -966,12 +992,12 @@ class Block:
         else:
             x = int(round((self.parentNode.size[0] - position[0] - self.container.pos[0] - pixelBrickSize) / pixelBrickSize))
         y = int(round((position[1] + self.container.pos[1]) / pixelBrickSize))
-        if y >= bricksPerLine:
-            y = bricksPerLine - 1
-        elif y < 0:
-            y = 0
-        if x < 0:
-            x = 0
+#        if y >= bricksPerLine:
+#            y = bricksPerLine - 1
+#        elif y < 0:
+#            y = 0
+#        if x < 0:
+#            x = 0
         return (x, y)
     
     def __colourRed(self):
@@ -1021,3 +1047,8 @@ class Block:
             raster = self.rightPlayer.nodeRaster
         for n in raster:
                 n.active = on
+    
+    def getPlayer(self):
+        if self.onLeft:
+            return self.leftPlayer
+        return self.rightPlayer
