@@ -3,10 +3,11 @@ Created on 19.01.2012
 
 @author: 2526240
 '''
-import sys, random
+import sys, random,gameobjects
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
-from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Bonus
+
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize, ghostRadius, brickSize, brickLines
 
 g_player = avg.Player.get()
@@ -26,26 +27,58 @@ class Renderer:
         for obj in self.objects:
             obj.render()
 
-class ContactListener(b2ContactListener):
-   
+class ContactListener(b2ContactListener):   
     def __init__(self, hitset):
         b2ContactListener.__init__(self)
         self.hitset = hitset
     def EndContact(self, contact):
         fA, fB = contact.fixtureA, contact.fixtureB
         dA, dB = fA.userData, fB.userData
-        ball, brick = None, None
-        if (dA == 'redball' or dA == 'ball') and dB == 'brick':
-            ball, brick = fA.body.userData, fB.body.userData
-        elif dA == 'brick' and (dB == 'redball' or dB == 'ball') :
-            brick, ball = fA.body.userData, fB.body.userData
-        if brick and ball:
-            self.hitset.add(brick)
+        ball = red = brick = bat = None
+        found = False
+        if dA == 'ball': 
+            ball = fA.body.userData
+            found = True
+        elif dA == 'bat':
+            bat = fA.body.userData
+            found = True
+        elif dA == 'redball':
+            red = fA.body.userData
+            found = True
+        elif dA == 'brick':
+            brick = fA.body.userData
+            found = True
+        if not found: return
+        
+        found = False
+        if dB == 'ball': 
+            ball = fB.body.userData
+            found = True
+        elif dB == 'bat':
+            bat = fB.body.userData
+            found = True
+        elif dB == 'redball':
+            red = fB.body.userData
+            found = True
+        elif dB == 'brick':
+            brick = fB.body.userData
+            found = True
+        if not found: return
+        
+        if brick is not None:
+            if ball is not None:
+                self.hitset.add(brick)
+            elif red is not None:
+                self.hitset.add(brick)
+                self.hitset.add(red)
+        elif bat is not None:
+            if red is not None:
+                self.hitset.add(red)
                 
     def PreSolve(self, contact, oldManifold):
         fA, fB = contact.fixtureA, contact.fixtureB
         dA, dB = fA.userData, fB.userData
-        ball, bat, semi = None, None, None
+        ball = bat = semi = None
         found = False
         if dA == 'ball': 
             ball = fA.body.userData
@@ -68,19 +101,11 @@ class ContactListener(b2ContactListener):
         if dB == 'semiborder':
             semi = fB.body.userData
             found = True
-        if not found: return
-        elif dA == 'ownball' and dB == 'ball' and fA.body.userData.getOwner() == fB.body.userData.lastPlayer:
-            contact.enabled=False
-        
-
-        elif dB == 'ownball' and dA == 'ball' and fB.body.userData.getOwner() == fA.body.userData.lastPlayer:
-            contact.enabled=False
+        if not found: return       
             
-
-        if bat and ball:
+        if bat is not None and ball is not None:
             ball.lastPlayer = bat.zone.player
-            return
-        elif semi and ball:
+        elif semi is not None and ball is not None:
             worldManifold = contact.worldManifold
             if semi.ownedByLeft():
                 if worldManifold.normal.x < 0:
@@ -90,8 +115,9 @@ class ContactListener(b2ContactListener):
 
 class Game(gameapp.GameApp):
     def init(self):
-        w = self._parentNode.size[0]//15
-        Bonus.bonusSize = w,w
+        gameobjects.displayWidth,gameobjects.displayHeight = self._parentNode.size
+        gameobjects.bricksPerLine = (int)(self._parentNode.size[1]/brickSize)
+        gameobjects.preRender()
         self.machine = statemachine.StateMachine('BEMOCK', 'MainMenu')
         self.machine.addState('MainMenu', ['Playing', 'Tutorial', 'About'], enterFunc=self.showMenu, leaveFunc=self.hideMenu)
         self.machine.addState('Tutorial', ['MainMenu', 'Playing', 'Tutorial'], enterFunc=self.startTutorial, leaveFunc=self.hideTutorial)
@@ -100,7 +126,7 @@ class Game(gameapp.GameApp):
         self.machine.addState('About', ['MainMenu'], enterFunc=self.showAbout, leaveFunc=self.hideAbout)        
         self.showMenu()
 
-    def makeButtonInMiddle(self, name, node, yOffset, pyFunc):
+    def _makeButtonInMiddle(self, name, node, yOffset, pyFunc):
         path = '../data/img/btn/'
         svg = avg.SVG(path + name + '_up.svg', False)
         height = node.height / 8 # XXX make dependant on actual resolution sometime
@@ -112,12 +138,11 @@ class Game(gameapp.GameApp):
         return ui.TouchButton(upNode, downNode, clickHandler=pyFunc, parent=node, pos=position)
 
     def showMenu(self):
-        self.startPlaying()
-#        self.menuScreen = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
-#        self.startButton = self.makeButtonInMiddle('start', self.menuScreen, -1, lambda:self.machine.changeState('Playing'))
-#        self.tutorialButton = self.makeButtonInMiddle('help', self.menuScreen, 0, lambda:self.machine.changeState('Tutorial'))
-#        self.aboutButton = self.makeButtonInMiddle('about', self.menuScreen, 1, lambda:self.machine.changeState('About'))
-#        self.exitButton = self.makeButtonInMiddle('exit', self.menuScreen, 2, lambda:exit(0))
+        self.menuScreen = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
+        self.startButton = self._makeButtonInMiddle('start', self.menuScreen, -1, lambda:self.machine.changeState('Playing'))
+        self.tutorialButton = self._makeButtonInMiddle('help', self.menuScreen, 0, lambda:self.machine.changeState('Tutorial'))
+        self.aboutButton = self._makeButtonInMiddle('about', self.menuScreen, 1, lambda:self.machine.changeState('About'))
+        self.exitButton = self._makeButtonInMiddle('exit', self.menuScreen, 2, lambda:exit(0))
 
     def hideMenu(self):
         # XXX find out if we need to tear down all the buttons first
@@ -135,7 +160,7 @@ class Game(gameapp.GameApp):
     def showAbout(self):
         self.aboutScreen = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
         avg.WordsNode(parent=self.aboutScreen, x=5, text='Unnamed Multipong<br/>as envisioned and implemented by<br/>Benjamin Guttman<br/>Joachim Couturier<br/>Philipp Hermann<br/>Mykola Havrikov<br/><br/>This game uses libavg(www.libavg.de) and PyBox2D(http://code.google.com/p/pybox2d/)')
-        self.menuButton = self.makeButtonInMiddle('menu', self.aboutScreen, 1, lambda:self.machine.changeState('MainMenu'))
+        self.menuButton = self._makeButtonInMiddle('menu', self.aboutScreen, 1, lambda:self.machine.changeState('MainMenu'))
 
     def hideAbout(self):
         self.aboutScreen.unlink(True)
@@ -148,7 +173,7 @@ class Game(gameapp.GameApp):
 #        background.setBitmap(avg.SVG('../data/img/char/background.svg', False).renderElement('layer1', self.display.size))
         self.display.player = None # monkey patch
         (displayWidth, displayHeight) = self.display.size
-        widthThird = displayWidth / 3
+        widthThird = (int)(displayWidth / 3)
         fieldSize = (widthThird, displayHeight)
         self.field1 = avg.DivNode(parent=self.display, size=fieldSize)
         self.field2 = avg.DivNode(parent=self.display, size=fieldSize, pos=(displayWidth - widthThird, 0))
@@ -184,7 +209,8 @@ class Game(gameapp.GameApp):
         self.middle = a2w((self.middleX, self.middleY))
         
         # create ghosts
-        #self.createGhosts()
+        self.ghosts = []
+        self.createGhosts()
        
         # create balls
         self.balls = [Ball(self, self.renderer, self.world, self.display, self.middle)]
@@ -192,19 +218,24 @@ class Game(gameapp.GameApp):
         
         BatManager(self.field1, self.world, self.renderer)
         BatManager(self.field2, self.world, self.renderer)
-        self.bonusjob = g_player.setTimeout(1000, self.bonusJob)
+        self.bonusjob = g_player.setTimeout(1000, self._bonusJob)
+        
+        # spawn two square blocks just to be able to gather boni
+        Block(self.display, self.renderer, self.world, (50,35), (self.leftPlayer,self.rightPlayer), Block.form['SQUARE'])
+        Block(self.display, self.renderer, self.world, (1000,35), (self.leftPlayer,self.rightPlayer), Block.form['SQUARE'])
         
     def createGhosts(self):
         # FIXME TODO positions
         offset = 2*ballRadius + 3*ghostRadius
-        self.ghosts = [Ghost(self.renderer, self.world, self.display, self.middle + (offset,offset), "blinky"),
-                       Ghost(self.renderer, self.world, self.display, self.middle + (-offset,offset), "pinky"),
-                       Ghost(self.renderer, self.world, self.display, self.middle - (-offset,offset), "inky"),
-                       Ghost(self.renderer, self.world, self.display, self.middle - (offset,offset), "clyde")]   
+        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle + (offset,offset), "blinky"))
+        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle + (-offset,offset), "pinky"))
+        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle - (-offset,offset), "inky"))
+        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle - (offset,offset), "clyde"))   
         
     def killGhosts(self):
-        for g in self.getGhosts():
-            g.destroy()  
+        for ghost in self.ghosts:        
+            ghost.destroy()
+        del self.ghosts[:]
                 
 #    def getMiddleX(self):
 #        return self.middleX
@@ -221,7 +252,7 @@ class Game(gameapp.GameApp):
     def getGhosts(self):
         return self.ghosts
         
-    def bonusJob(self):
+    def _bonusJob(self):
         persistentBonusWanted = random.randint(0, 1)
         if persistentBonusWanted:
             PersistentBonus(self, random.choice(PersistentBonus.boni.items()))
@@ -229,7 +260,7 @@ class Game(gameapp.GameApp):
             InstantBonus(self, random.choice(InstantBonus.boni.items()))
         # the timeout must not be shorter than config.bonusTime
         # TODO get the bonusTime out of the config and out of the user's control 
-        g_player.setTimeout(random.choice([3000, 4000, 5000]), self.bonusJob)
+        g_player.setTimeout(random.choice([3000, 4000, 5000]), self._bonusJob) # XXX tweak
 
     def win(self, player):
         g_player.clearInterval(self.mainLoop)
@@ -249,31 +280,28 @@ class Game(gameapp.GameApp):
             self.balls.remove(ball)
             ball.destroy()
 
-
     def _processBallvsBrick(self, hitset):
         for brick in hitset:
             brick.hit()
         hitset.clear()
         
-    def ballball(self):
+    def _processBallvsBall(self):
         for ball in self.balls:
             for ce in ball.body.contacts:
                 contact = ce.contact
-                
-                if contact.fixtureA.userData == 'ownball' and contact.fixtureB.userData == 'ball':  
-                    if ball.lastPlayer != contact.fixtureA.body.userData.getOwner() and ball.lastPlayer:
+                mine  = None
+                if contact.fixtureA.userData == 'ownball':
+                    mine = contact.fixtureA.body.userData                
+                elif contact.fixtureB.userData == 'ownball':
+                    mine = contact.fixtureB.body.userData
+                    
+                if mine is not None:
+                    if ball.lastPlayer != mine.getOwner() and ball.lastPlayer is not None:
                         ball.lastPlayer.removePoint()
                         ball.reSpawn()
-                        contact.fixtureA.body.userData.destroy()
-                    
-                    
-                elif contact.fixtureB.userData == 'ownball' and contact.fixtureA.userData == 'ball' and ball.lastPlayer:
-                    if ball.lastPlayer != contact.fixtureB.body.userData.getOwner():
-                        ball.lastPlayer.removePoint()
-                        ball.reSpawn()
-                        contact.fixtureB.body.userData.destroy()
-                break
-        
+                        mine.destroy()
+                        return
+
     def _processBallvsGhost(self):
         for ball in self.balls:
             for ce in ball.body.contacts:
@@ -303,25 +331,6 @@ class Game(gameapp.GameApp):
                         else:
                             self.removeBall(ball)
                         break
-                    
-    def _processRedBallvsWall(self):
-        for ball in self.redballs:
-            if ball is not None and ball.body is not None:
-                for ce in ball.body.contacts:
-                    contact = ce.contact        
-                    if contact.fixtureA.userData == 'brick':
-                        self.hitset.add(contact.fixtureA.body.userData)
-                        ball.destroy()
-                        break
-                
-                    elif contact.fixtureB.userData == 'brick':
-                        self.hitset.add(contact.fixtureB.body.userData)
-                        ball.destroy()
-                        break
-                    
-                    elif contact.fixtureA.userData == 'bat' or contact.fixtureB.userData == 'bat':
-                        ball.destroy()
-                        break
 
     def _checkBallPosition(self):
         for ball in self.balls:
@@ -335,11 +344,10 @@ class Game(gameapp.GameApp):
     def step(self):
         self.world.Step(TIME_STEP, 10, 10)
         self.world.ClearForces()
-        self._processBallvsBrick(self.hitset)
         self._processBallvsGhost()
-        self.ballball()
-        self._processRedBallvsWall()
         self._checkBallPosition()
+        self._processBallvsBall()
+        self._processBallvsBrick(self.hitset)
         self.renderer.draw()             
 
 class BatManager:

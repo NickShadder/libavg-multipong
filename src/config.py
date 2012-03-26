@@ -17,7 +17,6 @@ maxBatSize = 17 # maximal bat size in meters XXX should be dependent on the actu
 # ****************** wall config ******************
 #size has to be an even number!!!
 brickSize = 2 # the size of a brick in meter XXX should be dependent on the actual resolution / bricksPerLine
-bricksPerLine = 480 / PPM * brickSize   #480 resolution->height
 brickLines = 4
 initialNumberOfBlocks = 10
 maxNumberOfBlocks = 30
