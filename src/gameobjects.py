@@ -143,7 +143,7 @@ class Ball(GameObject):
         self.lastPlayer = None
         self.node = avg.ImageNode(parent=parentNode)
         self.node.setBitmap(Ball.pic)
-        self.setShadow('FFFF00')
+        #self.setShadow('FFFF00')
         self.body = world.CreateDynamicBody(position=position, userData=self, active=False, bullet=True) # XXX reevaluate bullet-ness
         self.body.CreateCircleFixture(radius=ballRadius, density=1, restitution=.3,
                                       friction=.01, groupIndex=1, categoryBits=cats['ball'],
@@ -217,22 +217,54 @@ class Ball(GameObject):
             direction = self.nextDir
         self.body.linearVelocity = direction
         self.render()
+#
+#class OwnBall(GameObject):
+#    leftPic = avg.SVG('../data/img/char/bluepacman.svg', False).renderElement('layer1', (Ball.diameter, Ball.diameter))
+#    rightPic = avg.SVG('../data/img/char/greenpacman.svg', False).renderElement('layer1', (Ball.diameter, Ball.diameter))
+#    def __init__(self, game, parentNode, owner):
+#        
+#        self.owner = owner
+#        self.node.setBitmap(OwnBall.leftPic if owner.isLeft() else OwnBall.rightPic)        
+#        self.body.userData = self
+#        for fix in self.body.fixtures:
+#            fix.userData = 'ownball'
+#            #fix.groupIndex = -2 # XXX test
+#            fix.categoryBits = cats['ownball']
+#            
+#    def getOwner(self):
+#        return self.owner
 
-class OwnBall(Ball):
-    leftPic = avg.SVG('../data/img/char/bluepacman.svg', False).renderElement('layer1', (Ball.diameter, Ball.diameter))
-    rightPic = avg.SVG('../data/img/char/greenpacman.svg', False).renderElement('layer1', (Ball.diameter, Ball.diameter))
-    def __init__(self, game, parentNode, owner):
-        Ball.__init__(self, game, game.renderer, game.world, parentNode,game.middle)
+class OwnBall(GameObject):
+    d = 2 * ghostRadius * PPM # TODO make somehow uniform e.g. by prohibiting other ghost radii 
+    def __init__(self, renderer, world, parentNode, position, owner, left,radius=ghostRadius):
+        GameObject.__init__(self, renderer, world)
+        self.parentNode = parentNode
+        self.trend = 'None'
         self.owner = owner
-        self.node.setBitmap(OwnBall.leftPic if owner.isLeft() else OwnBall.rightPic)        
-        self.body.userData = self
-        for fix in self.body.fixtures:
-            fix.userData = 'ownball'
-            #fix.groupIndex = -2 # XXX test
-            fix.categoryBits = cats['ownball']
-            
+        self.diameter = 2 * radius * PPM
+        self.left = left
+        if left:
+            self.colored = avg.SVG('../data/img/char/bluepacman.svg', False).renderElement('layer1', (self.diameter, self.diameter))
+        else:
+            self.colored = avg.SVG('../data/img/char/greenpacman.svg', False).renderElement('layer1', (self.diameter, self.diameter))
+        self.node = avg.ImageNode(parent=parentNode, opacity=.85)
+        self.node.setBitmap(self.colored)
+        self.setShadow('ADD8E6')
+        ghostUpper = b2FixtureDef(userData='ownball', shape=b2CircleShape(radius=radius),
+                                  density=1, groupIndex= -2, categoryBits=cats['ownball'], maskBits=dontCollideWith('ghost'))
+        ghostLower = b2FixtureDef(userData='ownball', shape=b2PolygonShape(box=(radius, radius / 2, (0, -radius / 2), 0)),
+                                  density=1, groupIndex= -2, categoryBits=cats['ownball'], maskBits=dontCollideWith('ghost'))
+        self.body = world.CreateDynamicBody(position=position, fixtures=[ghostUpper, ghostLower],
+                                            userData=self, fixedRotation=True)
+        
     def getOwner(self):
-        return self.owner 
+        return self.owner
+
+    def render(self):
+        pos = self.body.position * PPM - self.node.size / 2
+        self.node.pos = (pos[0], pos[1])
+        self.node.angle = self.body.angle    
+         
         
 class RedBall(Ball):
     pic = avg.SVG('../data/img/char/redpacman.svg', False).renderElement('layer1', (Ball.diameter, Ball.diameter))
@@ -246,6 +278,7 @@ class RedBall(Ball):
             fix.userData = 'redball'
             #fix.groupIndex = -3 # XXX test
             fix.categoryBits = cats['redball']
+            fix.maskBits=dontCollideWith('ball','redball')
     
     # Override
     def nudge(self, direction=None):
@@ -525,7 +558,7 @@ class Tower:
             
         self.node.setBitmap(self.pic)
         self.anim = avg.LinearAnim(self.node, 'angle', 2000, 0, 3.14, False, None, self.restartanim).start()
-        g_player.setTimeout(10000 + (number * 1000), self.fire)
+        g_player.setTimeout(1000 + (number * 1000), self.fire)
         g_player.setTimeout(30000 + (number * 1000), self.destroy)
         
     def restartanim(self):
@@ -534,9 +567,9 @@ class Tower:
     
     def fire(self):
         if self.node is not None:
-            RedBall(self.game,self.parentNode, 
+            self.game.getRedBalls().append(RedBall(self.game,self.parentNode, 
                     (self.pos[0] / PPM + (self.size[0]) / (2 * PPM), self.pos[1] / PPM + (self.size[1] / (2 * PPM))),
-                    self.left)
+                    self.left))
             g_player.setTimeout(3000, self.fire)
         
     def destroy(self):
@@ -621,10 +654,12 @@ class Bonus:
             b.invert()
             
     def hideGhosts(self, player=None):
-        self.game.killGhosts()
+        if len(self.game.getGhosts()) > 0:
+            self.game.killGhosts()
         
     def bringBackGhosts(self, player=None):
-        self.game.createGhosts()
+        if len(self.game.getGhosts()) == 0:
+            self.game.createGhosts()
          
     def addGhost(self, player):
         if player.isLeft():
@@ -642,17 +677,20 @@ class Bonus:
     def setTowers(self, player):
         x = self.parentNode.size[0]
         y = self.parentNode.size[1]
-        n = 3
-        if player.isLeft():
-            for i in (1, n):  
-                Tower(self.world, self.game, self.parentNode, (x / 3, i * y / 3), i, 1)
+        n = 4
+        if self.game.leftPlayer == player:
+            for i in range(1, n):  
+                Tower(self.world, self.game,self.parentNode,(x/3,i*y/3),i,1)
         else:
-            for i in (1, n):  
-                Tower(self.world, self.game, self.parentNode, (2 * x / 3, i * y / 3), i, True)
+            for i in range(1, n):  
+                Tower(self.world, self.game,self.parentNode,(2*x/3,i*y/3),i, 0)
             
     def newOwnBall(self, player=None):
-        OwnBall(self.game, self.parentNode, player)
-        
+        if player.isLeft():
+            OwnBall(self.game.renderer, self.world, self.parentNode, (random.randint(0,self.parentNode.size[0]/PPM),random.randint(0,self.parentNode.size[1]/PPM)),player,1)
+        else:
+            OwnBall(self.game.renderer, self.world, self.parentNode, (random.randint(0,self.parentNode.size[0]/PPM),random.randint(0,self.parentNode.size[1]/PPM)),player,0)
+          
     def newBlock(self, player): 
         height = (self.parentNode.size[1] / 2) - (brickSize * PPM)
         
@@ -674,7 +712,8 @@ class PersistentBonus(Bonus):
                 onlyPong=Bonus.buildShield,
                 pacman=Bonus.newOwnBall)
 
-    #   boni = dict(onlyPong=Bonus.buildShield)
+
+
 
       
         
@@ -686,15 +725,15 @@ class PersistentBonus(Bonus):
         
 class InstantBonus(Bonus):
     
-    boni = dict(invertPac=Bonus.invertPac,
-                newBlock=Bonus.newBlock,
-                addClyde=Bonus.addGhost,
-                Bonus4=Bonus.hideGhosts,
-                Bonus5=Bonus.bringBackGhosts,
-                Bonus6=Bonus.setGhostToOpponent,
-                pacman=Bonus.newOwnBall)
+#    boni = dict(invertPac=Bonus.invertPac,
+#                newBlock=Bonus.newBlock,
+#                addClyde=Bonus.addGhost,
+#                Bonus4=Bonus.hideGhosts,
+#                Bonus5=Bonus.bringBackGhosts,
+#                Bonus6=Bonus.setGhostToOpponent,
+#                pacman=Bonus.newOwnBall)
     
-#    boni = dict(wheel=Bonus.setTowers)
+    boni = dict( pacman=Bonus.newOwnBall)
 
           
     def __init__(self, game, (name, effect)):

@@ -112,11 +112,12 @@ class Game(gameapp.GameApp):
         return ui.TouchButton(upNode, downNode, clickHandler=pyFunc, parent=node, pos=position)
 
     def showMenu(self):
-        self.menuScreen = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
-        self.startButton = self.makeButtonInMiddle('start', self.menuScreen, -1, lambda:self.machine.changeState('Playing'))
-        self.tutorialButton = self.makeButtonInMiddle('help', self.menuScreen, 0, lambda:self.machine.changeState('Tutorial'))
-        self.aboutButton = self.makeButtonInMiddle('about', self.menuScreen, 1, lambda:self.machine.changeState('About'))
-        self.exitButton = self.makeButtonInMiddle('exit', self.menuScreen, 2, lambda:exit(0))
+        self.startPlaying()
+#        self.menuScreen = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
+#        self.startButton = self.makeButtonInMiddle('start', self.menuScreen, -1, lambda:self.machine.changeState('Playing'))
+#        self.tutorialButton = self.makeButtonInMiddle('help', self.menuScreen, 0, lambda:self.machine.changeState('Tutorial'))
+#        self.aboutButton = self.makeButtonInMiddle('about', self.menuScreen, 1, lambda:self.machine.changeState('About'))
+#        self.exitButton = self.makeButtonInMiddle('exit', self.menuScreen, 2, lambda:exit(0))
 
     def hideMenu(self):
         # XXX find out if we need to tear down all the buttons first
@@ -187,6 +188,7 @@ class Game(gameapp.GameApp):
        
         # create balls
         self.balls = [Ball(self, self.renderer, self.world, self.display, self.middle)]
+        self.redballs = []
         
         BatManager(self.field1, self.world, self.renderer)
         BatManager(self.field2, self.world, self.renderer)
@@ -209,6 +211,9 @@ class Game(gameapp.GameApp):
 #    
 #    def getMiddleY(self):
 #        return self.middleY
+    
+    def getRedBalls(self):
+        return self.redballs
     
     def getBalls(self):
         return self.balls
@@ -250,16 +255,16 @@ class Game(gameapp.GameApp):
             brick.hit()
         hitset.clear()
         
-    def ballball(self):     #TODO: try to find an appropriate method-name
+    def ballball(self):
         for ball in self.balls:
             for ce in ball.body.contacts:
                 contact = ce.contact
+                
                 if contact.fixtureA.userData == 'ownball' and contact.fixtureB.userData == 'ball':  
                     if ball.lastPlayer != contact.fixtureA.body.userData.getOwner() and ball.lastPlayer:
                         ball.lastPlayer.removePoint()
                         ball.reSpawn()
                         contact.fixtureA.body.userData.destroy()
-                    break 
                     
                     
                 elif contact.fixtureB.userData == 'ownball' and contact.fixtureA.userData == 'ball' and ball.lastPlayer:
@@ -267,7 +272,7 @@ class Game(gameapp.GameApp):
                         ball.lastPlayer.removePoint()
                         ball.reSpawn()
                         contact.fixtureB.body.userData.destroy()
-                    break
+                break
         
     def _processBallvsGhost(self):
         for ball in self.balls:
@@ -298,7 +303,25 @@ class Game(gameapp.GameApp):
                         else:
                             self.removeBall(ball)
                         break
+                    
+    def _processRedBallvsWall(self):
+        for ball in self.redballs:
+            if ball is not None and ball.body is not None:
+                for ce in ball.body.contacts:
+                    contact = ce.contact        
+                    if contact.fixtureA.userData == 'brick':
+                        self.hitset.add(contact.fixtureA.body.userData)
+                        ball.destroy()
+                        break
                 
+                    elif contact.fixtureB.userData == 'brick':
+                        self.hitset.add(contact.fixtureB.body.userData)
+                        ball.destroy()
+                        break
+                    
+                    elif contact.fixtureA.userData == 'bat' or contact.fixtureB.userData == 'bat':
+                        ball.destroy()
+                        break
 
     def _checkBallPosition(self):
         for ball in self.balls:
@@ -315,6 +338,7 @@ class Game(gameapp.GameApp):
         self._processBallvsBrick(self.hitset)
         self._processBallvsGhost()
         self.ballball()
+        self._processRedBallvsWall()
         self._checkBallPosition()
         self.renderer.draw()             
 
