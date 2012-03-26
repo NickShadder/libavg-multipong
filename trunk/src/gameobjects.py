@@ -4,10 +4,13 @@ Created on 15.02.2012
 @author: 2526240
 '''
 
-import random, math
-from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize, bonusTime, brickLines
+import random
+import math
+
 from libavg import avg, ui
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape, b2Filter
+
+from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize, bonusTime, brickLines
 
 cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008, 'redball':0x0010, 'semiborder':0x0020, 'ownball':0x0040}
 def dontCollideWith(*categories): return reduce(lambda x, y: x ^ y, [cats[el] for el in categories], 0xFFFF)
@@ -31,8 +34,7 @@ class Player:
         # XXX gameobects may obstruct view of the points!
         self.pointsDisplay = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=pos, angle=angle,
                                            text='Points: 0 / %d' % pointsToWin)
-        # TODO does it have to be initialized with so many Nones?! there is no test of the form if raster[x][y] is None!
-        self.raster = [[None] * bricksPerLine] * brickLines #Brick-raster
+        self.raster = [[None for x in xrange(bricksPerLine)] for y in xrange(brickLines)]
         self.nodeRaster = []                    #rectNodes to display the margins of the raster
         pixelBrickSize = brickSize * PPM
         for x in xrange(brickLines):
@@ -58,7 +60,8 @@ class Player:
     def updateDisplay(self):
         self.pointsDisplay.text = 'Points: %d / %d' % (self.points, pointsToWin)
 
-    def freeBrick(self):
+    def nextFreeBrick(self):
+        # TODO this is very ugly and slow - better keep a list of available bricks
         for x in xrange(brickLines):
             for y in xrange(bricksPerLine):
                 brick = self.raster[x][y]
@@ -68,7 +71,7 @@ class Player:
         return None
     
     def addBonus(self, bonus):
-        brick = self.freeBrick()
+        brick = self.nextFreeBrick()
         if brick is not None:
             brick.setBonus(bonus)
             bonus.saveBonus(brick)
@@ -359,7 +362,7 @@ class Ghost(GameObject):
         return self.owner
              
     def flipState(self):
-        if self.node is not None:
+        if self.node is not None and self.body.active:
             self.mortal ^= 1
             self.node.setBitmap(self.blue if self.mortal else self.colored)
         
@@ -369,7 +372,10 @@ class Ghost(GameObject):
         self.node.angle = self.body.angle
              
     def reSpawn(self, pos=None):
-        self.body.active = False 
+        self.body.active = False
+        if self.movement is not None:
+            g_player.clearInterval(self.movement)
+            self.movement = None
         if pos is None:
             pos = self.spawnPoint
         avg.fadeOut(self.node, 1000, lambda:self.__kill(pos))
@@ -385,11 +391,12 @@ class Ghost(GameObject):
             self.mortal = 0 # ghost respawns in immortal state XXX rerender this?
             self.render()
             self.node.active = True
-            avg.fadeIn(self.node, 1000, .85, lambda:self.__activateBody)
+            avg.fadeIn(self.node, 1000, .85, self.__activateBody)
         
     def __activateBody(self):
         if self.body is not None:
             self.body.active = True
+            self.move()
         
     def move(self, direction=None):
         # TODO implement some kind of AI
@@ -409,9 +416,10 @@ class Ghost(GameObject):
     
     def stop(self):
         if self.body is not None:
-            g_player.clearInterval(self.movement)
+            if self.movement is not None:
+                g_player.clearInterval(self.movement)
             self.body.linearVelocity = (0, 0)
-            g_player.setTimeout(2000, self.move)    
+            self.movement = g_player.setTimeout(2000, self.move)    
         
     def changeMortality(self):
         # TODO implement some kind of AI
@@ -419,6 +427,12 @@ class Ghost(GameObject):
         if self.body and self.body.active: # just to be sure ;)
             self.flipState()
   
+    # override
+    def destroy(self):
+        GameObject.destroy(self)
+        if self.movement is not None:
+            g_player.clearInterval(self.movement)
+            self.movement = None
 '''
 
 TOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
@@ -577,7 +591,7 @@ class Bonus:
         position = hSize / 2
         self.__node = avg.ImageNode(parent = brick.getDivNode(), pos = (position, position), size = (hSize, hSize))
         self.__node.setBitmap(self.pic)
-        self.__node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e: self.__useBonus(brick))
+        self.__node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e,brick=brick: self.__useBonus(brick))
     
     def destroy(self, brick):
         brick.removeBonus()
@@ -614,14 +628,15 @@ class Bonus:
         self.game.killGhosts()
         
     def bringBackGhosts(self, player=None):
-        if not self.game.getGhosts(): # http://stackoverflow.com/questions/53513/python-what-is-the-best-way-to-check-if-a-list-is-empty
-            self.game.createGhosts()
+        self.hideGhosts(player) # kill off ghosts created by the players
+        self.game.createGhosts() # restore the original four ghosts 
          
-    def addGhost(self, player):
+    def addGhost(self, player):        
         if player.isLeft():
-            self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, self.game.middle - (0, (ballRadius + ghostRadius) * 2), "blue2", player))
+            name = "blue2"
         else:
-            self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, self.game.middle - (0, (ballRadius + ghostRadius) * 2), "green", player))
+            name = "green"            
+        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, self.game.middle - (0, (ballRadius + ghostRadius) * 2), name, player))
         
     def sendGhostsToOpponent(self, player):
         for g in self.game.getGhosts():
@@ -811,7 +826,7 @@ class Block:
     LPIECE=(4, 3, 0),
     TPIECE=(4, 3, 1)
 )
-    def __init__(self, parentNode, renderer, world, position, player, form=None, flip=False, material=None, angle=0):
+    def __init__(self, parentNode, renderer, world, position, player, form=None, flip=False, material=None, angle=0):        
         self.parentNode, self.renderer, self.world, self.position = parentNode, renderer, world, position
         self.form, self.flip, self.material, self.angle = form, flip, material, angle
         self.leftPlayer, self.rightPlayer = player
@@ -848,7 +863,7 @@ class Block:
                 g_player.clearInterval(self.__timeCall)
                 self.__timeCall = None
             self.container.pos += offset
-            widthDisplay = self.parentNode.size[1]
+            widthDisplay = self.parentNode.size[1] # XXX this calculation should be outside the handler
             widthThird = widthDisplay / 3
             if self.__assigned:
                 self.__testInsertion()
@@ -905,23 +920,15 @@ class Block:
             self.container.angle += tr.rot
     
     def __testInsertion(self):
-        cellList = []
-        possible = True
+        possible = True        
+        testRaster = (self.leftPlayer if self.onLeft else self.rightPlayer).raster        
         for b in self.brickList:
             (x, y) = self.__calculateIndices(b.node.pos)
-            if (x >= brickLines or y >= bricksPerLine or x < 0 or y < 0):
+            if ((x >= brickLines) or (y >= bricksPerLine) or
+                (x < 0) or (y < 0) or 
+                (testRaster[x][y] is not None)):
                 possible = False
                 break
-            else:
-                if self.onLeft:
-                    cellList.append(self.leftPlayer.raster[x][y])
-                else:
-                    cellList.append(self.rightPlayer.raster[x][y])
-        if possible:
-            for co in cellList:
-                if co != None:
-                    possible = False
-                    break
         if possible:
             self.__colourGreen()
         else:
@@ -939,7 +946,7 @@ class Block:
 #        elif y < 0:
 #            y = 0
 #        if x < 0:
-#            x = 0
+#            x = 0        
         return (x, y)
     
     def __colourRed(self):
@@ -960,7 +967,7 @@ class Block:
                 b.node = None
         self.__displayRaster(False)
         if self.__timeCall is not None:
-            self.__timeCall = None
+            self.__timeCall = None # XXX shouldn't there be a g_player.clearInterval(self.__timeCall) here?
     
     def __moveEnd(self, tr):
         self.container.angle = round(2 * self.container.angle / math.pi) * math.pi / 2
@@ -980,7 +987,7 @@ class Block:
                 b.node.pos = (xPos, yPos)
                 b.node.sensitive = False
                 b.materialize(self.onLeft, x, y)
-            self.__displayRaster(False)
+            self.__displayRaster(False) 
     
     def __displayRaster(self, on):
         if self.onLeft:
@@ -988,12 +995,13 @@ class Block:
         else:
             raster = self.rightPlayer.nodeRaster
         for n in raster:
-                n.active = on
+            n.active = on        
     
     def getPlayer(self):
         if self.onLeft:
             return self.leftPlayer
         return self.rightPlayer
+
 
 def preRender():
     global displayWidth, displayHeight

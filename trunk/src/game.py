@@ -3,10 +3,13 @@ Created on 19.01.2012
 
 @author: 2526240
 '''
-import sys, random,gameobjects
+import sys
+import random
+
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
 
+import gameobjects
 from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize, ghostRadius, brickSize, brickLines
 
@@ -116,7 +119,7 @@ class ContactListener(b2ContactListener):
 class Game(gameapp.GameApp):
     def init(self):
         gameobjects.displayWidth,gameobjects.displayHeight = self._parentNode.size
-        gameobjects.bricksPerLine = (int)(self._parentNode.size[1]/brickSize)
+        gameobjects.bricksPerLine = (int)(self._parentNode.size[1]/(brickSize*PPM))
         gameobjects.preRender()
         self.machine = statemachine.StateMachine('BEMOCK', 'MainMenu')
         self.machine.addState('MainMenu', ['Playing', 'Tutorial', 'About'], enterFunc=self.showMenu, leaveFunc=self.hideMenu)
@@ -220,6 +223,7 @@ class Game(gameapp.GameApp):
         BatManager(self.field2, self.world, self.renderer)
         self.bonusjob = g_player.setTimeout(1000, self._bonusJob)
         
+        # TEMPORARY 
         # spawn two square blocks just to be able to gather boni
         Block(self.display, self.renderer, self.world, (50,35), (self.leftPlayer,self.rightPlayer), Block.form['SQUARE'])
         Block(self.display, self.renderer, self.world, (1000,35), (self.leftPlayer,self.rightPlayer), Block.form['SQUARE'])
@@ -361,7 +365,7 @@ class BatManager:
         self.pos = [] # it's a list of tuples of the form (cursorid, position)  
         self.bat = None
         self.field.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.onDown)
-        self.field.setEventHandler(avg.CURSORUP, avg.TOUCH, self.onUp)
+        #self.field.setEventHandler(avg.CURSORUP, avg.TOUCH, self.onUp)
         self.field.setEventHandler(avg.CURSOROUT, avg.TOUCH, self.onUp)
         self.rec = ui.TransformRecognizer(self.field, moveHandler=self.onTransform)
         
