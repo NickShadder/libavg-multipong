@@ -267,22 +267,18 @@ class RedBall(Ball):
         Ball.__init__(self, game, game.renderer, game.world, parentNode, position)
         self.node.setBitmap(RedBall.pic)
         self.left = left
-        self.parentNode = parentNode
-        self.body.active=True
         self.body.userData = self
-        filterdef = b2Filter(groupIndex = -1,categoryBits = cats['redball'],maskBits = dontCollideWith('ball','redball'))
+        filterdef = b2Filter(groupIndex = -1,categoryBits = cats['redball'],maskBits = dontCollideWith('ball','redball','ownball'))
         for fix in self.body.fixtures:
             fix.userData = 'redball'
             fix.filterData = filterdef        
     # Override
     def nudge(self, direction=None):
         self.body.active = True
-        self.body.angularVelocity = 0
-        self.body.angle = 0
+        speedX = -25 # XXX tweak
         if self.left:
-            self.body.linearVelocity = (self.parentNode.size[0]/30, random.randint(-10,10)) # XXX maybe other than 30
-        else:
-            self.body.linearVelocity = (-self.parentNode.size[0]/30, random.randint(-10,10)) # XXX maybe other than 30
+            speedX = -speedX
+        self.body.linearVelocity = (speedX, random.randint(-15,15))
               
     def hit(self):
         self.destroy()
@@ -312,7 +308,7 @@ class SemipermeableShield:
         
         self.body = self.world.CreateStaticBody(position=(x/PPM+.5, displayHeight/(2*PPM)), userData=self)
         self.body.CreateFixture(shape=b2PolygonShape(box=(.5, displayHeight/(2*PPM), (0, 0), math.pi)), density=1,
-                                restitution=1, groupIndex = -1, categoryBits=cats['semiborder'], userData='semiborder', 
+                                restitution=1, groupIndex = -2, categoryBits=cats['semiborder'], userData='semiborder', 
                                 maskBits=dontCollideWith(*noCollisions))
     
     def destroy(self):
