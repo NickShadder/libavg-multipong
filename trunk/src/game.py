@@ -267,7 +267,6 @@ class Game(gameapp.GameApp):
         return self.redballs
             
     def createGhosts(self):
-        # FIXME TODO positions
         offset = 2*ballRadius + 3*ghostRadius
         self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle + (offset,offset), "blinky"))
         self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle + (-offset,offset), "pinky"))
@@ -332,7 +331,7 @@ class Game(gameapp.GameApp):
             InstantBonus(self, ('newBlock',InstantBonus.boni['newBlock']))
         # the timeout must not be shorter than config.bonusTime
         # TODO get the bonusTime out of the config and out of the user's control 
-        g_player.setTimeout(random.choice([3000, 4000, 5000]), self._bonusJob) # XXX tweak
+        self.bonusjob = g_player.setTimeout(random.choice([3000, 4000, 5000]), self._bonusJob) # XXX tweak
 
     def win(self, player):
         g_player.clearInterval(self.mainLoop)

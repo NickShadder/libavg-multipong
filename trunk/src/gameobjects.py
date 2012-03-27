@@ -100,29 +100,8 @@ class GameObject:
             self.node.unlink(True)
             self.node = None
             
-class GhostBall:
-    diameter = 2 * ballRadius * PPM
-    pic = avg.SVG('../data/img/char/pacman.svg', False).renderElement('layer1', (diameter, diameter))     
-    def __init__(self, parentNode, y, left):
-        self.node = avg.ImageNode(parent=parentNode, size=(GhostBall.diameter, GhostBall.diameter))
-        self.node.setBitmap(GhostBall.pic)
-        width = int(parentNode.size[0])
-        start = -GhostBall.diameter,y
-        end = width,y
-        if not left: 
-            start,end = end,start
-            self.node.angle = math.pi
-        avg.LinearAnim(self.node, 'pos', width, start, end, False, None, self.destroy).start()                 
-        
-    def destroy(self):
-        if self.node is not None:
-            self.node.active = False
-            self.node.unlink(True)
-            self.node = None   
-
 class Ball(GameObject):
-    diameter = 2 * ballRadius * PPM
-    pic = avg.SVG('../data/img/char/pacman.svg', False).renderElement('layer1', (diameter, diameter))
+    pic = None
     def __init__(self, game, renderer, world, parentNode, position):
         GameObject.__init__(self, renderer, world)
         self.game = game
@@ -208,9 +187,7 @@ class Ball(GameObject):
         self.render()
 
 class Mine(Ball):
-    # XXX the mine should look like miss pacman ;)
-    leftPic = avg.SVG('../data/img/char/bluepacman.svg', False).renderElement('layer1', (Ball.diameter, Ball.diameter))
-    rightPic = avg.SVG('../data/img/char/greenpacman.svg', False).renderElement('layer1', (Ball.diameter, Ball.diameter))
+    leftPic = rightPic = None
     def __init__(self, game, parentNode, owner):
         position = (random.randint(0,(int)(parentNode.size[0]/PPM)),random.randint(0,(int)(parentNode.size[1]/PPM)))
         Ball.__init__(self, game, game.renderer, game.world, parentNode,position)
@@ -262,7 +239,7 @@ class Mine(Ball):
 #        self.node.angle = self.body.angle    
             
 class RedBall(Ball):
-    pic = avg.SVG('../data/img/char/redpacman.svg', False).renderElement('layer1', (Ball.diameter, Ball.diameter))
+    pic = None
     def __init__(self, game, parentNode, position,left):
         Ball.__init__(self, game, game.renderer, game.world, parentNode, position)
         self.node.setBitmap(RedBall.pic)
@@ -283,8 +260,27 @@ class RedBall(Ball):
     def hit(self):
         self.destroy()
 
+class GhostBall:
+    def __init__(self, parentNode, y, left):
+        diameter =  2 * ballRadius * PPM
+        self.node = avg.ImageNode(parent=parentNode, size=(diameter, diameter))
+        self.node.setBitmap(Ball.pic)
+        width = int(parentNode.size[0])
+        start = -diameter,y
+        end = width,y
+        if not left: 
+            start,end = end,start
+            self.node.angle = math.pi
+        avg.LinearAnim(self.node, 'pos', width, start, end, False, None, self.destroy).start()                 
+        
+    def destroy(self):
+        if self.node is not None:
+            self.node.active = False
+            self.node.unlink(True)
+            self.node = None   
+
 class Cloud:    
-    pic = avg.SVG('../data/img/char/cloud.svg', False).renderElement('layer1', (500, 1000)) # XXX remove hardcode
+    pic = None    
     def __init__(self, parentNode):
         self.parentNode = parentNode
         self.node = avg.ImageNode(parent=parentNode, opacity=1, pos=(0, 0))
@@ -324,8 +320,7 @@ class SemipermeableShield:
         return self.left
 
 class Ghost(GameObject):
-    diameter = 2 * ghostRadius * PPM 
-    blue = avg.SVG('../data/img/char/blue.svg', False).renderElement('layer1', (diameter, diameter))
+    pics = None    
     def __init__(self, renderer, world, parentNode, position, name, owner=None, mortal=1):
         GameObject.__init__(self, renderer, world)
         self.parentNode = parentNode
@@ -334,9 +329,8 @@ class Ghost(GameObject):
         self.trend = None
         self.owner = owner
         self.mortal = mortal
-        self.colored = avg.SVG('../data/img/char/' + name + '.svg', False).renderElement('layer1', (Ghost.diameter, Ghost.diameter)) # TODO make this faster (use static dict)
         self.node = avg.ImageNode(parent=parentNode, opacity=.85)
-        self.setShadow('ADD8E6')
+        # self.setShadow('ADD8E6')
         ghostUpper = b2FixtureDef(userData='ghost', shape=b2CircleShape(radius=ghostRadius),
                                   density=1, groupIndex= -1, categoryBits=cats['ghost'], maskBits=dontCollideWith('ball'))
         ghostLower = b2FixtureDef(userData='ghost', shape=b2PolygonShape(box=(ghostRadius, ghostRadius / 2, (0, -ghostRadius / 2), 0)),
@@ -360,7 +354,10 @@ class Ghost(GameObject):
     def flipState(self):
         if self.node is not None and self.body.active:
             self.mortal ^= 1
-            self.node.setBitmap(self.blue if self.mortal else self.colored)
+            if self.mortal:
+                self.node.setBitmap(Ghost.pics['blue'])
+            else:
+                self.node.setBitmap(Ghost.pics[self.name])
         
     def render(self):
         pos = self.body.position * PPM - self.node.size / 2
@@ -420,7 +417,7 @@ class Ghost(GameObject):
     def changeMortality(self):
         # TODO implement some kind of AI
         self.changing = g_player.setTimeout(random.choice([2000, 3000, 4000, 5000, 6000]), self.changeMortality) # XXX store ids for stopping when one player wins
-        if self.body and self.body.active: # just to be sure ;)
+        if self.body is not None and self.body.active: # just to be sure ;)
             self.flipState()
   
     # override
@@ -507,10 +504,9 @@ class BorderLine:
             self.body = None
 
 class Tower:
+    pic = None
     def __init__(self, world, game, parentNode, position, number, left=False):
         self.size = (150, 150) # XXX I don't like explicit numbers like these
-        self.pos = (0, 0)
-        self.pic = avg.SVG('../data/img/char/wheel.svg', False).renderElement('layer1', self.size) # TODO make faster
         self.parentNode, self.game, self.world = parentNode, game, world
         self.left = left
         if left:
@@ -520,7 +516,7 @@ class Tower:
             self.node = avg.ImageNode(parent=parentNode, pos=(position[0], position[1] - self.size[1]), angle=0)
             self.pos = (position[0], position[1] - self.size[1])
             
-        self.node.setBitmap(self.pic)
+        self.node.setBitmap(Tower.pic)
         self.anim = avg.LinearAnim(self.node, 'angle', 2000, 0, math.pi, False, None, self.restartanim).start()
         g_player.setTimeout(1000 + (number * 1000), self.fire)
         g_player.setTimeout(30000 + (number * 1000), self.destroy)
@@ -716,11 +712,8 @@ class Pill:
         self.body.bullet = True # seriously?
 '''
             
-class Bat(GameObject): # XXX MAYBE GHOST ARE NOT AFFECTED BY BAT 
-    batImgLen = max(1, maxBatSize * PPM / 2)
-    batImgWidth = max(1, batImgLen / 10)
-    blueBat = avg.SVG('../data/img/char/bat_blue.svg', False).renderElement('layer1', (batImgWidth, batImgLen))
-    greenBat = avg.SVG('../data/img/char/bat_green.svg', False).renderElement('layer1', (batImgWidth, batImgLen))
+class Bat(GameObject): # XXX maybe ghosts should be able to penetrate the bat
+    blueBat = greenBat = None
     def __init__(self, renderer, world, parentNode, pos):
         GameObject.__init__(self, renderer, world)
         self.zone = parentNode
@@ -852,7 +845,7 @@ class Block:
         self.onLeft = False
         self.__alive = False
         self.__assigned = False
-        self.__timeCall = None
+        self.__timeCall = g_player.setTimeout(3000, self.__vanish)
         self.__cursor1 = None
         self.__cursor2 = None
         self.container.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.__cursorReg)
@@ -968,9 +961,12 @@ class Block:
                 b.node.active = False
                 b.node.unlink(True)
                 b.node = None
+        if self.container is not None:
+            self.container.unlink(True)
         self.__displayRaster(False)
         if self.__timeCall is not None:
-            self.__timeCall = None # XXX shouldn't there be a g_player.clearInterval(self.__timeCall) here?
+            g_player.clearInterval(self.__timeCall)
+            self.__timeCall = None
     
     def __moveEnd(self, tr):
         self.container.angle = round(2 * self.container.angle / math.pi) * math.pi / 2
@@ -1011,8 +1007,34 @@ class Block:
 def preRender():
     global displayWidth, displayHeight
     chars = '../data/img/char/'
-    boni = '../data/img/bonus/'
+    ballDiameter = 2 * ballRadius * PPM
+    ballSize = ballDiameter,ballDiameter
     SemipermeableShield.pic = avg.SVG(chars+'semiperright.svg', False).renderElement('layer1', (PPM, displayHeight))
+    Ball.pic = avg.SVG(chars+'pacman.svg', False).renderElement('layer1', ballSize)
+    # XXX the mine should look like miss pacman ;)
+    Mine.leftPic = avg.SVG(chars+'bluepacman.svg', False).renderElement('layer1', ballSize)
+    Mine.rightPic = avg.SVG(chars+'greenpacman.svg', False).renderElement('layer1', ballSize)
+    RedBall.pic = avg.SVG(chars+'redpacman.svg', False).renderElement('layer1', ballSize)
+    Cloud.pic = avg.SVG(chars+'cloud.svg', False).renderElement('layer1', (500, 1000)) # XXX remove hardcode
+    Tower.pic = avg.SVG(chars+'wheel.svg', False).renderElement('layer1', (150,150)) # XXX remove hardcode
+    
+    batImgLen = max(1, maxBatSize * PPM / 2)
+    batImgWidth = max(1, batImgLen / 10)    
+    Bat.blueBat = avg.SVG(chars+'bat_blue.svg', False).renderElement('layer1', (batImgWidth, batImgLen))
+    Bat.greenBat = avg.SVG(chars+'bat_green.svg', False).renderElement('layer1', (batImgWidth, batImgLen))
+    
+    ghostDiameter = 2 * ghostRadius * PPM
+    ghostSize = ghostDiameter,ghostDiameter
+    Ghost.pics = dict(
+        blue = avg.SVG(chars+'blue.svg', False).renderElement('layer1', ghostSize),
+        blinky = avg.SVG(chars+'blinky.svg', False).renderElement('layer1', ghostSize),
+        inky = avg.SVG(chars+'inky.svg', False).renderElement('layer1', ghostSize),
+        pinky = avg.SVG(chars+'pinky.svg', False).renderElement('layer1', ghostSize),
+        clyde = avg.SVG(chars+'clyde.svg', False).renderElement('layer1', ghostSize),
+        green = avg.SVG(chars+'green.svg', False).renderElement('layer1', ghostSize),
+        blue2 = avg.SVG(chars+'blue2.svg', False).renderElement('layer1', ghostSize))
+    
+    boni = '../data/img/bonus/'
     w = (int)(displayWidth/15)
     bonusSize = w,w
     Bonus.pics = dict(
