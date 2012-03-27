@@ -310,16 +310,20 @@ class Game(gameapp.GameApp):
         elif nextBonus == 1:
             InstantBonus(self, random.choice(InstantBonus.boni.items()))
         else:
-            InstantBonus(self, ('newBlock',InstantBonus.boni['newBlock']))        
+            InstantBonus(self, ('newBlock',InstantBonus.boni['newBlock']))
         # the timeout must not be shorter than config.bonusTime
         # TODO get the bonusTime out of the config and out of the user's control 
         g_player.setTimeout(random.choice([3000, 4000, 5000]), self._bonusJob) # XXX tweak
 
     def win(self, player):
         g_player.clearInterval(self.mainLoop)
+        if self.bonusjob is not None:
+            g_player.clearInterval(self.bonusjob)            
         for ghost in self.ghosts:
-            g_player.clearInterval(ghost.movement)
-            g_player.clearInterval(ghost.changing)
+            if ghost.movement is not None:
+                g_player.clearInterval(ghost.movement)
+            if ghost.changing is not None:
+                g_player.clearInterval(ghost.changing)
         # abort all anims and intervals
         # TODO tear down world and current display
         # TODO show winner/revanche screen
@@ -334,9 +338,11 @@ class Game(gameapp.GameApp):
             ball.destroy()
 
     def _processBallvsBrick(self, hitset):
-        for brick in hitset: # FIXME RuntimeError: Set changed size during iteration
+        copy = hitset.copy()
+        for brick in copy:
             brick.hit()
-        hitset.clear()
+        hitset.difference_update(copy)
+        copy.clear() # just cause I feel like cleaning up
         
     def _processBallvsBall(self):
         for ball in self.balls:

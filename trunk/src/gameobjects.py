@@ -12,7 +12,7 @@ from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape, b2Fi
 
 from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize, bonusTime, brickLines
 
-cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008, 'redball':0x0010, 'semiborder':0x0020, 'ownball':0x0040}
+cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008, 'redball':0x0010, 'semiborder':0x0020, 'ownball':0x0040,'bat':0x0080}
 def dontCollideWith(*categories): return reduce(lambda x, y: x ^ y, [cats[el] for el in categories], 0xFFFF)
 
 standardXInertia = 20 * ballRadius # XXX solve more elegantly
@@ -216,9 +216,9 @@ class Mine(Ball):
         Ball.__init__(self, game, game.renderer, game.world, parentNode,position)
         self.owner = owner
         self.node.setBitmap(Mine.leftPic if owner.isLeft() else Mine.rightPic)
-        self.body.active=True        
-        self.body.userData = self        
-        filterdef = b2Filter(groupIndex = -1,categoryBits = cats['ownball'],maskBits = dontCollideWith('ghost','ball'))        
+        self.body.active=True
+        self.body.userData = self
+        filterdef = b2Filter(groupIndex = -1,categoryBits = cats['ownball'],maskBits = dontCollideWith('ghost','ball','bat'))        
         for fix in self.body.fixtures:
             fix.userData = 'ownball'
             fix.filterData = filterdef
@@ -738,7 +738,8 @@ class Bat(GameObject): # XXX MAYBE GHOST ARE NOT AFFECTED BY BAT
         width = width / (2 * PPM)
         length = self.length / (2 * PPM)
         shapedef = b2PolygonShape(box=(length, width))
-        fixturedef = b2FixtureDef(userData='bat', shape=shapedef, density=1, restitution=1, friction=.02, groupIndex=1)
+        fixturedef = b2FixtureDef(userData='bat', shape=shapedef, density=1, restitution=1, friction=.02, groupIndex=1,
+                                  categoryBits = cats['bat'])
         self.body = world.CreateKinematicBody(userData=self, position=mid, angle=angle)
         self.body.CreateFixture(fixturedef)
         self.render()
