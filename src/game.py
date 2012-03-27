@@ -257,12 +257,12 @@ class Game(gameapp.GameApp):
         return self.ghosts
         
     def _bonusJob(self):
-        nextBonus = random.randint(0,4)
+        nextBonus = random.randint(0,3)
         if nextBonus == 0:
             PersistentBonus(self, random.choice(PersistentBonus.boni.items()))
         elif nextBonus == 1:
             InstantBonus(self, random.choice(InstantBonus.boni.items()))
-        elif nextBonus == 2:
+        else:
             InstantBonus(self, ('newBlock',InstantBonus.boni['newBlock']))        
         # the timeout must not be shorter than config.bonusTime
         # TODO get the bonusTime out of the config and out of the user's control 
