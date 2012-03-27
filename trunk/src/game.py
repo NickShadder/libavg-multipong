@@ -120,16 +120,14 @@ class Game(gameapp.GameApp):
         gameobjects.displayWidth,gameobjects.displayHeight = self._parentNode.size
         gameobjects.bricksPerLine = (int)(self._parentNode.size[1]/(brickSize*PPM))
         gameobjects.preRender()
+        self.tutorialMode = False
         self.machine = statemachine.StateMachine('BEMOCK', 'MainMenu')
         self.machine.addState('MainMenu', ['Playing', 'Tutorial', 'About'], enterFunc=self.showMenu, leaveFunc=self.hideMenu)
         self.machine.addState('Tutorial', ['MainMenu', 'Playing', 'Tutorial'], enterFunc=self.startTutorial, leaveFunc=self.hideTutorial)
         self.machine.addState('Playing', ['Winner'], enterFunc=self.startPlaying)
         self.machine.addState('Winner', ['Playing', 'MainMenu']) # XXX clarify this stuff
         self.machine.addState('About', ['MainMenu'], enterFunc=self.showAbout, leaveFunc=self.hideAbout)        
-        
-        self.startTutorial()
-        
-        # self.showMenu()
+        self.showMenu()
 
     def _makeButtonInMiddle(self, name, node, yOffset, pyFunc):
         path = '../data/img/btn/'
@@ -220,6 +218,7 @@ class Game(gameapp.GameApp):
        
         # create balls
         self.balls = []
+        self.redballs = []
         self.createBall()
 
         BatManager(self.field1, self.world, self.renderer)
@@ -244,6 +243,9 @@ class Game(gameapp.GameApp):
      
     def createBall(self):
         self.balls.append(Ball(self, self.renderer, self.world, self.display, self.middle))
+        
+    def getRedBalls(self):        
+        return self.redballs
             
     def createGhosts(self):
         # FIXME TODO positions
@@ -299,6 +301,7 @@ class Game(gameapp.GameApp):
             pass     
         # g_player.setTimeout(random.choice([3000, 4000, 5000]), self._bonusJobForTutorial) # TODO: REENABLE AND REMOVE NEXT LINE
         g_player.setTimeout(100, self._bonusJobForTutorial)
+        # TODO refill bonus dicts
         
     def _bonusJob(self):
         nextBonus = random.randint(0,3)
@@ -331,7 +334,7 @@ class Game(gameapp.GameApp):
             ball.destroy()
 
     def _processBallvsBrick(self, hitset):
-        for brick in hitset:
+        for brick in hitset: # FIXME RuntimeError: Set changed size during iteration
             brick.hit()
         hitset.clear()
         
