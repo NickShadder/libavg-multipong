@@ -146,6 +146,9 @@ class Game(gameapp.GameApp):
         self.machine.addState('Playing', ['Winner'], enterFunc=self.startPlaying)
         self.machine.addState('Winner', ['Playing', 'MainMenu']) # XXX clarify this stuff
         self.machine.addState('About', ['MainMenu'], enterFunc=self.showAbout, leaveFunc=self.hideAbout)        
+        
+        # self.startTutorial()
+        
         self.showMenu()
 
     def _makeButtonInMiddle(self, name, node, yOffset, pyFunc):
@@ -208,10 +211,7 @@ class Game(gameapp.GameApp):
         svg = avg.SVG('../data/img/btn/dotted_line.svg', False)
         svg.createImageNode('layer1', dict(parent=self.display, pos=(widthThird, 0)), (2, displayHeight))
         svg.createImageNode('layer1', dict(parent=self.display, pos=(displayWidth - widthThird, 0)), (2, displayHeight))
-        
         self.renderer = Renderer()
-        self.mainLoop = g_player.setInterval(13, self.step) # XXX g_player.setOnFrameHandler(self.step) 
-        
         # pybox2d setup
         self.world = b2World(gravity=(0, 0), doSleep=True)
         self.hitset = set()
@@ -224,102 +224,71 @@ class Game(gameapp.GameApp):
         maxWallHeight = (brickSize*brickLines+ghostRadius)*PPM
         BorderLine(self.world, a2w((maxWallHeight, 0)), a2w((maxWallHeight, displayHeight)), 1, False, 'redball', 'ball') 
         BorderLine(self.world, a2w((displayWidth-maxWallHeight-1, 0)), a2w((displayWidth-maxWallHeight-1, displayHeight)), 1, False, 'redball', 'ball')
-        
-        # game setup
-        
         self.middleX,self.middleY = self.display.size / 2
         self.middle = a2w((self.middleX, self.middleY))
-        
-        # create ghosts
-        self.ghosts = []
-        self.createGhosts()
-       
-       
-        # create balls
-        self.balls = []
-        self.redballs = []
-        self.createBall()
-
         BatManager(self.field1, self.world, self.renderer)
         BatManager(self.field2, self.world, self.renderer)
-        
-        if self.tutorialMode:
-            self.bonusjob = g_player.setTimeout(1000, self._bonusJobForTutorial)
-        else:
-            self.bonusjob = g_player.setTimeout(1000, self._bonusJob)
-        
-        
-        # self.tetrisJob = g_player.setTimeout(1000, self._tetrisJob)
-        
-        # TEMPORARY 
-        # spawn two square blocks just to be able to gather boni
+        self.redballs = []
+        g_player.setTimeout(1000, self.createBall)
+          
+        ''' TEMORARY
+        self.tetrisJob = g_player.setTimeout(1000, self._tetrisJob)
         Block(self.display, self.renderer, self.world, (50,35), (self.leftPlayer,self.rightPlayer), Block.form['SQUARE'])
         Block(self.display, self.renderer, self.world, (1000,35), (self.leftPlayer,self.rightPlayer), Block.form['SQUARE'])
-        
-        # ALSO TEMPORARY
         self.currentLeftBlock = None
         self.currentRightBlock = None
+        
+        '''
      
     def createBall(self):
-        self.balls.append(Ball(self, self.renderer, self.world, self.display, self.middle))
+        self.balls = []
+        ball = Ball(self, self.renderer, self.world, self.display, self.middle)
+        self.balls.append(ball)
+        self.mainLoop = g_player.setInterval(13, self.step) # XXX g_player.setOnFrameHandler(self.step)
         
-    def getRedBalls(self):        
-        return self.redballs
+        if self.tutorialMode:
+            g_player.setTimeout(25000, self.createGhosts)
+            ball.highLight()
+        else:
+            g_player.setTimeout(1, self.createGhosts)
             
     def createGhosts(self):
+        self.ghosts = []
         offset = 2*ballRadius + 3*ghostRadius
         self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle + (offset,offset), "blinky"))
         self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle + (-offset,offset), "pinky"))
         self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle - (-offset,offset), "inky"))
         self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle - (offset,offset), "clyde"))   
         
+        if self.tutorialMode:
+            self.bonusjob = g_player.setTimeout(25000, self._bonusJobForTutorial)
+            
+            for ghost in self.ghosts:
+                ghost.highLight(self.field1,self.field2)                
+        else:
+            self.bonusjob = g_player.setTimeout(3000, self._bonusJob)       
+             
     def killGhosts(self):
         for ghost in self.ghosts:        
             ghost.destroy()
         del self.ghosts[:]
-                
-#    def getMiddleX(self):
-#        return self.middleX
-#    
-#    def getMiddleY(self):
-#        return self.middleY
-        
+                        
     def getBalls(self):
         return self.balls
     
     def getGhosts(self):
         return self.ghosts
     
-    def _tetrisJob(self):
-        print "hello"
-        height = (self.display.size[1] / 2) - (brickSize * PPM)
-        width = self.display.size[0]
-  
-        self.currentLeftBlock = Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()))
-        self.currentRightBlock = Block(self.display, self.renderer, self.world, (2 * width / 3, height), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()))
-     
-        
-        if self.currentLeftBlock is not None:
-            self.currentLeftBlock.destroy()
-            
-        if self.currentRightBlock is not None:
-            self.currentRightBlock.destroy()
-                    
-     
-        g_player.setTimeout(3000, self._tetrisJob) # XXX tweak
-        
-        print "weg"
-
-    def _bonusJobForTutorial(self):    
+    def _bonusJobForTutorial(self):        
         if len(InstantBonus.boni.items()) > 0:
-            InstantBonus(self, InstantBonus.boni.popitem())
+            bonus = InstantBonus(self, InstantBonus.boni.popitem())
+            bonus.highLight(self.field1,self.field2)
         elif len(PersistentBonus.boni.items()) > 0:
-            PersistentBonus(self, PersistentBonus.boni.popitem())
+            bonus = PersistentBonus(self, PersistentBonus.boni.popitem())
+            bonus.highLight(self.field1,self.field2)
         else:
             pass     
-        # g_player.setTimeout(random.choice([3000, 4000, 5000]), self._bonusJobForTutorial) # TODO: REENABLE AND REMOVE NEXT LINE
-        g_player.setTimeout(100, self._bonusJobForTutorial)
-        # TODO refill bonus dicts
+        g_player.setTimeout(5000, self._bonusJobForTutorial)
         
     def _bonusJob(self):
         nextBonus = random.randint(0,3)

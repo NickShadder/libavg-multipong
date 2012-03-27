@@ -28,6 +28,7 @@ class Player:
         self.zone = avgNode
         self.left = avgNode.pos == (0, 0)
         avgNode.player = self # monkey patch
+        self.field = avgNode
         left = avgNode.pos == (0, 0)
         angle = math.pi / 2 if left else -math.pi / 2
         pos = (avgNode.width, 2) if left else (0, avgNode.height - 2)            
@@ -43,6 +44,9 @@ class Player:
                 if not left:
                     xPos = avgNode.size[0] - xPos - pixelBrickSize
                 self.nodeRaster.append(avg.RectNode(parent=avgNode, pos=(xPos, yPos), size=(pixelBrickSize, pixelBrickSize), active=False))
+    
+    def getField(self):
+        return self.field
     
     def isLeft(self):
         return self.left
@@ -102,16 +106,18 @@ class GameObject:
             
 class Ball(GameObject):
     pic = None
+    hightLightpic = None
     def __init__(self, game, renderer, world, parentNode, position):
         GameObject.__init__(self, renderer, world)
         self.game = game
+        self.parentNode = parentNode
         self.spawnPoint = parentNode.pivot / PPM # XXX maybe make a static class variable
         self.leftPlayer = game.leftPlayer
         self.rightPlayer = game.rightPlayer
         self.lastPlayer = None
+        self.diameter =  2 * ballRadius * PPM
         self.node = avg.ImageNode(parent=parentNode)
         self.node.setBitmap(Ball.pic)
-        #self.setShadow('FFFF00')
         self.body = world.CreateDynamicBody(position=position, userData=self, active=False, bullet=True) # XXX reevaluate bullet-ness
         self.body.CreateCircleFixture(radius=ballRadius, density=1, restitution=.3,
                                       friction=.01, groupIndex=1, categoryBits=cats['ball'],
@@ -119,24 +125,74 @@ class Ball(GameObject):
 
         self.body.CreateCircleFixture(radius=ballRadius, userData='ball', isSensor=True)
         self.nextDir = (random.choice([standardXInertia, -standardXInertia]), random.randint(-10, 10))
-
         self.__appear(lambda:self.nudge())
-        #self.node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e:self.reSpawn()) # XXX remove
-        # self.done = 0
-        # g_player.setTimeout(10,self.startPositionCheck)
+        
+    def highLight(self):
+        self.highLightText = "Hier wird der Spielball (auch Pacman genannt) erscheinen.<br/>" +"Erreicht er deinen Rand, bekommt der Gegner einen Punkt.<br/>" + "Mit deinem Schlaeger kannst du dies verhindern.<br/>" + "Platziere an zwei Stellen einen Finger, um den Schlaeger zu erzeugen.<br/>" + "Versuche es."         
+        self.highLights = []
+        # UP
+        self.highLightNodeUp = avg.ImageNode(parent=self.parentNode, opacity=1,angle = math.pi/2)
+        self.highLights.append(self.highLightNodeUp)
+        self.highLightNodeUp.setBitmap(self.hightLightpic)
+        picWidth = self.highLightNodeUp.size[0]
+        picHeight = self.highLightNodeUp.size[1]
+        highLightNodeUpStartPosition = (self.spawnPoint[0]*PPM - picWidth/2,0) 
+        highLightNodeUpEndPosition = (self.spawnPoint[0]*PPM - picWidth/2,self.spawnPoint[1]*PPM - picHeight - self.diameter) 
+        
+        avg.LinearAnim(self.highLightNodeUp, 'pos', 600,highLightNodeUpStartPosition, 
+                                                    highLightNodeUpEndPosition).start()
+        # UP TEXT 
+        self.wordsNodeUp = avg.WordsNode(
+                                    parent=self.rightPlayer.getField(), 
+                                    pivot=(0, 0),
+                                    text=self.highLightText, 
+                                    wrapmode="wordchar", 
+                                    font= 'Comic Sans MS', 
+                                    color = "00FF00",
+                                    fontsize=15,
+                                    variant="bold",
+                                    angle = -math.pi/2)
+        
+        self.highLights.append(self.wordsNodeUp)
+        avg.LinearAnim(self.wordsNodeUp, 'pos', 600,(0,-self.wordsNodeUp.width), 
+                                                    (0,self.wordsNodeUp.width)).start() 
+                                                                    
+        # DOWN
+        self.highLightNodeDown = avg.ImageNode(parent=self.parentNode, opacity=1,angle = -math.pi/2)
+        self.highLights.append(self.highLightNodeDown)
+        self.highLightNodeDown.setBitmap(self.hightLightpic)
+        highLightNodeDownStartPosition = (self.spawnPoint[0]*PPM - picWidth/2,self.parentNode.size[1])
+        highLightNodeDownEndPosition = (self.spawnPoint[0]*PPM - picWidth/2, self.spawnPoint[1]*PPM + picHeight) 
         
         
-#    def startPositionCheck(self):
-#        if self.zoneOfPlayer() == self.leftPlayer and not self.done:
-#            self.done = 1
-#            self.body.linearVelocity = (self.body.linearVelocity[0]/2,self.body.linearVelocity[1]/2)
-#        elif self.zoneOfPlayer() == self.rightPlayer and not self.done:
-#            self.body.linearVelocity = (self.body.linearVelocity[0]/2,self.body.linearVelocity[1]/2)
-#            self.done = 1
-#        elif self.zoneOfPlayer() == None:
-#            self.done = 0
-#        g_player.setTimeout(10,self.startPositionCheck)    
-
+        avg.LinearAnim(self.highLightNodeDown , 'pos', 600,highLightNodeDownStartPosition, 
+                                                    highLightNodeDownEndPosition).start()     
+        
+        # DOWN TEXT 
+        self.wordsNodeDown = avg.WordsNode(
+                                    parent=self.leftPlayer.getField(), 
+                                    pivot=(0, 0),
+                                    text=self.highLightText, 
+                                    wrapmode="wordchar", 
+                                    font= 'Comic Sans MS', 
+                                    color = "00FF00",
+                                    fontsize=15,
+                                    variant="bold",
+                                    angle = math.pi/2)
+        
+        self.highLights.append(self.wordsNodeDown)  
+        avg.LinearAnim(self.wordsNodeDown, 'pos', 600,(self.leftPlayer.getField().width,self.parentNode.size[1]), 
+                                                    (self.leftPlayer.getField().width,self.parentNode.size[1] - self.wordsNodeDown.width)).start()        
+        
+                                                                                                                                   
+        g_player.setTimeout(20000, self.dehighLight)
+    
+    def dehighLight(self):
+        for node in self.highLights:
+            node.active = False
+            node.unlink(True)
+            node = None  
+            
     def render(self):
         pos = self.body.position * PPM - self.node.size / 2
         self.node.pos = (pos[0], pos[1])
@@ -207,36 +263,6 @@ class Mine(Ball):
     # Override
     def nudge(self, direction=None):
         pass
-
-#class Mine(GameObject): 
-#    def __init__(self, renderer, world, parentNode, position, owner, left,radius=ghostRadius):
-#        GameObject.__init__(self, renderer, world)
-#        self.parentNode = parentNode
-#        self.trend = 'None'
-#        self.owner = owner
-#        self.diameter = 2 * radius * PPM
-#        self.left = left
-#        if left:
-#            self.colored = avg.SVG('../data/img/char/bluepacman.svg', False).renderElement('layer1', (self.diameter, self.diameter))
-#        else:
-#            self.colored = avg.SVG('../data/img/char/greenpacman.svg', False).renderElement('layer1', (self.diameter, self.diameter))
-#        self.node = avg.ImageNode(parent=parentNode, opacity=.85)
-#        self.node.setBitmap(self.colored)
-#        self.setShadow('ADD8E6')
-#        ghostUpper = b2FixtureDef(userData='ownball', shape=b2CircleShape(radius=radius),
-#                                  density=1, groupIndex= -2, categoryBits=cats['ownball'], maskBits=dontCollideWith('ghost'))
-#        ghostLower = b2FixtureDef(userData='ownball', shape=b2PolygonShape(box=(radius, radius / 2, (0, -radius / 2), 0)),
-#                                  density=1, groupIndex= -2, categoryBits=cats['ownball'], maskBits=dontCollideWith('ghost'))
-#        self.body = world.CreateDynamicBody(position=position, fixtures=[ghostUpper, ghostLower],
-#                                            userData=self, fixedRotation=True)
-#        
-#    def getOwner(self):
-#        return self.owner
-#
-#    def render(self):
-#        pos = self.body.position * PPM - self.node.size / 2
-#        self.node.pos = (pos[0], pos[1])
-#        self.node.angle = self.body.angle    
             
 class RedBall(Ball):
     pic = None
@@ -320,12 +346,16 @@ class SemipermeableShield:
         return self.left
 
 class Ghost(GameObject):
+
+    hightLightpic = None
     pics = None    
+
     def __init__(self, renderer, world, parentNode, position, name, owner=None, mortal=1):
         GameObject.__init__(self, renderer, world)
         self.parentNode = parentNode
         self.spawnPoint = position
         self.name = name
+        self.diameter = 2 * ballRadius * PPM
         self.trend = None
         self.owner = owner
         self.mortal = mortal
@@ -341,9 +371,76 @@ class Ghost(GameObject):
         self.render()
         self.move()
         
-#        ui.DragRecognizer(self.node, moveHandler=self.onMove) # XXX just for debugging and fun
-#    def onMove(self, event, offset):
-#        self.body.position = event.pos / PPM
+    def highLight(self,field1,field2):         
+        self.highLights = []
+        self.highLightText = "Dies sind Geister. Sind kommen immer dort wo die Pfeile sind.<br/>" + "Clyde, Inky, Pinky und Blinky.<br/>" + "Ist ein Geist nicht blau, frisst er den Pacman.<br/>" + "Der Spieler, der den Pacman als letztes mit seinem Schlaeger beruehrt hat, verliert dabei einen Punkt.<br/>" + "Ist ein Geist blau, frisst der Pacman den Geist.<br/>" + "Der Spieler, der den Pacman als letztes mit seinem Schlaeger beruehrt hat, bekommt dabei einen Punkt." 
+        # UP
+        if self.name == 'clyde' or self.name == 'inky':
+            self.highLightNodeUp = avg.ImageNode(parent=self.parentNode, opacity=1,angle = math.pi/2)
+            self.highLights.append(self.highLightNodeUp)
+            self.highLightNodeUp.setBitmap(self.hightLightpic)
+            picWidth = self.highLightNodeUp.size[0]
+            picHeight = self.highLightNodeUp.size[1]
+            highLightNodeUpStartPosition = (self.spawnPoint[0]*PPM - picWidth/2,0) 
+            highLightNodeUpEndPosition = (self.spawnPoint[0]*PPM - picWidth/2,self.spawnPoint[1]*PPM - picHeight - self.diameter) 
+        
+            avg.LinearAnim(self.highLightNodeUp, 'pos', 600,highLightNodeUpStartPosition, 
+                                                    (highLightNodeUpEndPosition[0],highLightNodeUpEndPosition[1]-self.diameter)).start()
+        # DOWN
+        else:
+            self.highLightNodeDown = avg.ImageNode(parent=self.parentNode, opacity=1,angle = -math.pi/2)
+            self.highLights.append(self.highLightNodeDown)
+            self.highLightNodeDown.setBitmap(self.hightLightpic)
+            picWidth = self.highLightNodeDown.size[0]
+            picHeight = self.highLightNodeDown.size[1]
+            highLightNodeDownStartPosition = (self.spawnPoint[0]*PPM - picWidth/2,self.parentNode.size[1])
+            highLightNodeDownEndPosition = (self.spawnPoint[0]*PPM - picWidth/2, self.spawnPoint[1]*PPM + picHeight) 
+    
+            avg.LinearAnim(self.highLightNodeDown , 'pos', 600,highLightNodeDownStartPosition, 
+                                                    highLightNodeDownEndPosition).start()       
+        # Clyde
+        if self.name == 'clyde':
+            # UP TEXT 
+            self.wordsNodeUp = avg.WordsNode(
+                                    parent=field2, 
+                                    pivot=(0, 0),
+                                    text=self.highLightText, 
+                                    wrapmode="wordchar", 
+                                    font= 'Comic Sans MS', 
+                                    color = "00FF00",
+                                    fontsize=15,
+                                    variant="bold",
+                                    angle = -math.pi/2)
+        
+            self.highLights.append(self.wordsNodeUp)
+            avg.LinearAnim(self.wordsNodeUp, 'pos', 600,(0,-self.wordsNodeUp.width), 
+                                                    (0,self.wordsNodeUp.width)).start() 
+                                                    
+            # DOWN TEXT 
+            self.wordsNodeDown = avg.WordsNode(
+                                    parent=field1, 
+                                    pivot=(0, 0),
+                                    text=self.highLightText, 
+                                    wrapmode="wordchar", 
+                                    font= 'Comic Sans MS', 
+                                    color = "00FF00",
+                                    fontsize=15,
+                                    variant="bold",
+                                    angle = math.pi/2)
+        
+            self.highLights.append(self.wordsNodeDown)  
+            avg.LinearAnim(self.wordsNodeDown, 'pos', 600,(field1.width,self.parentNode.size[1]), 
+                                                    (field1.width,self.parentNode.size[1] - self.wordsNodeDown.width)).start()
+                    
+        
+        g_player.setTimeout(20000, self.dehighLight)
+    
+    def dehighLight(self):
+        for node in self.highLights:
+            node.active = False
+            node.unlink(True)
+            node = None  
+        self.destroy()
     
     def getDir(self):
         return self.body.linearVelocity
@@ -426,68 +523,7 @@ class Ghost(GameObject):
         if self.movement is not None:
             g_player.clearInterval(self.movement)
             self.movement = None
-'''
 
-TOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-
-- Bessere Grafiken
-- Weitere Boni implementieren
-- Bestehende Boni verbessern
-    - Anzahl der Geister abfragen(ein Bonus killt alle, einer fuegt welche hinzu)
-        - "Nonefehler" verhindern
-    - Zeiten der Boni entscheiden (Dauer des Effekts, Dauer bis zum naechsten Bonus)
-- Tetris und Boni verbinden
-
-
-DERZEITIG SINNVOLLSTE BONUSLISTE
-
-SCHUTZ
-
--    Geschuetzturm [x]
--     Tetrisblock [x]
--    Kraftfeld [x]
-
-ANGRIFF
-
--     PACMAN-Dreier-Shot [x]
--    Gegnerischen Schlaeger ausschalten 
--    Startpunkt fuer PAC zufaellig und Richtung immer nur in eine Richtung, Gegner
--     Schwarzer PACMAN, frisst anderen PACMAN, Spieler bekommt Punkt
--     Nebel ueber gegnerischem Feld
-
-    
-Allgemein
-
--    PACMAN invertiert seine flugrichtung [x]
--     Geister stoppen kurz [x]
--    PACMAN wird kleiner [x]                                                         - Achtung! - koennte in der Wand "stecken" bleiben
--    Extra Geist, der nur einen Spieler beeinflusst [x]
--    Geister halten sich nur auf der anderen Seite auf [x]
--    Ball fliegt auf der eigenen Haelfte langsamer
--    1 Punkt                                
--    Shuffle
--    Pongmode
--    Pacmanmode
-
-Eher nicht:
-
--    PAC frisst auch farbige Geister
--     Schwarzes Loch saugt Geister auf, lenk Ball ab
--    PAC stirbt durch blaue Geister
--     PAC bekommt die Farbe eines Geists
--    1/2 Gesammelte Punkte
--     Alle Geister verschwinden, fuer ein paar Sekunden
--     Alle Geister werden wieder unsterblich oder umgekehrt
--    Die Wand verdoppelt sich
--     Asteroidenhagel
--    Siegeskarte 
--    Die Haelfte der Wand verschwindet
-
-ETSILSUNOB ETSLLOVNNIS GITIEZRED
-
-OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOT
-
-'''    
                                 
 class BorderLine:
     body = None
@@ -543,21 +579,87 @@ class Tower:
 
 class Bonus:    
     pics = None
+    hightLightpic = None
     def __init__(self, game, (name, effect)):
         parentNode = game.display
+        self.highLights = []   
         displayWidth = parentNode.size[0]
-        displayHeight = parentNode.size[1] 
+        displayHeight = parentNode.size[1]
+        self.name = name 
         self.size = (displayWidth / 15, parentNode.size[0] / 15)
         self.pic = Bonus.pics[name]
         self.parentNode, self.game, self.world = parentNode, game, game.world
         self.effect = effect
         self.leftBonus = avg.ImageNode(parent=parentNode, pos=(displayWidth / 3, displayHeight / 2 - (self.size[1] / 2)))
         self.leftBonus.setBitmap(self.pic)
+        
         self.rightBonus = avg.ImageNode(parent=parentNode, pos=(2 * displayWidth / 3 - self.size[0], displayHeight / 2 - (self.size[1] / 2)))
         self.rightBonus.setBitmap(self.pic)
         self.leftBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.onClick)
         self.rightBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.onClick)
         self.timeout = g_player.setTimeout(bonusTime * 1000, self.vanish)
+
+    def highLight(self,field1,field2):
+        # UP
+        self.highLightNodeUp = avg.ImageNode(parent=self.parentNode, opacity=1,angle = math.pi/2)
+        self.highLights.append(self.highLightNodeUp)
+        self.highLightNodeUp.setBitmap(self.hightLightpic)
+        highLightNodeUpStartPosition = (self.rightBonus.pos[0],0) 
+        highLightNodeUpEndPosition = (self.rightBonus.pos[0],self.rightBonus.pos[1] - self.rightBonus.size[1]) 
+        
+        avg.LinearAnim(self.highLightNodeUp, 'pos', 600,highLightNodeUpStartPosition, 
+                                                    highLightNodeUpEndPosition).start()
+        
+        # DOWN
+        self.highLightNodeDown = avg.ImageNode(parent=self.parentNode, opacity=1,angle = -math.pi/2)
+        self.highLights.append(self.highLightNodeDown)
+        self.highLightNodeDown.setBitmap(self.hightLightpic)
+        highLightNodeDownStartPosition = (self.leftBonus.pos[0],self.parentNode.size[1])
+        highLightNodeDownEndPosition = (self.leftBonus.pos[0], self.leftBonus.pos[1] + self.leftBonus.size[1]) 
+    
+        avg.LinearAnim(self.highLightNodeDown , 'pos', 600,highLightNodeDownStartPosition, 
+                                                    highLightNodeDownEndPosition).start()
+                                                    
+        self.highLightText = "Bonusbeschreibung Line1<br/>" + "Bla Bla<br/>" + "Bla Bla2br/>" + "Bla Bla3<br/>"                                                     
+        
+        # UP TEXT 
+        self.wordsNodeUp = avg.WordsNode(
+                                    parent=field2, 
+                                    pivot=(0, 0),
+                                    text=self.highLightText, 
+                                    wrapmode="wordchar", 
+                                    font= 'Comic Sans MS', 
+                                    color = "00FF00",
+                                    fontsize=15,
+                                    variant="bold",
+                                    angle = -math.pi/2)
+        
+        self.highLights.append(self.wordsNodeUp)
+        avg.LinearAnim(self.wordsNodeUp, 'pos', 600,(0,-self.wordsNodeUp.width), 
+                                                    (0,self.wordsNodeUp.width)).start() 
+                                                    
+            # DOWN TEXT 
+        self.wordsNodeDown = avg.WordsNode(
+                                    parent=field1, 
+                                    pivot=(0, 0),
+                                    text=self.highLightText, 
+                                    wrapmode="wordchar", 
+                                    font= 'Comic Sans MS', 
+                                    color = "00FF00",
+                                    fontsize=15,
+                                    variant="bold",
+                                    angle = math.pi/2)
+        
+        self.highLights.append(self.wordsNodeDown)  
+        avg.LinearAnim(self.wordsNodeDown, 'pos', 600,(field1.width,self.parentNode.size[1]), 
+                                                    (field1.width,self.parentNode.size[1] - self.wordsNodeDown.width)).start()                                                        
+        # g_player.setTimeout(20000, self.dehighLight)
+    
+    def dehighLight(self):
+        for node in self.highLights:
+            node.active = False
+            node.unlink(True)
+            node = None  
         
     def onClick(self, event):
         g_player.clearInterval(self.timeout)
@@ -566,6 +668,7 @@ class Bonus:
         return res
 
     def vanish(self):
+        self.dehighLight()
         if self.leftBonus is not None:
             self.leftBonus.active = False
             self.leftBonus.unlink(True)
@@ -673,8 +776,7 @@ class PersistentBonus(Bonus):
                 onlyPong=Bonus.buildShield,
                 pacman=Bonus.newOwnBall
                 )
-
-        
+    
     def __init__(self, game, (name, effect)):
         Bonus.__init__(self, game, (name, effect))
     
@@ -1035,6 +1137,13 @@ def preRender():
         blue2 = avg.SVG(chars+'blue2.svg', False).renderElement('layer1', ghostSize))
     
     boni = '../data/img/bonus/'
+    
+    arrowSize = (displayWidth/10,displayHeight/12) 
+    Ball.hightLightpic = avg.SVG('../data/img/char/arrow.svg', False).renderElement('layer1', arrowSize)
+    Ghost.hightLightpic = avg.SVG('../data/img/char/arrow.svg', False).renderElement('layer1', arrowSize)
+    Bonus.hightLightpic = avg.SVG('../data/img/char/arrow.svg', False).renderElement('layer1', arrowSize)
+    #Ball.hightLightpic = avg.SVG('../data/img/char/arrow.svg', False).renderElement('layer1', arrowSize)
+    
     w = (int)(displayWidth/15)
     bonusSize = w,w
     Bonus.pics = dict(
