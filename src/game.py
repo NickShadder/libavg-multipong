@@ -257,11 +257,13 @@ class Game(gameapp.GameApp):
         return self.ghosts
         
     def _bonusJob(self):
-        persistentBonusWanted = random.randint(0, 1)
-        if persistentBonusWanted:
+        nextBonus = random.randint(0,4)
+        if nextBonus == 0:
             PersistentBonus(self, random.choice(PersistentBonus.boni.items()))
-        else:
+        elif nextBonus == 1:
             InstantBonus(self, random.choice(InstantBonus.boni.items()))
+        elif nextBonus == 2:
+            InstantBonus(self, ('newBlock',InstantBonus.boni['newBlock']))        
         # the timeout must not be shorter than config.bonusTime
         # TODO get the bonusTime out of the config and out of the user's control 
         g_player.setTimeout(random.choice([3000, 4000, 5000]), self._bonusJob) # XXX tweak
@@ -344,12 +346,23 @@ class Game(gameapp.GameApp):
             elif ball.body.position[0] < -ballRadius: 
                 self.rightPlayer.addPoint()
                 ball.reSpawn()
-                                        
+    
+    def _outside(self,ball):
+        return (ball.body is None or 
+                not (-ballRadius <= ball.body.position[0] <= (self.display.size[0] / PPM) + ballRadius))
+    
+    def _checkRedBallPosition(self):
+        killList = [x for x in self.redballs if self._outside(x)]
+        self.redballs[:] = [x for x in self.redballs if x not in killList]
+        for ball in killList:
+            ball.destroy()
+                                                   
     def step(self):
         self.world.Step(TIME_STEP, 10, 10)
         self.world.ClearForces()
         self._processBallvsGhost()
         self._checkBallPosition()
+        self._checkRedBallPosition()
         self._processBallvsBall()
         self._processBallvsBrick(self.hitset)
         self.renderer.draw()             
