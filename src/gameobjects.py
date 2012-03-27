@@ -312,7 +312,7 @@ class SemipermeableShield:
         
         self.body = self.world.CreateStaticBody(position=(x/PPM+.5, displayHeight/(2*PPM)), userData=self)
         self.body.CreateFixture(shape=b2PolygonShape(box=(.5, displayHeight/(2*PPM), (0, 0), math.pi)), density=1,
-                                restitution=1, categoryBits=cats['semiborder'], userData='semiborder', 
+                                restitution=1, groupIndex = -1, categoryBits=cats['semiborder'], userData='semiborder', 
                                 maskBits=dontCollideWith(*noCollisions))
     
     def destroy(self):
