@@ -596,7 +596,7 @@ class Bonus:
     def destroy(self, brick):
         brick.removeBonus()
         self.__node.active = False # XXX animate?
-        self.__node.unlink(True)
+        self.__node.unlink(True)        
     
     def __useBonus(self, brick):
         self.destroy(brick)
@@ -813,6 +813,12 @@ class Brick(GameObject):
     def render(self):
         pass # XXX move the empty method to GameObject when the game is ready
 
+    # override
+    def destroy(self):
+        GameObject.destroy(self)
+        if self.__divNode is not None:
+            self.__divNode.unlink(True)
+    
 class Block:
     form = dict(
     # (bricks, maxLineLength, offset)
@@ -987,7 +993,9 @@ class Block:
                 b.node.pos = (xPos, yPos)
                 b.node.sensitive = False
                 b.materialize(self.onLeft, x, y)
-            self.__displayRaster(False) 
+            self.container.active = False
+            self.container.unlink(True)
+            self.__displayRaster(False)
     
     def __displayRaster(self, on):
         if self.onLeft:
