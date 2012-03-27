@@ -36,7 +36,7 @@ class ContactListener(b2ContactListener):
     def EndContact(self, contact):
         fA, fB = contact.fixtureA, contact.fixtureB
         dA, dB = fA.userData, fB.userData
-        ball = red = brick = bat = None
+        ball = red = brick = bat = semi = None
         found = False
         if dA == 'ball': 
             ball = fA.body.userData
@@ -49,6 +49,9 @@ class ContactListener(b2ContactListener):
             found = True
         elif dA == 'brick':
             brick = fA.body.userData
+            found = True
+        elif dA == 'semiborder':
+            semi = fA.body.userData
             found = True
         if not found: return
         
@@ -65,6 +68,9 @@ class ContactListener(b2ContactListener):
         elif dB == 'brick':
             brick = fB.body.userData
             found = True
+        elif dB == 'semiborder':
+            semi = fB.body.userData
+            found = True
         if not found: return
         
         if brick is not None:
@@ -73,6 +79,10 @@ class ContactListener(b2ContactListener):
             elif red is not None:
                 self.hitset.add(brick)
                 self.hitset.add(red)
+        elif semi is not None:
+            if red is not None:
+                if semi.ownedByLeft() != red.left:
+                    self.hitset.add(red)
         elif bat is not None:
             if red is not None:
                 self.hitset.add(red)
@@ -80,7 +90,7 @@ class ContactListener(b2ContactListener):
     def PreSolve(self, contact, oldManifold):
         fA, fB = contact.fixtureA, contact.fixtureB
         dA, dB = fA.userData, fB.userData
-        ball = bat = semi = None
+        ball = bat = semi = red= None
         found = False
         if dA == 'ball': 
             ball = fA.body.userData
@@ -90,6 +100,9 @@ class ContactListener(b2ContactListener):
             found = True
         elif dA == 'semiborder':
             semi = fA.body.userData
+            found = True
+        elif dA == 'redball':
+            red = fA.body.userData
             found = True
         if not found: return
         
@@ -103,17 +116,23 @@ class ContactListener(b2ContactListener):
         if dB == 'semiborder':
             semi = fB.body.userData
             found = True
+        elif dB == 'redball':
+            red = fB.body.userData
+            found = True
         if not found: return       
             
         if bat is not None and ball is not None:
             ball.lastPlayer = bat.zone.player
-        elif semi is not None and ball is not None:
-            worldManifold = contact.worldManifold
-            if semi.ownedByLeft():
-                if worldManifold.normal.x < 0:
+            
+        elif semi is not None:
+            if ball is not None or red is not None:
+                worldManifold = contact.worldManifold
+                if semi.ownedByLeft():
+                    if worldManifold.normal.x < 0:
+                        contact.enabled=False
+                elif worldManifold.normal.x > 0:
                     contact.enabled=False
-            elif worldManifold.normal.x > 0:
-                contact.enabled=False
+                    
 
 class Game(gameapp.GameApp):
     def init(self):
