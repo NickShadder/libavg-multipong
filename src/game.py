@@ -388,12 +388,14 @@ class BatManager:
         if state == 'idle':
             assert len(self.pos) == 0
             self.pos.append((e.cursorid, e.pos))
+            self.field.setEventCapture(e.cursorid)
             assert len(self.pos) == 1
             self.machine.changeState('started')
         elif state == 'started':
             assert len(self.pos) == 1
             if (e.pos - self.pos[0][1]).getNorm() <= maxBatSize * PPM:
                 self.pos.append((e.cursorid, e.pos))
+                self.field.setEventCapture(e.cursorid)
                 assert len(self.pos) == 2
                 self.machine.changeState('created')
 
@@ -403,14 +405,17 @@ class BatManager:
         if state == 'started':
             assert len(self.pos) == 1
             if cid == self.pos[0][0]:
+                self.field.releaseEventCapture(cid)
                 self.machine.changeState('idle')
         elif state == 'created':
             assert len(self.pos) == 2            
             if cid == self.pos[1][0]:
+                self.field.releaseEventCapture(cid)
                 del self.pos[1]
                 assert len(self.pos) == 1
                 self.machine.changeState('started')
             elif cid == self.pos[0][0]:
+                self.field.releaseEventCapture(cid)
                 del self.pos[0]
                 assert len(self.pos) == 1
                 self.machine.changeState('started')
