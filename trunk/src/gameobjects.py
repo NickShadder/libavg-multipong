@@ -106,7 +106,7 @@ class GhostBall:
     def __init__(self, parentNode, y, left):
         self.node = avg.ImageNode(parent=parentNode, size=(GhostBall.diameter, GhostBall.diameter))
         self.node.setBitmap(GhostBall.pic)
-        width = (int)(parentNode.size[0])
+        width = int(parentNode.size[0])
         start = -GhostBall.diameter,y
         end = width,y
         if not left: 
@@ -525,7 +525,7 @@ class Tower:
             self.pos = (position[0], position[1] - self.size[1])
             
         self.node.setBitmap(self.pic)
-        self.anim = avg.LinearAnim(self.node, 'angle', 2000, 0, 3.14, False, None, self.restartanim).start()
+        self.anim = avg.LinearAnim(self.node, 'angle', 2000, 0, math.pi, False, None, self.restartanim).start()
         g_player.setTimeout(1000 + (number * 1000), self.fire)
         g_player.setTimeout(30000 + (number * 1000), self.destroy)
         
