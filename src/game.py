@@ -5,13 +5,12 @@ Created on 19.01.2012
 '''
 import sys
 import random
+import gameobjects
 
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
-import math
 
-import gameobjects
-from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block, Mine, RedBall, Tower, Bonus,timeForStep,Rocket
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block, Mine, RedBall, Tower, Bonus, TimeForStep, Rocket
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize, ghostRadius, brickSize, brickLines
 
 g_player = avg.Player.get()
@@ -91,11 +90,11 @@ class ContactListener(b2ContactListener):
         elif bat is not None:
             if red is not None:
                 self.hitset.add(red)
-                        
+                
     def PreSolve(self, contact, oldManifold):
         fA, fB = contact.fixtureA, contact.fixtureB
         dA, dB = fA.userData, fB.userData
-        ball = bat = semi = red= None
+        ball = bat = semi = red = None
         found = False
         if dA == 'ball': 
             ball = fA.body.userData
@@ -134,14 +133,14 @@ class ContactListener(b2ContactListener):
                 worldManifold = contact.worldManifold
                 if semi.ownedByLeft():
                     if worldManifold.normal.x < 0:
-                        contact.enabled=False
+                        contact.enabled = False
                 elif worldManifold.normal.x > 0:
-                    contact.enabled=False
+                    contact.enabled = False
                     
 class Game(gameapp.GameApp):
     def init(self):
-        gameobjects.displayWidth,gameobjects.displayHeight = self._parentNode.size
-        gameobjects.bricksPerLine = (int)(self._parentNode.size[1]/(brickSize*PPM))
+        gameobjects.displayWidth, gameobjects.displayHeight = self._parentNode.size
+        gameobjects.bricksPerLine = (int)(self._parentNode.height / (brickSize * PPM))
         gameobjects.preRender()
         self.tutorialMode = False
         self.machine = statemachine.StateMachine('BEMOCK', 'MainMenu')
@@ -151,10 +150,10 @@ class Game(gameapp.GameApp):
         self.machine.addState('Winner', ['Playing', 'MainMenu']) # XXX clarify this stuff
         self.machine.addState('About', ['MainMenu'], enterFunc=self.showAbout, leaveFunc=self.hideAbout)
     
-        self.createMenuBackground()
+        self._createMenuBackground()
         self.showMenu()
 
-    def _makeButtonInMiddle(self, name, node, yOffset, pyFunc):
+    def _makeButtonInMiddle(self, name, node, yOffset, pyFunc):        
         path = '../data/img/btn/'
         svg = avg.SVG(path + name + '_up.svg', False)
         height = node.height / 8 # XXX make dependant on actual resolution sometime
@@ -165,38 +164,44 @@ class Game(gameapp.GameApp):
         position = (node.pivot[0] - upNode.width / 2, node.pivot[1] + yOffset * upNode.height + yOffset * 50)
         return ui.TouchButton(upNode, downNode, clickHandler=pyFunc, parent=node, pos=position)
 
-    def showMenu(self):
+    def showMenu(self):        
         self.menuScreen = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
         self.startButton = self._makeButtonInMiddle('start', self.menuScreen, -1, lambda:self.machine.changeState('Playing'))
         self.tutorialButton = self._makeButtonInMiddle('help', self.menuScreen, 0, lambda:self.machine.changeState('Tutorial'))
         self.aboutButton = self._makeButtonInMiddle('about', self.menuScreen, 1, lambda:self.machine.changeState('About'))
         self.exitButton = self._makeButtonInMiddle('exit', self.menuScreen, 2, lambda:exit(0))
-
-        
-    def createMenuBackground(self):   
+  
+    def _createMenuBackground(self):
         self.nodeList = []
-        picList = [Ball.pic,Mine.leftPic,Mine.rightPic,RedBall.pic,Tower.pic,Bat.blueBat,Bat.greenBat,Bonus.highLightpic] + Ghost.pics.values() + Bonus.pics.values() # TODO WHY RED
+#        picList = [Ball.pic,Mine.leftPic,Mine.rightPic,RedBall.pic,Tower.pic,Bat.blueBat,Bat.greenBat,Bonus.highLightpic] + Ghost.pics.values() + Bonus.pics.values()
+#        for i in range (1,random.randint(100,200)):
+#            node = avg.ImageNode(parent=self._parentNode)
+#            node.setBitmap(random.choice(picList))
+#            leftPosition = (random.randint(0,int(self._parentNode.size[0]/3)),random.randint(0,int(self._parentNode.size[1])))
+#            rightPosition = (random.randint(2*int(self._parentNode.size[0]/3),int(self._parentNode.size[0])),random.randint(0,int(self._parentNode.size[1])))           
+#            node.pos = (leftPosition if random.randint(0,1) else rightPosition)
+#            self.nodeList.append(node)
 
-        for i in range (1,random.randint(100,200)):
+        # XXX also try this alternative
+        picList = [Ball.pic, Mine.leftPic, Mine.rightPic, RedBall.pic] + Ghost.pics.values()
+        for i in range (1, 500):
             node = avg.ImageNode(parent=self._parentNode)
             node.setBitmap(random.choice(picList))
-            leftPosition = (random.randint(0,int(self._parentNode.size[0]/3)),random.randint(0,int(self._parentNode.size[1])))
-            rightPosition = (random.randint(2*int(self._parentNode.size[0]/3),int(self._parentNode.size[0])),random.randint(0,int(self._parentNode.size[1])))           
-            node.pos = (leftPosition if random.randint(0,1) else rightPosition)
+            node.pos = (random.randint(0, self._parentNode.width), random.randint(0, self._parentNode.height))
             self.nodeList.append(node)
-            
+        # XXX the title should be a logo
         self.title = avg.WordsNode(
-                                    parent=self._parentNode, 
+                                    parent=self._parentNode,
                                     pivot=(0, 0),
-                                    text="Multipong", 
-                                    pos= (self._parentNode.size[0]/2- 100,50),
-                                    wrapmode="wordchar", 
-                                    font= 'Impact', 
-                                    color = "00FF00",
+                                    text="Multipong", # XXX the title shouldn't be Multipong - we need a new name
+                                    pos=(self._parentNode.width / 2 - 100, 50), # XXX the title is not in the middle
+                                    wrapmode="wordchar",
+                                    font='Impact',
+                                    color="00FF00",
                                     fontsize=100,
                                     variant="bold")
             
-    def destroyMenuBackground(self):
+    def _destroyMenuBackground(self):
         for node in self.nodeList:
             node.active = False
             node.unlink(True)
@@ -207,7 +212,7 @@ class Game(gameapp.GameApp):
         self.title = None
                      
     def hideMenu(self):
-        # XXX find out if we need to tear down all the buttons first
+        self._destroyMenuBackground()
         self.menuScreen.unlink(True)
         self.menuScreen = None
         
@@ -228,13 +233,13 @@ class Game(gameapp.GameApp):
         self.aboutScreen.unlink(True)
         self.aboutScreen = None
         
+
     def startPlaying(self):
-        # libavg setup
-        self.destroyMenuBackground()
+        # libavg setup        
         self.display = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
         self.renderer = Renderer()
-        background = avg.ImageNode(parent = self.display)
-        background.setBitmap(avg.SVG('../data/img/char/background2.svg', False).renderElement('layer1', self.display.size))
+#        background = avg.ImageNode(parent = self.display)
+#        background.setBitmap(avg.SVG('../data/img/char/background.svg', False).renderElement('layer1', self.display.size))
         self.display.player = None # monkey patch
         (displayWidth, displayHeight) = self.display.size
         widthThird = (int)(displayWidth / 3)
@@ -260,29 +265,29 @@ class Game(gameapp.GameApp):
         BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)), 1, False, 'redball')
         BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)), 1, False, 'redball')
         # vertical ghost lines
-        maxWallHeight = (brickSize*brickLines+ghostRadius)*PPM
+        maxWallHeight = (brickSize * brickLines + ghostRadius) * PPM
         BorderLine(self.world, a2w((maxWallHeight, 0)), a2w((maxWallHeight, displayHeight)), 1, False, 'redball', 'ball') 
-        BorderLine(self.world, a2w((displayWidth-maxWallHeight-1, 0)), a2w((displayWidth-maxWallHeight-1, displayHeight)), 1, False, 'redball', 'ball')
-        self.middleX,self.middleY = self.display.size / 2
+        BorderLine(self.world, a2w((displayWidth - maxWallHeight - 1, 0)), a2w((displayWidth - maxWallHeight - 1, displayHeight)), 1, False, 'redball', 'ball')
+        self.middleX, self.middleY = self.display.size / 2
         self.middle = a2w((self.middleX, self.middleY))
         BatManager(self.field1, self.world, self.renderer)
         BatManager(self.field2, self.world, self.renderer)
         self.balls = []
         self.redballs = []
         self.ghosts = []
-        g_player.setTimeout(2000, self.createBall)
         self.initiateBlocks()
-        self.mainLoop = g_player.setInterval(13, self.step)
-                
+        self.createBall()
+        self.mainLoop = g_player.setOnFrameHandler(self.step)
+
     def initiateBlocks(self):
-        height = (self.display.size[1] / 2) - (brickSize * PPM)
-        width = self.display.size[0]
-        for i in range (-3,3):
-            Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height - (brickSize*PPM*2)*i ), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()))
-            Block(self.display, self.renderer, self.world, (2 * width / 3, height - (brickSize*PPM*2)*i ), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()))
-            timeForStep(self.display,1)
-            timeForStep(self.display,0)
-        
+        height = (self.display.height / 2) - (brickSize * PPM)
+        width = self.display.width
+        for i in range (-3, 3):
+            Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height - (brickSize * PPM * 3) * i), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()), vanishLater=True)
+            Block(self.display, self.renderer, self.world, (2 * width / 3, height - (brickSize * PPM * 3) * i), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()), vanishLater=True)
+            TimeForStep(self.display)
+            TimeForStep(self.display, left=False)
+    
     def createBall(self):
         ball = Ball(self, self.renderer, self.world, self.display, self.middle)
         self.balls.append(ball)
@@ -294,17 +299,17 @@ class Game(gameapp.GameApp):
             self.createGhosts()
             
     def createGhosts(self):
-        offset = 2*ballRadius + 3*ghostRadius
-        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle + (offset,offset), "blinky"))
-        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle + (-offset,offset), "pinky"))
-        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle - (-offset,offset), "inky"))
-        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle - (offset,offset), "clyde"))   
+        offset = 2 * ballRadius + 3 * ghostRadius
+        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle + (offset, offset), "blinky"))
+        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle + (-offset, offset), "pinky"))
+        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle - (-offset, offset), "inky"))
+        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle - (offset, offset), "clyde"))   
         if self.tutorialMode:
             g_player.setTimeout(25000, self._bonusJobForTutorial)
             for ghost in self.ghosts:
-                ghost.highLight(self.field1,self.field2)         
+                ghost.highLight(self.field1, self.field2)         
         else:
-            g_player.setTimeout(3000, self._bonusJob)       
+            self.bonusjob = g_player.setTimeout(3000, self._bonusJob)       
              
     def killGhosts(self):
         for ghost in self.ghosts:        
@@ -321,30 +326,25 @@ class Game(gameapp.GameApp):
         return self.ghosts
     
     def _bonusJobForTutorial(self):        
-        for ball in self.getBalls():
-            self.removeBall(ball)
-            
         if len(InstantBonus.boni.items()) > 0:
             bonus = InstantBonus(self, InstantBonus.boni.popitem())
-            bonus.highLight(self.field1,self.field2)
+            bonus.highLight(self.field1, self.field2)
         elif len(PersistentBonus.boni.items()) > 0:
             bonus = PersistentBonus(self, PersistentBonus.boni.popitem())
-            bonus.highLight(self.field1,self.field2)
+            bonus.highLight(self.field1, self.field2)
         else:
             pass     
         g_player.setTimeout(5000, self._bonusJobForTutorial)
         
     def _bonusJob(self):
-        
-            
-        
-        nextBonus = random.randint(0,2)
+        nextBonus = random.randint(0, 2) # XXX tweak
         if nextBonus == 0:
             PersistentBonus(self, random.choice(PersistentBonus.boni.items()))
         elif nextBonus == 1:
             InstantBonus(self, random.choice(InstantBonus.boni.items()))
         else:
-            InstantBonus(self, ('newBlock',InstantBonus.boni['newBlock']))
+            InstantBonus(self, ('newBlock', InstantBonus.boni['newBlock']))
+        # TODO get the bonusTime out of the config and out of the user's control
         self.bonusjob = g_player.setTimeout(random.choice([4000, 5000, 6000]), self._bonusJob)
 
     def win(self, player):
@@ -365,7 +365,7 @@ class Game(gameapp.GameApp):
             self.balls.append(Ball(self, self.renderer, self.world, self.display, self.middle))
     
     def removeBall(self, ball):
-        if len(self.balls)>1:
+        if len(self.balls) > 1:
             self.balls.remove(ball)
             ball.destroy()
 
@@ -380,7 +380,7 @@ class Game(gameapp.GameApp):
         for ball in self.balls:
             for ce in ball.body.contacts:
                 contact = ce.contact
-                mine  = None
+                mine = None
                 if contact.fixtureA.userData == 'mine':
                     mine = contact.fixtureA.body.userData                
                 elif contact.fixtureB.userData == 'mine':
@@ -425,16 +425,16 @@ class Game(gameapp.GameApp):
 
     def _checkBallPosition(self):
         for ball in self.balls:
-            if ball.body.position[0] > (self.display.size[0] / PPM) + ballRadius: 
+            if ball.body.position[0] > (self.display.width / PPM) + ballRadius: 
                 self.leftPlayer.addPoint()
                 ball.reSpawn()
             elif ball.body.position[0] < -ballRadius: 
                 self.rightPlayer.addPoint()
                 ball.reSpawn()
     
-    def _outside(self,ball):
+    def _outside(self, ball):
         return (ball.body is None or 
-                not (-ballRadius <= ball.body.position[0] <= (self.display.size[0] / PPM) + ballRadius))
+                not (-ballRadius <= ball.body.position[0] <= (self.display.width / PPM) + ballRadius))
     
     def _checkRedBallPosition(self):
         killList = [x for x in self.redballs if self._outside(x)]
