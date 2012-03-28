@@ -12,7 +12,7 @@ from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape, b2Fi
 
 from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize, bonusTime, brickLines
 
-cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008, 'redball':0x0010, 'semiborder':0x0020, 'mine':0x0040,'bat':0x0080}
+cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008, 'redball':0x0010, 'semiborder':0x0020, 'mine':0x0040,'bat':0x0080, 'rocket':0x0160}
 def dontCollideWith(*categories): return reduce(lambda x, y: x ^ y, [cats[el] for el in categories], 0xFFFF)
 
 standardXInertia = 20 * ballRadius # XXX solve more elegantly
@@ -238,6 +238,54 @@ class Ball(GameObject):
             direction = self.nextDir
         self.body.linearVelocity = direction
         self.render()
+
+class Rocket(GameObject):
+    pic = None
+    highLightpic = None
+    def __init__(self, game, renderer, world, parentNode, position, vel):
+        GameObject.__init__(self, renderer, world)
+        self.game = game
+        self.parentNode = parentNode
+        self.spawnPoint = parentNode.pivot / PPM 
+        self.leftPlayer = game.leftPlayer
+        self.rightPlayer = game.rightPlayer
+        self.lastPlayer = None
+        self.diameter =  2 * ballRadius * PPM
+        self.node = avg.ImageNode(parent=parentNode)
+        self.node.setBitmap(Rocket.pic)
+        self.body = world.CreateDynamicBody(position=position, userData=self, active=False, bullet=True) # XXX reevaluate bullet-ness
+        self.body.CreateCircleFixture(radius=ballRadius, density=1, restitution=.3,
+                                      friction=.01, groupIndex=-3, maskBits=dontCollideWith('border','rocket','ghost','brick'),categoryBits=cats['rocket'], userData='rocket')
+
+        self.body.CreateCircleFixture(radius=ballRadius, userData='rocket', isSensor=True)
+        self.nextDir = (vel,0)
+        self.__appear(lambda:self.nudge())
+    
+    def render(self):
+        pos = self.body.position * PPM - self.node.size / 2
+        self.node.pos = (pos[0], pos[1])
+        angle = self.body.angle + math.pi if self.body.linearVelocity[0] < 0 else self.body.angle
+        self.node.angle = angle
+            
+    def __appear(self, stopAction=None):
+        wAnim = avg.LinearAnim(self.node, 'width', 500, 1, int(self.node.width))
+        hAnim = avg.LinearAnim(self.node, 'height', 500, 1, int(self.node.height))
+        angle = 0 if self.nextDir[0] >= 0 else math.pi
+        aAnim = avg.LinearAnim(self.node, 'angle', 500, math.pi / 2, angle)
+        avg.ParallelAnim([wAnim, hAnim, aAnim], None, stopAction, 500).start()
+        
+    def nudge(self, direction=None):
+        self.body.active = True
+        self.body.angularVelocity = 0
+        self.body.angle = 0
+        if direction is None:
+            direction = self.nextDir
+        self.body.linearVelocity = direction
+        self.render()
+        
+    def hit(self):
+        self.destroy()
+
 
 class Mine(Ball):
     leftPic = rightPic = None
@@ -700,7 +748,7 @@ class Bonus:
     def invertPac(self, player=None):    
         for b in self.game.getBalls():
             b.invert()
-            
+                
     def hideGhosts(self, player=None):
         self.game.killGhosts()
         
@@ -747,15 +795,26 @@ class Bonus:
     def buildShield(self, player):
         s = SemipermeableShield(self.game, player.isLeft(),'ghost')
         g_player.setTimeout(10000, s.destroy) # XXX tweak time
-     
+   
+    def startWave(self,player):
+        if player.isLeft():
+            for i in range(0,30):
+                Rocket(self.game, self.game.renderer, self.world, self.parentNode, (brickSize*brickLines+ghostRadius, (2*ballRadius)*i), 50)
+        else:
+            for i in range(0,30):
+                Rocket(self.game, self.game.renderer, self.world, self.parentNode, (self.parentNode.size[0]/PPM - (brickSize*brickLines+ghostRadius), (2*ballRadius)*i), -50)
+        
 class PersistentBonus(Bonus):
-    boni = dict(
-                pacShot=Bonus.pacShot,
-                stopGhosts=Bonus.stopGhosts,
-                flipGhosts=Bonus.flipGhostStates,
-                tower=Bonus.setTowers,
-                shield=Bonus.buildShield
-                )
+#    boni = dict(
+#                pacShot=Bonus.pacShot,
+#                stopGhosts=Bonus.stopGhosts,
+#                flipGhosts=Bonus.flipGhostStates,
+#                tower=Bonus.setTowers,
+#                shield=Bonus.buildShield,
+#                wave=Bonus.startWave
+#                )
+
+    boni = dict (wave=Bonus.startWave, tower=Bonus.setTowers)
     
     def __init__(self, game, (name, effect)):
         Bonus.__init__(self, game, (name, effect))
@@ -764,17 +823,18 @@ class PersistentBonus(Bonus):
         (self.game.leftPlayer if Bonus.onClick(self, event) else self.game.rightPlayer).addBonus(self)  
         
 class InstantBonus(Bonus):
-    boni = dict(
-                invertPac=Bonus.invertPac,
-                newBlock=Bonus.newBlock,
-                addOwnGhost=Bonus.addGhost,
-                hideGhosts=Bonus.hideGhosts,
-                resetGhosts=Bonus.resetGhosts,
-                sendGhostsToOtherSide=Bonus.sendGhostsToOpponent,
-                mine=Bonus.setMine
-                )
-
-          
+#    boni = dict(
+#                invertPac=Bonus.invertPac,
+#                newBlock=Bonus.newBlock,
+#                addOwnGhost=Bonus.addGhost,
+#                hideGhosts=Bonus.hideGhosts,
+#                resetGhosts=Bonus.resetGhosts,
+#                sendGhostsToOtherSide=Bonus.sendGhostsToOpponent,
+#                mine=Bonus.setMine
+#                )
+    
+    boni = dict(newBlock=Bonus.newBlock)
+   
     def __init__(self, game, (name, effect)):
         Bonus.__init__(self, game, (name, effect))
         
@@ -922,6 +982,9 @@ class Block:
         ui.DragRecognizer(self.container, moveHandler=self.__onMove, coordSysNode = self.brickList[0].node)
         ui.TransformRecognizer(self.container, moveHandler=self.__onTransform, endHandler=self.__moveEnd)
     
+    def getBrickList(self):
+        return self.brickList
+    
     def __onMove(self, e, offset):
         if self.__cursor2 is None:
             if self.__timeCall is not None:
@@ -1058,7 +1121,7 @@ class Block:
             self.container.active = False
             self.container.unlink(True)
             self.__displayRaster(False)
-    
+                
     def __displayRaster(self, on):
         if self.onLeft:
             raster = self.leftPlayer.nodeRaster
@@ -1109,7 +1172,8 @@ def preRender():
     
     ballSize = ballDiameter,ballDiameter
     SemipermeableShield.pic = avg.SVG(chars+'semiperright.svg', False).renderElement('layer1', (PPM, displayHeight))
-    Ball.pic = avg.SVG(chars+'pacman.svg', False).renderElement('layer1', ballSize)
+    Ball.pic= avg.SVG(chars+'pacman.svg', False).renderElement('layer1', ballSize)
+    
     # XXX the mine should look like miss pacman ;)
     Mine.leftPic = avg.SVG(chars+'bluepacman.svg', False).renderElement('layer1', ballSize)
     Mine.rightPic = avg.SVG(chars+'greenpacman.svg', False).renderElement('layer1', ballSize)
@@ -1132,6 +1196,7 @@ def preRender():
         ghostOfBlue = avg.SVG(chars+'ghostOfBlue.svg', False).renderElement('layer1', ghostSize))
     
     boni = '../data/img/bonus/' 
+    Rocket.pic = avg.SVG(boni+'wave.svg', False).renderElement('layer1', ballSize)
     Bonus.highLightpic = Ghost.highLightpic = Ball.highLightpic = avg.SVG(chars+'arrow.svg', False).renderElement('layer1', (displayWidth/10,displayHeight/12))
         
     w = (int)(displayWidth/15)
@@ -1143,7 +1208,7 @@ def preRender():
                 hideGhosts=avg.SVG(boni+'hideGhosts.svg', False).renderElement('layer1', bonusSize),
                 
                 resetGhosts=avg.SVG(boni+'resetGhosts.svg', False).renderElement('layer1', bonusSize),
-                
+                wave=avg.SVG(boni+'wave.svg', False).renderElement('layer1', bonusSize),
                 sendGhostsToOtherSide=avg.SVG(boni+'sendGhostsToOtherSide.svg', False).renderElement('layer1', bonusSize),
                 mine=avg.SVG(boni+'mine.svg', False).renderElement('layer1', bonusSize),
                 pacShot=avg.SVG(boni+'pacShot.svg', False).renderElement('layer1', bonusSize),
