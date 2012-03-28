@@ -11,7 +11,7 @@ from Box2D import b2World, b2Vec2, b2ContactListener
 import math
 
 import gameobjects
-from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block, Mine, RedBall, Tower, Bonus
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block, Mine, RedBall, Tower, Bonus,timeForStep
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize, ghostRadius, brickSize, brickLines
 
 g_player = avg.Player.get()
@@ -269,14 +269,15 @@ class Game(gameapp.GameApp):
         self.createBall()
         self.initiateBlocks()
         self.mainLoop = g_player.setInterval(13, self.step)
-             
-    
+                
     def initiateBlocks(self):
         height = (self.display.size[1] / 2) - (brickSize * PPM)
         width = self.display.size[0]
         for i in range (-3,3):
             Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height - (brickSize*PPM*3)*i ), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()))
             Block(self.display, self.renderer, self.world, (2 * width / 3, height - (brickSize*PPM*3)*i ), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()))
+            timeForStep(self.display,1)
+            timeForStep(self.display,0)
         
     def createBall(self):
         ball = Ball(self, self.renderer, self.world, self.display, self.middle)

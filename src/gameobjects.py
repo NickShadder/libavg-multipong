@@ -780,7 +780,7 @@ class InstantBonus(Bonus):
         
     def onClick(self, event):
         self.applyEffect(self.game.leftPlayer if Bonus.onClick(self, event) else self.game.rightPlayer)
-        
+
 class Bat(GameObject): # XXX maybe ghosts should be able to penetrate the bat
     blueBat = greenBat = None
     def __init__(self, renderer, world, parentNode, pos):
@@ -1072,11 +1072,41 @@ class Block:
             return self.leftPlayer
         return self.rightPlayer
 
-
+class timeForStep:
+    picBlue = None
+    picGreen = None
+    def __init__(self, parentNode,left): 
+        if left:
+            
+            self.node = avg.ImageNode(parent=parentNode, opacity=1)
+            self.node.setBitmap(self.picBlue)
+            self.node.pos=(10,parentNode.size[1] - self.node.height - 10)
+            
+            avg.LinearAnim(self.node , 'size', 15000,self.node.size, 
+                                                   (0,self.node.size[1]),False,None,self.destroy).start()
+        else:
+            self.node = avg.ImageNode(parent=parentNode, opacity=1)
+            self.node.setBitmap(self.picGreen)
+            
+            self.node.pos=(2*parentNode.size[0]/3 + 10,10)
+            
+            avg.LinearAnim(self.node , 'size', 15000,self.node.size, 
+                                                   (0,self.node.size[1]),False,None,self.destroy).start()
+            
+    
+    def destroy(self):
+        self.node.active = False
+        self.node.unlink(True)
+        self.node = None
+        
 def preRender():
     global displayWidth, displayHeight
     chars = '../data/img/char/'
     ballDiameter = 2 * ballRadius * PPM
+    
+    timeForStep.picBlue = avg.SVG(chars+'tetrisTimeBlue.svg', False).renderElement('layer1', (displayWidth/5, displayHeight/80))
+    timeForStep.picGreen = avg.SVG(chars+'tetrisTimeGreen.svg', False).renderElement('layer1', (displayWidth/5, displayHeight/80))
+    
     ballSize = ballDiameter,ballDiameter
     SemipermeableShield.pic = avg.SVG(chars+'semiperright.svg', False).renderElement('layer1', (PPM, displayHeight))
     Ball.pic = avg.SVG(chars+'pacman.svg', False).renderElement('layer1', ballSize)
@@ -1117,7 +1147,7 @@ def preRender():
                 sendGhostsToOtherSide=avg.SVG(boni+'sendGhostsToOtherSide.svg', False).renderElement('layer1', bonusSize),
                 mine=avg.SVG(boni+'mine.svg', False).renderElement('layer1', bonusSize),
                 pacShot=avg.SVG(boni+'pacShot.svg', False).renderElement('layer1', bonusSize),
-                stopGhosts=avg.SVG(boni+'pacShot.svg', False).renderElement('layer1', bonusSize), # TODO fix pic
+                stopGhosts=avg.SVG(boni+'stopGhosts.svg', False).renderElement('layer1', bonusSize), # TODO fix pic
                 flipGhosts=avg.SVG(boni+'flipGhosts.svg', False).renderElement('layer1', bonusSize),
                 tower=avg.SVG(boni+'tower.svg', False).renderElement('layer1', bonusSize),
                 shield=avg.SVG(boni+'shield.svg', False).renderElement('layer1', bonusSize))
