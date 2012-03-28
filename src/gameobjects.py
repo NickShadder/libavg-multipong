@@ -47,6 +47,8 @@ class Player:
     
     def isLeft(self):
         return self.left
+
+    
     
     def addPoint(self, points=1):
         self.points += points
@@ -136,7 +138,7 @@ class Ball(GameObject):
         self.__appear(lambda:self.nudge())
         
     def highLight(self):
-        self.highLightText = "Hier wird der Spielball (auch Pacman genannt) erscheinen.<br/>" + "Erreicht er deinen Rand, bekommt der Gegner einen Punkt.<br/>" + "Mit deinem Schlaeger kannst du dies verhindern.<br/>" + "Platziere an zwei Stellen einen Finger, um den Schlaeger zu erzeugen.<br/>" + "Versuche es."         
+        self.highLightText = "This field is your playground.<br/>" + "The green arrows point at the place, where the game ball (pacman) always spawns. <br/>" + "Your opponent will receive a point, if the pacman reaches your limiting line.<br/>" + "You are equipped with a bat to defend your boundaries.<br/>" + "You can activate your bat by physical contact with the screen at two places,<br/>"+" if they are not two far away from each other.<br/>" + "Try.<br/>"+ "Now."         
         self.highLights = []
         # UP
         self.highLightNodeUp = avg.ImageNode(parent=self.parentNode, opacity=1, angle=math.pi / 2)
@@ -420,7 +422,7 @@ class Ghost(GameObject):
         
     def highLight(self, field1, field2):         
         self.highLights = []
-        self.highLightText = "Dies sind Geister. Sind kommen immer dort wo die Pfeile sind.<br/>" + "Clyde, Inky, Pinky und Blinky.<br/>" + "Ist ein Geist nicht blau, frisst er den Pacman.<br/>" + "Der Spieler, der den Pacman als letztes mit seinem Schlaeger beruehrt hat, verliert dabei einen Punkt.<br/>" + "Ist ein Geist blau, frisst der Pacman den Geist.<br/>" + "Der Spieler, der den Pacman als letztes mit seinem Schlaeger beruehrt hat, bekommt dabei einen Punkt." 
+        self.highLightText = "The ghosts.<br/>" + "Clyde, Inky, Pinky and Blinky.<br/>"+"Each ghost has a spawn point.<br/>"+"The spawn points are highlighted by the green arrows.<br/>" + "A blue ghost is eaten by the pacman and the pacman is eaten by a ghost,<br/>"+"which is not blue.<br/>" + "A eaten ghost is rewarded by a point for the last player,<br/>" + "that has touched the pacman with his bat.<br/>" + "A eaten pacman is punished by a decrease of collected points for the player,<br/>"+"in which the pacman has been eaten." 
         # UP
         if self.name == 'clyde' or self.name == 'inky':
             self.highLightNodeUp = avg.ImageNode(parent=self.parentNode, opacity=1, angle=math.pi / 2)
@@ -481,6 +483,10 @@ class Ghost(GameObject):
                     
         
         g_player.setTimeout(20000, self.dehighLight)
+    
+        
+    def resetTrend(self):
+        self.trend = None 
     
     def dehighLight(self):
         for node in self.highLights:
@@ -549,7 +555,9 @@ class Ghost(GameObject):
             self.body.linearVelocity = direction
     
     def setTrend(self, trend):
-        self.trend = trend
+        if self.trend is None:
+            self.trend = trend
+            g_player.setTimeout(20000, self.resetTrend)
     
     def stop(self):
         if self.body is not None:
@@ -778,6 +786,7 @@ class Bonus:
                 g.setTrend('right')
             else:
                 g.setTrend('left')
+                
                                   
     def setTowers(self, player):
         thirdWidth = self.parentNode.width / 3
