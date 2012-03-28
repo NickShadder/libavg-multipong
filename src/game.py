@@ -239,7 +239,7 @@ class Game(gameapp.GameApp):
         self.display = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
         self.renderer = Renderer()
 #        background = avg.ImageNode(parent = self.display)
-#        background.setBitmap(avg.SVG('../data/img/char/background.svg', False).renderElement('layer1', self.display.size))
+#        background.setBitmap(avg.SVG('../data/img/char/background2.svg', False).renderElement('layer1', self.display.size))
         self.display.player = None # monkey patch
         (displayWidth, displayHeight) = self.display.size
         widthThird = (int)(displayWidth / 3)
@@ -277,8 +277,10 @@ class Game(gameapp.GameApp):
         self.balls = []
         self.redballs = []
         self.ghosts = []
-        self.initiateBlocks()
-        g_player.setTimeout(1000, self.createBall)
+        self.initiateBlocks()        
+
+    def beginSimulation(self):
+        self.createBall()
         self.mainLoop = g_player.setOnFrameHandler(self.step)
 
     def initiateBlocks(self):
@@ -287,8 +289,8 @@ class Game(gameapp.GameApp):
         for i in range (-3, 3):
             Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height - (brickSize * PPM * 3) * i), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()), vanishLater=True)
             Block(self.display, self.renderer, self.world, (2 * width / 3, height - (brickSize * PPM * 3) * i), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()), vanishLater=True)
-            TimeForStep(self.display)
-            TimeForStep(self.display, left=False)
+        TimeForStep(self.display)
+        TimeForStep(self.display,self.beginSimulation,left=False)
         
         
     def createBall(self):
@@ -338,8 +340,6 @@ class Game(gameapp.GameApp):
         elif len(PersistentBonus.boni.items()) > 0:
             self.bonus = PersistentBonus(self, PersistentBonus.boni.popitem())
             self.bonus.highLight(self.field1, self.field2)
-        else:
-            pass     
         g_player.setTimeout(5000, self._bonusJobForTutorial)
         
     def _bonusJob(self):
@@ -354,12 +354,17 @@ class Game(gameapp.GameApp):
         self.bonusjob = g_player.setTimeout(random.choice([4000, 5000, 6000]), self._bonusJob)
 
     def win(self, player):
+        g_player.clearInterval(self.mainLoop)
         if self.bonusjob is not None:
-            g_player.clearInterval(self.bonusjob)       
-        if self.bonus is not None:                  
-            self.bonus.vanish()
-        for i in range(1,5):
-            self.balls.append(Ball(self, self.renderer, self.world, self.display, self.middle))
+            g_player.clearInterval(self.bonusjob)            
+        for ghost in self.ghosts:
+            if ghost.movement is not None:
+                g_player.clearInterval(ghost.movement)
+            if ghost.changing is not None:
+                g_player.clearInterval(ghost.changing)
+        # abort all anims and intervals
+        # TODO tear down world and current display
+        # TODO show winner/revanche screen
             
                             
 
@@ -432,11 +437,9 @@ class Game(gameapp.GameApp):
             if ball.body.position[0] > (self.display.width / PPM) + ballRadius: 
                 self.leftPlayer.addPoint()
                 ball.reSpawn()
-    
             elif ball.body.position[0] < -ballRadius: 
                 self.rightPlayer.addPoint()
                 ball.reSpawn()
-                
     
     def _outside(self, ball):
         return (ball.body is None or 

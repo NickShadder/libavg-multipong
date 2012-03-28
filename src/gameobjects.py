@@ -531,7 +531,8 @@ class Ghost(GameObject):
     def __reAppear(self, pos):
         if self.body is not None:
             self.body.position = pos
-            self.mortal = 0 # ghost respawns in immortal state XXX rerender this?
+            self.mortal = 0 # ghost respawns in immortal state
+            self.node.setBitmap(Ghost.pics[self.name])
             self.render()
             self.node.active = True
             avg.fadeIn(self.node, 1000, .85, self.__activateBody)
@@ -638,10 +639,10 @@ class Bonus:
         self.pic = Bonus.pics[name]
         self.parentNode, self.game, self.world = parentNode, game, game.world
         self.effect = effect
-        self.leftBonus = avg.ImageNode(parent=parentNode, pos=(displayWidth / 3, displayHeight / 2 - (self.height / 2)))
+        self.leftBonus = avg.ImageNode(parent=parentNode, pos=(displayWidth / 3, displayHeight / 2 - (self.height / 2)), angle=math.pi/2)
         self.leftBonus.setBitmap(self.pic)
         
-        self.rightBonus = avg.ImageNode(parent=parentNode, pos=(2 * displayWidth / 3 - self.width, displayHeight / 2 - (self.height / 2)))
+        self.rightBonus = avg.ImageNode(parent=parentNode, pos=(2 * displayWidth / 3 - self.width, displayHeight / 2 - (self.height / 2)), angle=-math.pi/2)
         self.rightBonus.setBitmap(self.pic)
         self.leftBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.onClick)
         self.rightBonus.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.onClick)
@@ -823,16 +824,13 @@ class Bonus:
                 Rocket(self.game, self.game.renderer, self.world, self.parentNode, (self.parentNode.size[0] / PPM - (brickSize * brickLines + ghostRadius), (2 * ballRadius) * i), -50)
         
 class PersistentBonus(Bonus):
-#    boni = dict(
-#                pacShot=Bonus.pacShot,
-#                stopGhosts=Bonus.stopGhosts,
-#                flipGhosts=Bonus.flipGhostStates,
-#                tower=Bonus.setTowers,
-#                invertPac=Bonus.invertPac,
-#                shield=Bonus.buildShield,
-#                wave=Bonus.startWave
-#                )
     boni = dict(
+                pacShot=Bonus.pacShot,
+                stopGhosts=Bonus.stopGhosts,
+                flipGhosts=Bonus.flipGhostStates,
+                tower=Bonus.setTowers,
+                invertPac=Bonus.invertPac,
+                shield=Bonus.buildShield,
                 wave=Bonus.startWave
                 )
             
@@ -843,16 +841,13 @@ class PersistentBonus(Bonus):
         (self.game.leftPlayer if Bonus.onClick(self, event) else self.game.rightPlayer).addBonus(self)  
         
 class InstantBonus(Bonus):
-#    boni = dict(
-#                newBlock=Bonus.newBlock,
-#                addOwnGhost=Bonus.addGhost,
-#                hideGhosts=Bonus.hideGhosts,
-#                resetGhosts=Bonus.resetGhosts,
-#                sendGhostsToOtherSide=Bonus.sendGhostsToOpponent,
-#                mine=Bonus.setMine
-#                )
     boni = dict(
-                mine=Bonus.setMine,newBlock=Bonus.newBlock
+                newBlock=Bonus.newBlock,
+                addOwnGhost=Bonus.addGhost,
+                hideGhosts=Bonus.hideGhosts,
+                resetGhosts=Bonus.resetGhosts,
+                sendGhostsToOtherSide=Bonus.sendGhostsToOpponent,
+                mine=Bonus.setMine
                 )
    
     def __init__(self, game, (name, effect)):
@@ -983,7 +978,6 @@ class Block:
             self.__form = random.choice(Block.form.values())
         self.__brickList = []
         self.__container = avg.DivNode(parent=parentNode, pos=position, angle=angle)
-        # XXX maybe set pivot
         brickSizeInPx = brickSize * PPM
         bricks, maxLineLength, offset = self.__form
         rightMostPos = (maxLineLength - 1) * brickSizeInPx
@@ -1006,7 +1000,7 @@ class Block:
             self.__moveEnd(False)
         else:
             self.__assigned = False
-            timeout = 15000 if vanishLater else 3000
+            timeout = 10000 if vanishLater else 3000
             self.__timeCall = g_player.setTimeout(timeout, self.__vanish)
             self.__cursor1 = None
             self.__cursor2 = None
@@ -1157,7 +1151,7 @@ class Block:
 class TimeForStep:
     picBlue = None
     picGreen = None
-    def __init__(self, parentNode, callBack=None, time=15000, left=True): 
+    def __init__(self, parentNode, callBack=None, time=10000, left=True): 
         self.node = avg.ImageNode(parent=parentNode)
         self.callBack = callBack
         offset = 10
