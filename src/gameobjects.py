@@ -44,12 +44,9 @@ class Player:
                     xPos = avgNode.width - xPos - pixelBrickSize
                 self.__nodeRaster.append(avg.RectNode(parent=avgNode, pos=(xPos, yPos), size=(pixelBrickSize, pixelBrickSize), active=False))
         
-    
     def isLeft(self):
         return self.left
-
-    
-    
+ 
     def addPoint(self, points=1):
         self.points += points
         self.updateDisplay()
@@ -88,7 +85,7 @@ class Player:
             (x, y) = self.__freeBricks.pop()
             brick = self.getRasterContent(x, y)
             brick.setBonus(bonus)
-            bonus.saveBonus(brick)
+            bonus.saveBonus(brick,self.left)
 
 class GameObject:
     def __init__(self, renderer, world):
@@ -257,18 +254,13 @@ class Rocket(GameObject):
     highLightpic = None
     def __init__(self, game, renderer, world, parentNode, position, vel):
         GameObject.__init__(self, renderer, world)
-        self.game = game
         self.parentNode = parentNode
-        self.spawnPoint = parentNode.pivot / PPM 
-        self.leftPlayer = game.leftPlayer
-        self.rightPlayer = game.rightPlayer
-        self.lastPlayer = None
-        self.diameter = 2 * ballRadius * PPM
         self.node = avg.ImageNode(parent=parentNode)
         self.node.setBitmap(Rocket.pic)
         self.body = world.CreateDynamicBody(position=position, userData=self, active=False, bullet=True) # XXX reevaluate bullet-ness
         self.body.CreateCircleFixture(radius=ballRadius, density=1, restitution=.3,
-                                      friction=.01, groupIndex= -3, maskBits=dontCollideWith('border', 'rocket', 'ghost', 'brick'), categoryBits=cats['rocket'], userData='rocket')
+                                      friction=.01, groupIndex= -3, maskBits=dontCollideWith('border', 'rocket', 'ghost', 'brick','semiborder','mine'), 
+                                      categoryBits=cats['rocket'], userData='rocket')
 
         self.body.CreateCircleFixture(radius=ballRadius, userData='rocket', isSensor=True)
         self.nextDir = (vel, 0)
@@ -277,20 +269,14 @@ class Rocket(GameObject):
     def render(self):
         pos = self.body.position * PPM - self.node.size / 2
         self.node.pos = (pos[0], pos[1])
-        angle = self.body.angle + math.pi if self.body.linearVelocity[0] < 0 else self.body.angle
-        self.node.angle = angle
             
     def __appear(self, stopAction=None):
         wAnim = avg.LinearAnim(self.node, 'width', 500, 1, int(self.node.width))
         hAnim = avg.LinearAnim(self.node, 'height', 500, 1, int(self.node.height))
-        angle = 0 if self.nextDir[0] >= 0 else math.pi
-        aAnim = avg.LinearAnim(self.node, 'angle', 500, math.pi / 2, angle)
-        avg.ParallelAnim([wAnim, hAnim, aAnim], None, stopAction, 500).start()
+        avg.ParallelAnim([wAnim, hAnim], None, stopAction, 500).start()
         
     def nudge(self, direction=None):
         self.body.active = True
-        self.body.angularVelocity = 0
-        self.body.angle = 0
         if direction is None:
             direction = self.nextDir
         self.body.linearVelocity = direction
@@ -730,10 +716,14 @@ class Bonus:
     def applyEffect(self, player):
         self.effect(self, player)
     
-    def saveBonus(self, brick):
-        hSize = brickSize * PPM / 2
-        position = hSize / 2
-        self.__node = avg.ImageNode(parent=brick.getDivNode(), pos=(position, position), size=(hSize, hSize))
+    def saveBonus(self, brick,left):
+        hSize = .85 * brickSize * PPM
+        position = (brickSize * PPM - hSize) / 2
+        if left:
+            angle = math.pi/2
+        else:
+            angle = -math.pi/2
+        self.__node = avg.ImageNode(parent=brick.getDivNode(), pos=(position, position), size=(hSize, hSize), angle=angle)
         self.__node.setBitmap(self.pic)
         self.__node.setEventHandler(avg.CURSORDOWN, avg.TOUCH, lambda e, brick=brick: self.__useBonus(brick))
     

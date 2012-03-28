@@ -233,7 +233,6 @@ class Game(gameapp.GameApp):
         self.aboutScreen.unlink(True)
         self.aboutScreen = None
         
-
     def startPlaying(self):
         # libavg setup        
         self.display = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
