@@ -146,9 +146,7 @@ class Game(gameapp.GameApp):
         self.machine.addState('Playing', ['Winner'], enterFunc=self.startPlaying)
         self.machine.addState('Winner', ['Playing', 'MainMenu']) # XXX clarify this stuff
         self.machine.addState('About', ['MainMenu'], enterFunc=self.showAbout, leaveFunc=self.hideAbout)
-        
-
-        
+    
         self.createMenuBackground()
         self.showMenu()
 
