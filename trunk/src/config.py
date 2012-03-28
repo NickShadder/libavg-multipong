@@ -8,8 +8,9 @@ Created on 19.01.2012
 debug = True
 pointsToWin = 40
 PPM = 20 # number of pixels per meter
-TARGET_FPS = 60 # the targeted frames per second
-TIME_STEP = 1.0 / TARGET_FPS # XXX rethink maybe .013 is better
+#TARGET_FPS = 60 # the targeted frames per second
+#TIME_STEP = 1.0 / TARGET_FPS # XXX rethink maybe .013 is better
+TIME_STEP = .013
 
 # ****************** bat config ******************
 maxBatSize = 17 # maximal bat size in meters XXX should be dependent on the actual resolution
