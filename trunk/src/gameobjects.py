@@ -823,16 +823,19 @@ class Bonus:
                 Rocket(self.game, self.game.renderer, self.world, self.parentNode, (self.parentNode.size[0] / PPM - (brickSize * brickLines + ghostRadius), (2 * ballRadius) * i), -50)
         
 class PersistentBonus(Bonus):
+#    boni = dict(
+#                pacShot=Bonus.pacShot,
+#                stopGhosts=Bonus.stopGhosts,
+#                flipGhosts=Bonus.flipGhostStates,
+#                tower=Bonus.setTowers,
+#                invertPac=Bonus.invertPac,
+#                shield=Bonus.buildShield,
+#                wave=Bonus.startWave
+#                )
     boni = dict(
-                pacShot=Bonus.pacShot,
-                stopGhosts=Bonus.stopGhosts,
-                flipGhosts=Bonus.flipGhostStates,
-                tower=Bonus.setTowers,
-                invertPac=Bonus.invertPac,
-                shield=Bonus.buildShield,
                 wave=Bonus.startWave
                 )
-        
+            
     def __init__(self, game, (name, effect)):
         Bonus.__init__(self, game, (name, effect))
     
@@ -840,13 +843,16 @@ class PersistentBonus(Bonus):
         (self.game.leftPlayer if Bonus.onClick(self, event) else self.game.rightPlayer).addBonus(self)  
         
 class InstantBonus(Bonus):
+#    boni = dict(
+#                newBlock=Bonus.newBlock,
+#                addOwnGhost=Bonus.addGhost,
+#                hideGhosts=Bonus.hideGhosts,
+#                resetGhosts=Bonus.resetGhosts,
+#                sendGhostsToOtherSide=Bonus.sendGhostsToOpponent,
+#                mine=Bonus.setMine
+#                )
     boni = dict(
-                newBlock=Bonus.newBlock,
-                addOwnGhost=Bonus.addGhost,
-                hideGhosts=Bonus.hideGhosts,
-                resetGhosts=Bonus.resetGhosts,
-                sendGhostsToOtherSide=Bonus.sendGhostsToOpponent,
-                mine=Bonus.setMine
+                mine=Bonus.setMine,newBlock=Bonus.newBlock
                 )
    
     def __init__(self, game, (name, effect)):
