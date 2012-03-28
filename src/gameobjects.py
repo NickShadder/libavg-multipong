@@ -736,7 +736,6 @@ class Bonus:
     def __useBonus(self, brick):
         self.destroy(brick)
         self.applyEffect(brick.getPlayer())
-        #brick.getPlayer.moveTogetherBoni()        XXX
         
     def pacShot(self, player):
         height = self.parentNode.height
@@ -885,14 +884,14 @@ class Material:
     # TODO add others
 
 class Brick(GameObject):
-    def __init__(self, parentBlock, renderer, world, parentNode, pos, mat=None):
+    def __init__(self, parentBlock, container, renderer, world, parentNode, pos, mat=None):
         GameObject.__init__(self, renderer, world)
-        self.block, self.hitcount, self.material = parentBlock, 0, mat
+        self.block, self.hitcount, self.__material = parentBlock, 0, mat
         self.parentNode = parentNode
-        if self.material is None:
-            self.material = random.choice(filter(lambda x:type(x).__name__ == 'tuple', Material.__dict__.values())) # XXX hacky
-        self.node = avg.ImageNode(parent=parentBlock.container, pos=pos)
-        self.node.setBitmap(self.material[1][0])
+        if self.__material is None:
+            self.__material = random.choice(filter(lambda x:type(x).__name__ == 'tuple', Material.__dict__.values())) # XXX hacky
+        self.node = avg.ImageNode(parent = container, pos=pos)
+        self.node.setBitmap(self.__material[1][0])
         self.__divNode = None
         self.__index = None
         self.__bonus = None
@@ -913,8 +912,8 @@ class Brick(GameObject):
     
     def hit(self):
         self.hitcount += 1
-        if self.hitcount < len(self.material[1]):
-            self.node.setBitmap(self.material[1][self.hitcount])
+        if self.hitcount < len(self.__material[1]):
+            self.node.setBitmap(self.__material[1][self.hitcount])
         else:
             self.destroy() # XXX maybe override destroy for special effects, or call something like vanish first
     
@@ -960,17 +959,17 @@ class Block:
     LPIECE=(4, 3, 0),
     TPIECE=(4, 3, 1)
 )
-    def __init__(self, parentNode, renderer, world, position, player, form=None, flip=False, material=None, angle=0, vanishLater=False):        
+    def __init__(self, parentNode, renderer, world, position, player, form=None, flip=False, material=None, angle=0, vanishLater=False, movable = True):        
         self.parentNode, self.renderer, self.world, self.position = parentNode, renderer, world, position
-        self.form, self.flip, self.material, self.angle = form, flip, material, angle
+        self.__form = form
         self.leftPlayer, self.rightPlayer = player
         if form is None:
-            self.form = random.choice(Block.form.values())
-        self.brickList = []
-        self.container = avg.DivNode(parent=parentNode, pos=position, angle=angle)
+            self.__form = random.choice(Block.form.values())
+        self.__brickList = []
+        self.__container = avg.DivNode(parent=parentNode, pos=position, angle=angle)
         # XXX maybe set pivot
         brickSizeInPx = brickSize * PPM
-        bricks, maxLineLength, offset = self.form
+        bricks, maxLineLength, offset = self.__form
         rightMostPos = (maxLineLength - 1) * brickSizeInPx
         line = -1
         for b in range(bricks):
@@ -979,37 +978,40 @@ class Block:
             posX = (line * offset + posInLine) * brickSizeInPx
             if flip: posX = rightMostPos - posX
             posY = line * brickSizeInPx
-            self.brickList.append(Brick(self, renderer, world, parentNode, (posX, posY), material))
+            self.__brickList.append(Brick(self, self.__container, renderer, world, parentNode, (posX, posY), material))
+        self.__widthDisplay = self.parentNode.size[1]
+        self.__widthThird = self.__widthDisplay / 3
         self.__owner = self.leftPlayer
         self.__alive = False
-        self.__assigned = False
-        timeout = 15000 if vanishLater else 3000
-        self.__timeCall = g_player.setTimeout(timeout, self.__vanish)
-        self.__cursor1 = None
-        self.__cursor2 = None
-        self.container.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.__cursorReg)
-        self.container.setEventHandler(avg.CURSOROUT, avg.TOUCH, self.__cursorDeReg)
-        ui.DragRecognizer(self.container, moveHandler=self.__onMove, coordSysNode=self.brickList[0].node)
-        ui.TransformRecognizer(self.container, moveHandler=self.__onTransform, endHandler=self.__moveEnd)
-    
-    def getBrickList(self):
-        return self.brickList
+        if not movable:
+            self.__alive = True
+            if self.__brickList[0].node.pos[0] + self.__container.pos[0] > self.__widthDisplay - self.__widthThird - brickSize * PPM:
+                self.__owner = self.rightPlayer
+            self.__moveEnd(False)
+        else:
+            self.__assigned = False
+            timeout = 15000 if vanishLater else 3000
+            self.__timeCall = g_player.setTimeout(timeout, self.__vanish)
+            self.__cursor1 = None
+            self.__cursor2 = None
+            self.__container.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.__cursorReg)
+            self.__container.setEventHandler(avg.CURSOROUT, avg.TOUCH, self.__cursorDeReg)
+            ui.DragRecognizer(self.__container, moveHandler=self.__onMove, coordSysNode = self.__brickList[0].node)
+            ui.TransformRecognizer(self.__container, moveHandler=self.__onTransform, endHandler=self.__moveEnd)
     
     def __onMove(self, e, offset):
         if self.__cursor2 is None:
             if self.__timeCall is not None:
                 g_player.clearInterval(self.__timeCall)
                 self.__timeCall = None
-            self.container.pos += offset
-            widthDisplay = self.parentNode.height # XXX this calculation should be outside the handler
-            widthThird = widthDisplay / 3
+            self.__container.pos += offset
             if self.__assigned:
                 self.__testInsertion()
             else:
-                if e.pos[0] < widthThird:
+                if e.pos[0] < self.__widthThird:
                     self.__assigned = True
                     self.__displayRaster(True)
-                elif e.pos[0] > widthDisplay - widthThird:
+                elif e.pos[0] > self.__widthDisplay - self.__widthThird:
                     self.__assigned = True
                     self.__owner = self.rightPlayer
                     self.__displayRaster(True)
@@ -1035,17 +1037,17 @@ class Block:
             self.__timeCall = None
 #        if self.__cursor2 is None:
 #            # only one touch -> no intent to rotate -> move
-#            self.container.pos += tr.trans
+#            self.__container.pos += tr.trans
 #            widthDisplay = self.parentNode.height
 #            widthThird = widthDisplay / 3
 #            for b in self.brickList:
 #                if self.__assigned:
 #                    break
 #                else:
-#                    if b.node.pos[0] + self.container.pos[0] < widthThird:
+#                    if b.node.pos[0] + self.__container.pos[0] < widthThird:
 #                        self.__assigned = True
 #                        self.__displayRaster(True)        
-#                    elif b.node.pos[0] + self.container.pos[0] > widthDisplay - widthThird - brickSize * PPM:
+#                    elif b.node.pos[0] + self.__container.pos[0] > widthDisplay - widthThird - brickSize * PPM:
 #                        self.__assigned = True
 #                        self.__owner = self.rightPlayer
 #                        self.__displayRaster(True)
@@ -1055,11 +1057,11 @@ class Block:
 #                self.__colourRed()
 #        else:
         if self.__cursor2 is not None:
-            self.container.angle += tr.rot
+            self.__container.angle += tr.rot
     
     def __testInsertion(self):
         possible = True     
-        for b in self.brickList:
+        for b in self.__brickList:
             (x, y) = self.__calculateIndices(b.node.pos)
             if ((x >= brickLines) or (y >= bricksPerLine) or
                 (x < 0) or (y < 0) or 
@@ -1074,10 +1076,10 @@ class Block:
     def __calculateIndices(self, position):
         pixelBrickSize = brickSize * PPM
         if self.__owner is self.leftPlayer:
-            x = int(round((position[0] + self.container.pos[0]) / pixelBrickSize))
+            x = int(round((position[0] + self.__container.pos[0]) / pixelBrickSize))
         else:
-            x = int(round((self.parentNode.width - position[0] - self.container.pos[0] - pixelBrickSize) / pixelBrickSize))
-        y = int(round((position[1] + self.container.pos[1]) / pixelBrickSize))
+            x = int(round((self.parentNode.width - position[0] - self.__container.pos[0] - pixelBrickSize) / pixelBrickSize))
+        y = int(round((position[1] + self.__container.pos[1]) / pixelBrickSize))
 #        if y >= bricksPerLine:
 #            y = bricksPerLine - 1
 #        elif y < 0:
@@ -1087,35 +1089,35 @@ class Block:
         return (x, y)
     
     def __colourRed(self):
-        for b in self.brickList:
+        for b in self.__brickList:
             b.node.intensity = (1, 0, 0)
             self.__alive = False
     
     def __colourGreen(self):
-        for b in self.brickList:
+        for b in self.__brickList:
             b.node.intensity = (0, 1, 0)
             self.__alive = True
     
     def __vanish(self):
-        for b in self.brickList:
+        for b in self.__brickList:
             if b.node is not None:
                 b.node.active = False
                 b.node.unlink(True)
                 b.node = None
-        if self.container is not None:
-            self.container.unlink(True)
+        if self.__container is not None:
+            self.__container.unlink(True)
         self.__displayRaster(False)
         if self.__timeCall is not None:
             g_player.clearInterval(self.__timeCall)
             self.__timeCall = None
     
     def __moveEnd(self, tr):
-        self.container.angle = round(2 * self.container.angle / math.pi) * math.pi / 2
+        self.__container.angle = round(2 * self.__container.angle / math.pi) * math.pi / 2
         pixelBrickSize = brickSize * PPM
         if not self.__alive:
             self.__timeCall = g_player.setTimeout(1000, self.__vanish)
         else:
-            for b in self.brickList:
+            for b in self.__brickList:
                 b.node.intensity = (1, 1, 1)
                 (x, y) = self.__calculateIndices(b.node.pos)
                 xPos, yPos = x * pixelBrickSize, y * pixelBrickSize
@@ -1125,8 +1127,8 @@ class Block:
                 b.node.pos = (xPos, yPos)
                 b.node.sensitive = False
                 b.materialize(x, y)
-            self.container.active = False
-            self.container.unlink(True)
+            self.__container.active = False
+            self.__container.unlink(True)
             self.__displayRaster(False)
                 
     def __displayRaster(self, on):
