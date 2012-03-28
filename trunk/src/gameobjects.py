@@ -12,7 +12,7 @@ from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape, b2Fi
 
 from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize, bonusTime, brickLines
 
-cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008, 'redball':0x0010, 'semiborder':0x0020, 'ownball':0x0040,'bat':0x0080}
+cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008, 'redball':0x0010, 'semiborder':0x0020, 'mine':0x0040,'bat':0x0080}
 def dontCollideWith(*categories): return reduce(lambda x, y: x ^ y, [cats[el] for el in categories], 0xFFFF)
 
 standardXInertia = 20 * ballRadius # XXX solve more elegantly
@@ -43,6 +43,7 @@ class Player:
                 if not left:
                     xPos = avgNode.size[0] - xPos - pixelBrickSize
                 self.nodeRaster.append(avg.RectNode(parent=avgNode, pos=(xPos, yPos), size=(pixelBrickSize, pixelBrickSize), active=False))
+        
     
     def isLeft(self):
         return self.left
@@ -247,9 +248,9 @@ class Mine(Ball):
         self.node.setBitmap(Mine.leftPic if owner.isLeft() else Mine.rightPic)
         self.body.active=True
         self.body.userData = self
-        filterdef = b2Filter(groupIndex = -1,categoryBits = cats['ownball'],maskBits = dontCollideWith('ghost','ball','bat'))        
+        filterdef = b2Filter(groupIndex = -1,categoryBits = cats['mine'],maskBits = dontCollideWith('ghost','ball','bat'))        
         for fix in self.body.fixtures:
-            fix.userData = 'ownball'
+            fix.userData = 'mine'
             fix.filterData = filterdef
         # TODO the mine shouldn't live forever, should it?
             
@@ -267,7 +268,7 @@ class RedBall(Ball):
         self.node.setBitmap(RedBall.pic)
         self.left = left
         self.body.userData = self
-        filterdef = b2Filter(groupIndex = -1,categoryBits = cats['redball'],maskBits = dontCollideWith('ball','redball','ownball'))
+        filterdef = b2Filter(groupIndex = -1,categoryBits = cats['redball'],maskBits = dontCollideWith('ball','redball','mine'))
         for fix in self.body.fixtures:
             fix.userData = 'redball'
             fix.filterData = filterdef        
@@ -301,14 +302,6 @@ class GhostBall:
             self.node.unlink(True)
             self.node = None   
 
-class Cloud:    
-    pic = None    
-    def __init__(self, parentNode):
-        self.parentNode = parentNode
-        self.node = avg.ImageNode(parent=parentNode, opacity=1, pos=(0, 0))
-        self.node.setBitmap(Cloud.pic)
-        # TODO this can't be it, surely there is more to this than I can see right now...
-                
 class SemipermeableShield:
     pic = None
     def __init__(self, game, left, *noCollisions):
@@ -739,7 +732,7 @@ class Bonus:
         for i in range(1,4):
             Tower(self.game, (x,i*quarterHeight), i, player.isLeft())        
             
-    def newOwnBall(self, player=None):
+    def setMine(self, player=None):
         Mine(self.game, self.parentNode, player)
           
     def newBlock(self, player): 
@@ -761,8 +754,7 @@ class PersistentBonus(Bonus):
                 stopGhosts=Bonus.stopGhosts,
                 flipGhosts=Bonus.flipGhostStates,
                 tower=Bonus.setTowers,
-                onlyPong=Bonus.buildShield,
-                pacman=Bonus.newOwnBall
+                shield=Bonus.buildShield
                 )
     
     def __init__(self, game, (name, effect)):
@@ -779,7 +771,7 @@ class InstantBonus(Bonus):
                 hideGhosts=Bonus.hideGhosts,
                 resetGhosts=Bonus.resetGhosts,
                 sendGhostsToOtherSide=Bonus.sendGhostsToOpponent,
-                pacman=Bonus.newOwnBall
+                mine=Bonus.setMine
                 )
 
           
@@ -789,19 +781,6 @@ class InstantBonus(Bonus):
     def onClick(self, event):
         self.applyEffect(self.game.leftPlayer if Bonus.onClick(self, event) else self.game.rightPlayer)
         
-'''
-class Pill:
-    # TODO refactor as Pill(BallBonus) or kill completely
-    def __init__(self, parentNode, game, world, position, radius=.5):
-        self.node = avg.CircleNode(parent=parentNode, fillopacity=1, fillcolor="FFFF00", color='000000')
-        d = {'type':'body', 'node':self.node}
-        self.world = world
-        self.game = game
-        self.body = world.CreateDynamicBody(position=position, userData=d)
-        self.body.CreateCircleFixture(radius=radius, density=1, friction=1, restitution=1)
-        self.body.bullet = True # seriously?
-'''
-            
 class Bat(GameObject): # XXX maybe ghosts should be able to penetrate the bat
     blueBat = greenBat = None
     def __init__(self, renderer, world, parentNode, pos):
@@ -935,7 +914,7 @@ class Block:
         self.onLeft = False
         self.__alive = False
         self.__assigned = False
-        self.__timeCall = g_player.setTimeout(3000, self.__vanish)
+        self.__timeCall = g_player.setTimeout(15000, self.__vanish) # TODO MAYBE NOT ...
         self.__cursor1 = None
         self.__cursor2 = None
         self.container.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.__cursorReg)
@@ -1105,8 +1084,6 @@ def preRender():
     Mine.leftPic = avg.SVG(chars+'bluepacman.svg', False).renderElement('layer1', ballSize)
     Mine.rightPic = avg.SVG(chars+'greenpacman.svg', False).renderElement('layer1', ballSize)
     RedBall.pic = avg.SVG(chars+'redpacman.svg', False).renderElement('layer1', ballSize)
-    Cloud.pic = avg.SVG(chars+'cloud.svg', False).renderElement('layer1', (500, 1000)) # XXX remove hardcode
-    
     
     batImgLen = max(1, maxBatSize * PPM / 2)
     batImgWidth = max(1, batImgLen / 10)    
@@ -1138,11 +1115,11 @@ def preRender():
                 resetGhosts=avg.SVG(boni+'resetGhosts.svg', False).renderElement('layer1', bonusSize),
                 
                 sendGhostsToOtherSide=avg.SVG(boni+'sendGhostsToOtherSide.svg', False).renderElement('layer1', bonusSize),
-                pacman=avg.SVG(boni+'pacman.svg', False).renderElement('layer1', bonusSize),
+                mine=avg.SVG(boni+'mine.svg', False).renderElement('layer1', bonusSize),
                 pacShot=avg.SVG(boni+'pacShot.svg', False).renderElement('layer1', bonusSize),
                 stopGhosts=avg.SVG(boni+'pacShot.svg', False).renderElement('layer1', bonusSize), # TODO fix pic
                 flipGhosts=avg.SVG(boni+'flipGhosts.svg', False).renderElement('layer1', bonusSize),
                 tower=avg.SVG(boni+'tower.svg', False).renderElement('layer1', bonusSize),
-                onlyPong=avg.SVG(boni+'onlyPong.svg', False).renderElement('layer1', bonusSize))
+                shield=avg.SVG(boni+'shield.svg', False).renderElement('layer1', bonusSize))
     
     Tower.pic = Bonus.pics['tower']
