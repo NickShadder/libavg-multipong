@@ -276,7 +276,7 @@ class Game(gameapp.GameApp):
         self.redballs = []
         self.ghosts = []
         self.initiateBlocks()
-        self.createBall()
+        g_player.setTimeout(10000, self.createBall)
         self.mainLoop = g_player.setOnFrameHandler(self.step)
 
     def initiateBlocks(self):
@@ -287,7 +287,8 @@ class Game(gameapp.GameApp):
             Block(self.display, self.renderer, self.world, (2 * width / 3, height - (brickSize * PPM * 3) * i), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()), vanishLater=True)
             TimeForStep(self.display)
             TimeForStep(self.display, left=False)
-    
+        
+        
     def createBall(self):
         ball = Ball(self, self.renderer, self.world, self.display, self.middle)
         self.balls.append(ball)
@@ -326,6 +327,9 @@ class Game(gameapp.GameApp):
         return self.ghosts
     
     def _bonusJobForTutorial(self):        
+        for ball in self.getBalls():
+            self.removeBall(ball)
+            
         if len(InstantBonus.boni.items()) > 0:
             bonus = InstantBonus(self, InstantBonus.boni.popitem())
             bonus.highLight(self.field1, self.field2)
