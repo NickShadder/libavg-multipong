@@ -933,7 +933,8 @@ class Brick(GameObject):
         self.__bonus = bonus
     
     def removeBonus(self):
-        self.getPlayer().bonusFreed(self.__index[0], self.__index[1])
+        if self.block.getPlayer().getRasterContent(self.__index[0], self.__index[1]) is not None:
+            self.getPlayer().bonusFreed(self.__index[0], self.__index[1])
         self.__bonus = None
     
     def getDivNode(self):
