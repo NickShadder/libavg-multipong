@@ -8,7 +8,7 @@ import random
 import math
 
 from libavg import avg, ui
-from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape, b2Filter
+from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape, b2Filter, b2Vec2
 
 from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize, bonusTime, brickLines
 
@@ -43,9 +43,6 @@ class Player:
                 if not left:
                     xPos = avgNode.size[0] - xPos - pixelBrickSize
                 self.nodeRaster.append(avg.RectNode(parent=avgNode, pos=(xPos, yPos), size=(pixelBrickSize, pixelBrickSize), active=False))
-    
-    def getField(self):
-        return self.zone
     
     def isLeft(self):
         return self.left
@@ -142,7 +139,7 @@ class Ball(GameObject):
                                                     highLightNodeUpEndPosition).start()
         # UP TEXT 
         self.wordsNodeUp = avg.WordsNode(
-                                    parent=self.rightPlayer.getField(), 
+                                    parent=self.rightPlayer.zone, 
                                     pivot=(0, 0),
                                     text=self.highLightText, 
                                     wrapmode="wordchar", 
@@ -169,7 +166,7 @@ class Ball(GameObject):
         
         # DOWN TEXT 
         self.wordsNodeDown = avg.WordsNode(
-                                    parent=self.leftPlayer.getField(), 
+                                    parent=self.leftPlayer.zone, 
                                     pivot=(0, 0),
                                     text=self.highLightText, 
                                     wrapmode="wordchar", 
@@ -180,8 +177,8 @@ class Ball(GameObject):
                                     angle = math.pi/2)
         
         self.highLights.append(self.wordsNodeDown)  
-        avg.LinearAnim(self.wordsNodeDown, 'pos', 600,(self.leftPlayer.getField().width,self.parentNode.size[1]), 
-                                                    (self.leftPlayer.getField().width,self.parentNode.size[1] - self.wordsNodeDown.width)).start()        
+        avg.LinearAnim(self.wordsNodeDown, 'pos', 600,(self.leftPlayer.zone.width,self.parentNode.size[1]), 
+                                                    (self.leftPlayer.zone.width,self.parentNode.size[1] - self.wordsNodeDown.width)).start()        
         
                                                                                                                                    
         g_player.setTimeout(20000, self.dehighLight)
@@ -280,7 +277,7 @@ class RedBall(Ball):
         speedX = -25 # XXX tweak
         if self.left:
             speedX = -speedX
-        self.body.linearVelocity = (speedX, random.randint(-15,15))
+        self.body.linearVelocity = (speedX, random.randint(-10,10))
               
     def hit(self):
         self.destroy()
@@ -540,41 +537,34 @@ class BorderLine:
 
 class Tower:
     pic = None
-    def __init__(self, world, game, parentNode, position, number, left=False):
-        self.size = (150, 150) # XXX I don't like explicit numbers like these
-        self.parentNode, self.game, self.world = parentNode, game, world
+    def __init__(self, game, position, number, left=False):
+        self.game = game
         self.left = left
-        if left:
-            self.node = avg.ImageNode(parent=parentNode, pos=(position[0] - self.size[0], position[1] - self.size[1]), angle=0)
-            self.pos = (position[0] - self.size[0], position[1] - self.size[1])
-        else:
-            self.node = avg.ImageNode(parent=parentNode, pos=(position[0], position[1] - self.size[1]), angle=0)
-            self.pos = (position[0], position[1] - self.size[1])
-            
+        self.firing = None
+        self.node = avg.ImageNode(parent=game.display,pos=position)
+        game.display.reorderChild(self.node,5) 
         self.node.setBitmap(Tower.pic)
-        self.anim = avg.LinearAnim(self.node, 'angle', 2000, 0, math.pi, False, None, self.restartanim).start()
+        ballOffset = ballRadius,2*ballRadius
+        self.firingpos = (b2Vec2(position)+self.node.size)/PPM-ballOffset
+        if left:
+            self.node.angle = math.pi
+            self.firingpos = b2Vec2(position)/PPM+ballOffset
+            
         g_player.setTimeout(1000 + (number * 1000), self.fire)
         g_player.setTimeout(30000 + (number * 1000), self.destroy)
-        
-    def restartanim(self):
-        if self.node is not None:
-            self.anim = avg.LinearAnim(self.node, 'angle', 2000, 0, 3.14, False, None, self.restartanim).start()
-    
+            
     def fire(self):
         if self.node is not None:
-            self.game.getRedBalls().append(RedBall(self.game,self.parentNode, 
-                    (self.pos[0] / PPM + (self.size[0]) / (2 * PPM), self.pos[1] / PPM + (self.size[1] / (2 * PPM))),
-                    self.left))
-            g_player.setTimeout(3000, self.fire)
+            self.game.getRedBalls().append(RedBall(self.game,self.game.display, self.firingpos,self.left))
+            self.firing = g_player.setTimeout(3000, self.fire)
         
     def destroy(self):
-        if self.anim is not None:
-            self.anim.abort()
-            self.anim = None
         if self.node is not None:
             self.node.active = False
             self.node.unlink(True)
             self.node = None
+        if self.firing is not None:
+            g_player.clearInterval(self.firing)
 
 class Bonus:    
     pics = None
@@ -740,15 +730,14 @@ class Bonus:
                 g.setTrend('left')
                                   
     def setTowers(self, player):
-        x = self.parentNode.size[0]
-        y = self.parentNode.size[1]
-        n = 4
-        if self.game.leftPlayer == player:
-            for i in range(1, n):  
-                Tower(self.world, self.game,self.parentNode,(x/3,i*y/3),i,1)
+        thirdWidth = self.parentNode.width/3
+        quarterHeight = self.parentNode.height/4
+        if player.isLeft():
+            x = thirdWidth - 4*ballRadius*PPM
         else:
-            for i in range(1, n):  
-                Tower(self.world, self.game,self.parentNode,(2*x/3,i*y/3),i, 0)
+            x = 2*thirdWidth
+        for i in range(1,4):
+            Tower(self.game, (x,i*quarterHeight), i, player.isLeft())        
             
     def newOwnBall(self, player=None):
         Mine(self.game, self.parentNode, player)
@@ -1117,7 +1106,7 @@ def preRender():
     Mine.rightPic = avg.SVG(chars+'greenpacman.svg', False).renderElement('layer1', ballSize)
     RedBall.pic = avg.SVG(chars+'redpacman.svg', False).renderElement('layer1', ballSize)
     Cloud.pic = avg.SVG(chars+'cloud.svg', False).renderElement('layer1', (500, 1000)) # XXX remove hardcode
-    Tower.pic = avg.SVG(chars+'wheel.svg', False).renderElement('layer1', (150,150)) # XXX remove hardcode
+    Tower.pic = avg.SVG(chars+'tower.svg', False).renderElement('layer1', (2*ballDiameter,2*ballDiameter)) # XXX remove hardcode
     
     batImgLen = max(1, maxBatSize * PPM / 2)
     batImgWidth = max(1, batImgLen / 10)    
@@ -1138,11 +1127,8 @@ def preRender():
     boni = '../data/img/bonus/'
     
     arrowSize = (displayWidth/10,displayHeight/12) 
-    Ball.hightLightpic = avg.SVG('../data/img/char/arrow.svg', False).renderElement('layer1', arrowSize)
-    Ghost.hightLightpic = avg.SVG('../data/img/char/arrow.svg', False).renderElement('layer1', arrowSize)
-    Bonus.hightLightpic = avg.SVG('../data/img/char/arrow.svg', False).renderElement('layer1', arrowSize)
-    #Ball.hightLightpic = avg.SVG('../data/img/char/arrow.svg', False).renderElement('layer1', arrowSize)
-    
+    Bonus.hightLightpic = Ghost.hightLightpic = Ball.hightLightpic = avg.SVG(chars+'arrow.svg', False).renderElement('layer1', arrowSize)
+        
     w = (int)(displayWidth/15)
     bonusSize = w,w
     Bonus.pics = dict(
