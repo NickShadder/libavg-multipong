@@ -888,21 +888,18 @@ class Bat(GameObject): # XXX maybe ghosts should be able to penetrate the bat
         self.node.size = avg.Point2D(w, h) * PPM
     
 # todo we do not need a class for this 
-class Material:
-    GLASS = 1, [avg.SVG('../data/img/char/glass.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM)),
-                avg.SVG('../data/img/char/glass_shat.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))]
-    RUBBER = 2, [avg.SVG('../data/img/char/rubber.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))] # XXX make unkillable?
-    # TODO add others
+
 
 class Brick(GameObject):
+    material = {}
     def __init__(self, parentBlock, container, renderer, world, parentNode, pos, mat=None):
         GameObject.__init__(self, renderer, world)
         self.block, self.hitcount, self.__material = parentBlock, 0, mat
         self.parentNode = parentNode
         if self.__material is None:
-            self.__material = random.choice(filter(lambda x:type(x).__name__ == 'tuple', Material.__dict__.values())) # XXX hacky
+            self.__material = random.choice(Brick.material.values())
         self.node = avg.ImageNode(parent = container, pos=pos)
-        self.node.setBitmap(self.__material[1][0])
+        self.node.setBitmap(self.__material[0])
         self.__divNode = None
         self.__index = None
         self.__bonus = None
@@ -923,8 +920,8 @@ class Brick(GameObject):
     
     def hit(self):
         self.hitcount += 1
-        if self.hitcount < len(self.__material[1]):
-            self.node.setBitmap(self.__material[1][self.hitcount])
+        if self.hitcount < len(self.__material):
+            self.node.setBitmap(self.__material[self.hitcount])
         else:
             self.destroy() # XXX maybe override destroy for special effects, or call something like vanish first
     
@@ -1176,11 +1173,17 @@ class TimeForStep:
             self.callBack()
         
 def preRender():
-    global displayWidth, displayHeight
+    global displayWidth, displayHeight, brickSize
     chars = '../data/img/char/'
     ballDiameter = 2 * ballRadius * PPM
     TimeForStep.picBlue = avg.SVG(chars + 'tetrisTimeBlue.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight / 80))    
     TimeForStep.picGreen = avg.SVG(chars + 'tetrisTimeGreen.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight / 80))
+    
+    Brick.material = dict(
+    GLASS = [avg.SVG(chars+'glass.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM)),
+                avg.SVG(chars+'glass_shat.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))],
+    RUBBER = [avg.SVG(chars+'rubber.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))]) # XXX make unkillable?
+    # TODO add others?
     
     ballSize = ballDiameter, ballDiameter
     SemipermeableShield.pic = avg.SVG(chars + 'semiperright.svg', False).renderElement('layer1', (PPM, displayHeight))
