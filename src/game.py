@@ -257,7 +257,7 @@ class Game(gameapp.GameApp):
         self.hitset = set()
         self.listener = ContactListener(self.hitset)
         self.world.contactListener = self.listener
-        
+        self.running = True
         self.leftPlayer, self.rightPlayer = Player(self, self.field1), Player(self, self.field2)
         self.leftPlayer.other, self.rightPlayer.other = self.rightPlayer, self.leftPlayer # monkey patch ftw =)
         
@@ -272,11 +272,13 @@ class Game(gameapp.GameApp):
         self.middle = a2w((self.middleX, self.middleY))
         BatManager(self.field1, self.world, self.renderer)
         BatManager(self.field2, self.world, self.renderer)
+        self.bonus = None
+        self.bonus = None
         self.balls = []
         self.redballs = []
         self.ghosts = []
         self.initiateBlocks()
-        g_player.setTimeout(10000, self.createBall)
+        g_player.setTimeout(1000, self.createBall)
         self.mainLoop = g_player.setOnFrameHandler(self.step)
 
     def initiateBlocks(self):
@@ -331,11 +333,11 @@ class Game(gameapp.GameApp):
             self.removeBall(ball)
             
         if len(InstantBonus.boni.items()) > 0:
-            bonus = InstantBonus(self, InstantBonus.boni.popitem())
-            bonus.highLight(self.field1, self.field2)
+            self.bonus = InstantBonus(self, InstantBonus.boni.popitem())
+            self.bonus.highLight(self.field1, self.field2)
         elif len(PersistentBonus.boni.items()) > 0:
-            bonus = PersistentBonus(self, PersistentBonus.boni.popitem())
-            bonus.highLight(self.field1, self.field2)
+            self.bonus = PersistentBonus(self, PersistentBonus.boni.popitem())
+            self.bonus.highLight(self.field1, self.field2)
         else:
             pass     
         g_player.setTimeout(5000, self._bonusJobForTutorial)
@@ -343,26 +345,24 @@ class Game(gameapp.GameApp):
     def _bonusJob(self):
         nextBonus = random.randint(0, 2) # XXX tweak
         if nextBonus == 0:
-            PersistentBonus(self, random.choice(PersistentBonus.boni.items()))
+            self.bonus = PersistentBonus(self, random.choice(PersistentBonus.boni.items()))
         elif nextBonus == 1:
-            InstantBonus(self, random.choice(InstantBonus.boni.items()))
+            self.bonus = InstantBonus(self, random.choice(InstantBonus.boni.items()))
         else:
-            InstantBonus(self, ('newBlock', InstantBonus.boni['newBlock']))
+            self.bonus = InstantBonus(self, ('newBlock', InstantBonus.boni['newBlock']))
         # TODO get the bonusTime out of the config and out of the user's control
         self.bonusjob = g_player.setTimeout(random.choice([4000, 5000, 6000]), self._bonusJob)
 
     def win(self, player):
-        g_player.clearInterval(self.mainLoop)
         if self.bonusjob is not None:
-            g_player.clearInterval(self.bonusjob)            
-        for ghost in self.ghosts:
-            if ghost.movement is not None:
-                g_player.clearInterval(ghost.movement)
-            if ghost.changing is not None:
-                g_player.clearInterval(ghost.changing)
-        # abort all anims and intervals
-        # TODO tear down world and current display
-        # TODO show winner/revanche screen
+            g_player.clearInterval(self.bonusjob)       
+        if self.bonus is not None:                  
+            self.bonus.vanish()
+        for i in range(1,5):
+            self.balls.append(Ball(self, self.renderer, self.world, self.display, self.middle))
+            
+                            
+
       
     def addBall(self):
         if len(self.balls) < maxBalls:
@@ -432,9 +432,11 @@ class Game(gameapp.GameApp):
             if ball.body.position[0] > (self.display.width / PPM) + ballRadius: 
                 self.leftPlayer.addPoint()
                 ball.reSpawn()
+    
             elif ball.body.position[0] < -ballRadius: 
                 self.rightPlayer.addPoint()
                 ball.reSpawn()
+                
     
     def _outside(self, ball):
         return (ball.body is None or 
@@ -449,11 +451,14 @@ class Game(gameapp.GameApp):
     def step(self):
         self.world.Step(TIME_STEP, 10, 10)
         self.world.ClearForces()
-        self._processBallvsGhost()
-        self._checkBallPosition()
-        self._checkRedBallPosition()
-        self._processBallvsBall()
-        self._processBallvsBrick(self.hitset)
+        
+        if self.running:
+            self._processBallvsGhost()
+            self._checkBallPosition()
+            self._checkRedBallPosition()
+            self._processBallvsBall()
+            self._processBallvsBrick(self.hitset)
+    
         self.renderer.draw()             
 
 class BatManager:
