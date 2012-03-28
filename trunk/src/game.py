@@ -146,9 +146,6 @@ class Game(gameapp.GameApp):
         self.machine.addState('Playing', ['Winner'], enterFunc=self.startPlaying)
         self.machine.addState('Winner', ['Playing', 'MainMenu']) # XXX clarify this stuff
         self.machine.addState('About', ['MainMenu'], enterFunc=self.showAbout, leaveFunc=self.hideAbout)        
-        
-        # self.startTutorial()
-        
         self.showMenu()
 
     def _makeButtonInMiddle(self, name, node, yOffset, pyFunc):
@@ -229,6 +226,8 @@ class Game(gameapp.GameApp):
         BatManager(self.field1, self.world, self.renderer)
         BatManager(self.field2, self.world, self.renderer)
         self.redballs = []
+        self.ghosts = []
+        self.balls = []
         g_player.setTimeout(1000, self.createBall)
           
         ''' TEMORARY
@@ -241,7 +240,6 @@ class Game(gameapp.GameApp):
         '''
      
     def createBall(self):
-        self.balls = []
         ball = Ball(self, self.renderer, self.world, self.display, self.middle)
         self.balls.append(ball)
         self.mainLoop = g_player.setInterval(13, self.step) # XXX g_player.setOnFrameHandler(self.step)
@@ -253,7 +251,6 @@ class Game(gameapp.GameApp):
             g_player.setTimeout(1, self.createGhosts)
             
     def createGhosts(self):
-        self.ghosts = []
         offset = 2*ballRadius + 3*ghostRadius
         self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle + (offset,offset), "blinky"))
         self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle + (-offset,offset), "pinky"))
