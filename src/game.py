@@ -228,6 +228,7 @@ class Game(gameapp.GameApp):
         # libavg setup
         self.destroyMenuBackground()
         self.display = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
+        self.renderer = Renderer()
 #        background = avg.ImageNode(parent = self.display)
 #        background.setBitmap(avg.SVG('../data/img/char/background.svg', False).renderElement('layer1', self.display.size))
         self.display.player = None # monkey patch
@@ -236,21 +237,21 @@ class Game(gameapp.GameApp):
         fieldSize = (widthThird, displayHeight)
         self.field1 = avg.DivNode(parent=self.display, size=fieldSize)
         self.field2 = avg.DivNode(parent=self.display, size=fieldSize, pos=(displayWidth - widthThird, 0))
-        
-        self.leftPlayer, self.rightPlayer = Player(self, self.field1), Player(self, self.field2)
-        self.leftPlayer.other, self.rightPlayer.other = self.rightPlayer, self.leftPlayer # monkey patch ftw =)
-        
         avg.LineNode(parent=self.display, pos1=(0, 1), pos2=(displayWidth, 1))
         avg.LineNode(parent=self.display, pos1=(0, displayHeight), pos2=(displayWidth, displayHeight))
         svg = avg.SVG('../data/img/btn/dotted_line.svg', False)
         svg.createImageNode('layer1', dict(parent=self.display, pos=(widthThird, 0)), (2, displayHeight))
         svg.createImageNode('layer1', dict(parent=self.display, pos=(displayWidth - widthThird, 0)), (2, displayHeight))
-        self.renderer = Renderer()
+        
         # pybox2d setup
         self.world = b2World(gravity=(0, 0), doSleep=True)
         self.hitset = set()
         self.listener = ContactListener(self.hitset)
         self.world.contactListener = self.listener
+        
+        self.leftPlayer, self.rightPlayer = Player(self, self.field1), Player(self, self.field2)
+        self.leftPlayer.other, self.rightPlayer.other = self.rightPlayer, self.leftPlayer # monkey patch ftw =)
+        
         # horizontal lines
         BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)), 1, False, 'redball')
         BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)), 1, False, 'redball')
@@ -266,8 +267,17 @@ class Game(gameapp.GameApp):
         self.redballs = []
         self.ghosts = []
         self.createBall()
+        self.initiateBlocks()
         self.mainLoop = g_player.setInterval(13, self.step)
              
+    
+    def initiateBlocks(self):
+        height = (self.display.size[1] / 2) - (brickSize * PPM)
+        width = self.display.size[0]
+        for i in range (-3,3):
+            Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height - (brickSize*PPM*3)*i ), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()))
+            Block(self.display, self.renderer, self.world, (2 * width / 3, height - (brickSize*PPM*3)*i ), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()))
+        
     def createBall(self):
         ball = Ball(self, self.renderer, self.world, self.display, self.middle)
         self.balls.append(ball)
@@ -317,7 +327,7 @@ class Game(gameapp.GameApp):
         g_player.setTimeout(5000, self._bonusJobForTutorial)
         
     def _bonusJob(self):
-        nextBonus = random.randint(0,3)
+        nextBonus = random.randint(0,2)
         if nextBonus == 0:
             PersistentBonus(self, random.choice(PersistentBonus.boni.items()))
         elif nextBonus == 1:
@@ -360,9 +370,9 @@ class Game(gameapp.GameApp):
             for ce in ball.body.contacts:
                 contact = ce.contact
                 mine  = None
-                if contact.fixtureA.userData == 'ownball':
+                if contact.fixtureA.userData == 'mine':
                     mine = contact.fixtureA.body.userData                
-                elif contact.fixtureB.userData == 'ownball':
+                elif contact.fixtureB.userData == 'mine':
                     mine = contact.fixtureB.body.userData
                     
                 if mine is not None:
