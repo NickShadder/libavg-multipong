@@ -180,7 +180,9 @@ class Game(gameapp.GameApp):
         for i in range (1,random.randint(100,200)):
             node = avg.ImageNode(parent=self._parentNode)
             node.setBitmap(random.choice(picList))
-            node.pos = (random.randint(0,int(self._parentNode.size[0]/3)) if random.randint(0,1) else random.randint(2*int(self._parentNode.size[0]/3),int(self._parentNode.size[0])),random.randint(0,int(self._parentNode.size[1])))
+            leftPosition = (random.randint(0,int(self._parentNode.size[0]/3)),random.randint(0,int(self._parentNode.size[1])))
+            rightPosition = (random.randint(2*int(self._parentNode.size[0]/3),int(self._parentNode.size[0])),random.randint(0,int(self._parentNode.size[1])))           
+            node.pos = (leftPosition if random.randint(0,1) else rightPosition)
             self.nodeList.append(node)
             
         self.title = avg.WordsNode(
