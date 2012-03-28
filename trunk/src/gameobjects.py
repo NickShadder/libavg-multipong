@@ -767,7 +767,7 @@ class InstantBonus(Bonus):
     boni = dict(
                 invertPac=Bonus.invertPac,
                 newBlock=Bonus.newBlock,
-                addClyde=Bonus.addGhost,
+                addOwnGhost=Bonus.addGhost,
                 hideGhosts=Bonus.hideGhosts,
                 resetGhosts=Bonus.resetGhosts,
                 sendGhostsToOtherSide=Bonus.sendGhostsToOpponent,
@@ -1139,7 +1139,7 @@ def preRender():
     Bonus.pics = dict(
                 invertPac=avg.SVG(boni+'invertPac.svg', False).renderElement('layer1', bonusSize),
                 newBlock=avg.SVG(boni+'newBlock.svg', False).renderElement('layer1', bonusSize),
-                addClyde=avg.SVG(boni+'addClyde.svg', False).renderElement('layer1', bonusSize),
+                addOwnGhost=avg.SVG(boni+'addOwnGhost.svg', False).renderElement('layer1', bonusSize),
                 hideGhosts=avg.SVG(boni+'hideGhosts.svg', False).renderElement('layer1', bonusSize),
                 
                 resetGhosts=avg.SVG(boni+'resetGhosts.svg', False).renderElement('layer1', bonusSize),
