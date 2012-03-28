@@ -176,7 +176,7 @@
      inkscape:current-layer="layer1"
      showgrid="false"
      inkscape:window-width="1920"
-     inkscape:window-height="1148"
+     inkscape:window-height="1028"
      inkscape:window-x="-8"
      inkscape:window-y="-8"
      inkscape:window-maximized="1" />
@@ -278,25 +278,5 @@
        sodipodi:ry="35"
        d="m 607.14288,88.790756 a 258.57144,35 0 1 1 -517.14288,0 258.57144,35 0 1 1 517.14288,0 z"
        transform="translate(-58.571429,-32.857142)" />
-    <path
-       sodipodi:type="arc"
-       style="fill:#ffff00;fill-opacity:1;fill-rule:nonzero;stroke:none"
-       id="path3943"
-       sodipodi:cx="236.42857"
-       sodipodi:cy="102.36218"
-       sodipodi:rx="32.142857"
-       sodipodi:ry="5.7142859"
-       d="m 268.57143,102.36218 a 32.142857,5.7142859 0 1 1 -64.28571,0 32.142857,5.7142859 0 1 1 64.28571,0 z"
-       transform="translate(-2.8571429,-51.428571)" />
-    <path
-       sodipodi:type="arc"
-       style="fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"
-       id="path3945"
-       sodipodi:cx="318.57144"
-       sodipodi:cy="108.07647"
-       sodipodi:rx="157.14285"
-       sodipodi:ry="18.571428"
-       d="m 475.71429,108.07647 a 157.14285,18.571428 0 1 1 -314.2857,0 157.14285,18.571428 0 1 1 314.2857,0 z"
-       transform="matrix(1.2,0,0,1,-98.000005,-51.428571)" />
   </g>
 </svg>
