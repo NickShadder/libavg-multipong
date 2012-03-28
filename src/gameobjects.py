@@ -28,7 +28,6 @@ class Player:
         self.zone = avgNode
         self.left = avgNode.pos == (0, 0)
         avgNode.player = self # monkey patch
-        self.field = avgNode
         left = avgNode.pos == (0, 0)
         angle = math.pi / 2 if left else -math.pi / 2
         pos = (avgNode.width, 2) if left else (0, avgNode.height - 2)            
@@ -46,7 +45,7 @@ class Player:
                 self.nodeRaster.append(avg.RectNode(parent=avgNode, pos=(xPos, yPos), size=(pixelBrickSize, pixelBrickSize), active=False))
     
     def getField(self):
-        return self.field
+        return self.zone
     
     def isLeft(self):
         return self.left
