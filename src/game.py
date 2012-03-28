@@ -133,7 +133,6 @@ class ContactListener(b2ContactListener):
                 elif worldManifold.normal.x > 0:
                     contact.enabled=False
                     
-
 class Game(gameapp.GameApp):
     def init(self):
         gameobjects.displayWidth,gameobjects.displayHeight = self._parentNode.size
@@ -145,7 +144,7 @@ class Game(gameapp.GameApp):
         self.machine.addState('Tutorial', ['MainMenu', 'Playing', 'Tutorial'], enterFunc=self.startTutorial, leaveFunc=self.hideTutorial)
         self.machine.addState('Playing', ['Winner'], enterFunc=self.startPlaying)
         self.machine.addState('Winner', ['Playing', 'MainMenu']) # XXX clarify this stuff
-        self.machine.addState('About', ['MainMenu'], enterFunc=self.showAbout, leaveFunc=self.hideAbout)        
+        self.machine.addState('About', ['MainMenu'], enterFunc=self.showAbout, leaveFunc=self.hideAbout)
         self.showMenu()
 
     def _makeButtonInMiddle(self, name, node, yOffset, pyFunc):
@@ -225,9 +224,9 @@ class Game(gameapp.GameApp):
         self.middle = a2w((self.middleX, self.middleY))
         BatManager(self.field1, self.world, self.renderer)
         BatManager(self.field2, self.world, self.renderer)
+        self.balls = []
         self.redballs = []
         self.ghosts = []
-        self.balls = []
         g_player.setTimeout(1000, self.createBall)
           
         ''' TEMORARY
@@ -248,7 +247,7 @@ class Game(gameapp.GameApp):
             g_player.setTimeout(25000, self.createGhosts)
             ball.highLight()
         else:
-            g_player.setTimeout(1, self.createGhosts)
+            self.createGhosts()
             
     def createGhosts(self):
         offset = 2*ballRadius + 3*ghostRadius
@@ -272,6 +271,9 @@ class Game(gameapp.GameApp):
                         
     def getBalls(self):
         return self.balls
+    
+    def getRedBalls(self):
+        return self.redballs
     
     def getGhosts(self):
         return self.ghosts
