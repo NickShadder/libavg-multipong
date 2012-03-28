@@ -11,7 +11,7 @@ from Box2D import b2World, b2Vec2, b2ContactListener
 import math
 
 import gameobjects
-from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block, Mine, RedBall, Tower, Bonus,timeForStep
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block, Mine, RedBall, Tower, Bonus,timeForStep,Rocket
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize, ghostRadius, brickSize, brickLines
 
 g_player = avg.Player.get()
@@ -54,6 +54,8 @@ class ContactListener(b2ContactListener):
         elif dA == 'semiborder':
             semi = fA.body.userData
             found = True
+        elif dA == 'rocket':
+            self.hitset.add(fA.body.userData)
         if not found: return
         
         found = False
@@ -72,6 +74,8 @@ class ContactListener(b2ContactListener):
         elif dB == 'semiborder':
             semi = fB.body.userData
             found = True
+        elif dB == 'rocket':
+            self.hitset.add(fB.body.userData)
         if not found: return
         
         if brick is not None:
@@ -87,7 +91,7 @@ class ContactListener(b2ContactListener):
         elif bat is not None:
             if red is not None:
                 self.hitset.add(red)
-                
+                        
     def PreSolve(self, contact, oldManifold):
         fA, fB = contact.fixtureA, contact.fixtureB
         dA, dB = fA.userData, fB.userData
@@ -221,14 +225,13 @@ class Game(gameapp.GameApp):
         self.aboutScreen.unlink(True)
         self.aboutScreen = None
         
-
     def startPlaying(self):
         # libavg setup
         self.destroyMenuBackground()
         self.display = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
         self.renderer = Renderer()
-#        background = avg.ImageNode(parent = self.display)
-#        background.setBitmap(avg.SVG('../data/img/char/background.svg', False).renderElement('layer1', self.display.size))
+        background = avg.ImageNode(parent = self.display)
+        background.setBitmap(avg.SVG('../data/img/char/background2.svg', False).renderElement('layer1', self.display.size))
         self.display.player = None # monkey patch
         (displayWidth, displayHeight) = self.display.size
         widthThird = (int)(displayWidth / 3)
@@ -272,8 +275,8 @@ class Game(gameapp.GameApp):
         height = (self.display.size[1] / 2) - (brickSize * PPM)
         width = self.display.size[0]
         for i in range (-3,3):
-            Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height - (brickSize*PPM*3)*i ), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()))
-            Block(self.display, self.renderer, self.world, (2 * width / 3, height - (brickSize*PPM*3)*i ), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()))
+            Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height - (brickSize*PPM*2)*i ), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()))
+            Block(self.display, self.renderer, self.world, (2 * width / 3, height - (brickSize*PPM*2)*i ), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()))
             timeForStep(self.display,1)
             timeForStep(self.display,0)
         
@@ -326,6 +329,9 @@ class Game(gameapp.GameApp):
         g_player.setTimeout(5000, self._bonusJobForTutorial)
         
     def _bonusJob(self):
+        
+            
+        
         nextBonus = random.randint(0,2)
         if nextBonus == 0:
             PersistentBonus(self, random.choice(PersistentBonus.boni.items()))
