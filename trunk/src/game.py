@@ -178,10 +178,11 @@ class Game(gameapp.GameApp):
         picList = [Ball.pic,Mine.leftPic,Mine.rightPic,RedBall.pic,Tower.pic,Bat.blueBat,Bat.greenBat,Bonus.highLightpic] + Ghost.pics.values() + Bonus.pics.values() # TODO WHY RED
 
         for i in range (1,random.randint(100,200)):
-            node = avg.ImageNode(parent=self._parentNode, opacity=1)
+            node = avg.ImageNode(parent=self._parentNode)
             node.setBitmap(random.choice(picList))
             node.pos = (random.randint(0,int(self._parentNode.size[0]/3)) if random.randint(0,1) else random.randint(2*int(self._parentNode.size[0]/3),int(self._parentNode.size[0])),random.randint(0,int(self._parentNode.size[1])))
             self.nodeList.append(node)
+            
         self.title = avg.WordsNode(
                                     parent=self._parentNode, 
                                     pivot=(0, 0),
@@ -267,7 +268,7 @@ class Game(gameapp.GameApp):
         self.balls = []
         self.redballs = []
         self.ghosts = []
-        self.createBall()
+        g_player.setTimeout(2000, self.createBall)
         self.initiateBlocks()
         self.mainLoop = g_player.setInterval(13, self.step)
                 
@@ -318,6 +319,9 @@ class Game(gameapp.GameApp):
         return self.ghosts
     
     def _bonusJobForTutorial(self):        
+        for ball in self.getBalls():
+            self.removeBall(ball)
+            
         if len(InstantBonus.boni.items()) > 0:
             bonus = InstantBonus(self, InstantBonus.boni.popitem())
             bonus.highLight(self.field1,self.field2)
