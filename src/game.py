@@ -11,7 +11,7 @@ from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
 
 from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block, Mine, RedBall, TimeForStep
-from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize, ghostRadius, brickSize, brickLines
+from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize, ghostRadius, bricksPerLine, brickLines
 
 g_player = avg.Player.get()
 def a2w(coords):
@@ -140,7 +140,7 @@ class ContactListener(b2ContactListener):
 class Game(gameapp.GameApp):
     def init(self):
         gameobjects.displayWidth, gameobjects.displayHeight = self._parentNode.size
-        gameobjects.bricksPerLine = (int)(self._parentNode.height / (brickSize * PPM))
+        gameobjects.brickSize = (int)(self._parentNode.height / bricksPerLine / PPM)
         gameobjects.preRender()
         self.tutorialMode = False
         self.machine = statemachine.StateMachine('BEMOCK', 'MainMenu')
@@ -264,7 +264,7 @@ class Game(gameapp.GameApp):
         BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)), 1, False, 'redball')
         BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)), 1, False, 'redball')
         # vertical ghost lines
-        maxWallHeight = (brickSize * brickLines + ghostRadius) * PPM
+        maxWallHeight = (gameobjects.brickSize * brickLines + ghostRadius) * PPM
         BorderLine(self.world, a2w((maxWallHeight, 0)), a2w((maxWallHeight, displayHeight)), 1, False, 'redball', 'ball') 
         BorderLine(self.world, a2w((displayWidth - maxWallHeight - 1, 0)), a2w((displayWidth - maxWallHeight - 1, displayHeight)), 1, False, 'redball', 'ball')
         self.middleX, self.middleY = self.display.size / 2
@@ -286,11 +286,11 @@ class Game(gameapp.GameApp):
         self.mainLoop = g_player.setOnFrameHandler(self.step)
 
     def initiateBlocks(self):
-        height = (self.display.height / 2) - (brickSize * PPM)
+        height = (self.display.height / 2) - (gameobjects.brickSize * PPM)
         width = self.display.width
         for i in range (-3, 3):
-            Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height - (brickSize * PPM * 3) * i), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()), vanishLater=True)
-            Block(self.display, self.renderer, self.world, (2 * width / 3, height - (brickSize * PPM * 3) * i), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()), vanishLater=True)
+            Block(self.display, self.renderer, self.world, (width / 3 - (gameobjects.brickSize * 5 * PPM), height - (gameobjects.brickSize * PPM * 3) * i), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()), vanishLater=True)
+            Block(self.display, self.renderer, self.world, (2 * width / 3, height - (gameobjects.brickSize * PPM * 3) * i), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()), vanishLater=True)
         TimeForStep(self.display)
         TimeForStep(self.display,self.beginSimulation,left=False)
         
