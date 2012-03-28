@@ -10,7 +10,7 @@ import gameobjects
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
 
-from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block, Mine, RedBall, Tower, Bonus, TimeForStep, Rocket
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block, Mine, RedBall, TimeForStep
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize, ghostRadius, brickSize, brickLines
 
 g_player = avg.Player.get()
@@ -276,7 +276,10 @@ class Game(gameapp.GameApp):
         self.balls = []
         self.redballs = []
         self.ghosts = []
-        self.initiateBlocks()        
+        if self.tutorialMode:
+            self.beginSimulation()
+        else:
+            self.initiateBlocks()
 
     def beginSimulation(self):
         self.createBall()
@@ -415,7 +418,11 @@ class Game(gameapp.GameApp):
                 if ghost is not None:
                     if ghost.mortal:
                         # ball eats ghost
-                        ghost.reSpawn()
+                        if ghost.owner is not None and ghost.owner == ball.lastPlayer:
+                            self.ghosts.remove(ghost)
+                            ghost.destroy()
+                        else:
+                            ghost.reSpawn()
                         if ball.lastPlayer is not None:
                             ball.lastPlayer.addPoint()
                         self.addBall()
@@ -424,7 +431,7 @@ class Game(gameapp.GameApp):
                         # ghost eats ball
                         player = ball.zoneOfPlayer()
                         if player is not None and ghost.getOwner() != player:
-                            player.removePoint()   
+                            player.removePoint()
                         if len(self.balls) <= 1:    # XXX maybe introduce minBalls
                             ball.reSpawn()
                         else:
@@ -434,9 +441,13 @@ class Game(gameapp.GameApp):
     def _checkBallPosition(self):
         for ball in self.balls:
             if ball.body.position[0] > (self.display.width / PPM) + ballRadius: 
+                if ball.lastPlayer == self.rightPlayer:
+                    self.rightPlayer.removePoint()
                 self.leftPlayer.addPoint()
                 ball.reSpawn()
             elif ball.body.position[0] < -ballRadius: 
+                if ball.lastPlayer == self.leftPlayer:
+                    self.leftPlayer.removePoint()
                 self.rightPlayer.addPoint()
                 ball.reSpawn()
     

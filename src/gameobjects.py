@@ -135,7 +135,10 @@ class Ball(GameObject):
         self.__appear(lambda:self.nudge())
         
     def highLight(self):
-        self.highLightText = "This field is your playground.<br/>" + "The green arrows point at the place, where the game ball (pacman) always spawns. <br/>" + "Your opponent will receive a point, if the pacman reaches your limiting line.<br/>" + "You are equipped with a bat to defend your boundaries.<br/>" + "You can activate your bat by physical contact with the screen at two places,<br/>"+" if they are not two far away from each other.<br/>" + "Try.<br/>"+ "Now."         
+        self.highLightText = ("The ball (pacman) spawns in the middle.<br/>" + 
+        "Don't let him reach your edge of the table.<br/>" + 
+        "You can spawn a bat on your field by touching any two points on it.<br/>" + 
+        "They shouldn't be spaced too far though.<br/>" + "You can try it now.")
         self.highLights = []
         # UP
         self.highLightNodeUp = avg.ImageNode(parent=self.parentNode, opacity=1, angle=math.pi / 2)
@@ -408,7 +411,12 @@ class Ghost(GameObject):
         
     def highLight(self, field1, field2):         
         self.highLights = []
-        self.highLightText = "The ghosts.<br/>" + "Clyde, Inky, Pinky and Blinky.<br/>"+"Each ghost has a spawn point.<br/>"+"The spawn points are highlighted by the green arrows.<br/>" + "A blue ghost is eaten by the pacman and the pacman is eaten by a ghost,<br/>"+"which is not blue.<br/>" + "A eaten ghost is rewarded by a point for the last player,<br/>" + "that has touched the pacman with his bat.<br/>" + "A eaten pacman is punished by a decrease of collected points for the player,<br/>"+"in which the pacman has been eaten." 
+        self.highLightText = ("These are ghosts.<br/>" +
+                              "They change their color.<br/>"+
+                              "The pacman eats a blue ghost and spawns another pacman.<br/>"+  
+                              "If your bat contacted the pacman last, you will get a point.<br/>"+
+                              "If the ghost is not blue, he will eat the pacman.<br/>"+
+                              "If it happens on your field, you will lose a point.<br/>") # XXX maybe update if we decide that players no longer lose points) 
         # UP
         if self.name == 'clyde' or self.name == 'inky':
             self.highLightNodeUp = avg.ImageNode(parent=self.parentNode, opacity=1, angle=math.pi / 2)
@@ -565,6 +573,9 @@ class Ghost(GameObject):
         if self.movement is not None:
             g_player.clearInterval(self.movement)
             self.movement = None
+        if self.changing is not None:
+            g_player.clearInterval(self.changing)
+            self.changing = None
 
                                 
 class BorderLine:
