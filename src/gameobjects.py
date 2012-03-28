@@ -17,7 +17,6 @@ def dontCollideWith(*categories): return reduce(lambda x, y: x ^ y, [cats[el] fo
 
 standardXInertia = 20 * ballRadius # XXX solve more elegantly
 g_player = avg.Player.get()
-halfBrickSize = brickSize / 2
 displayWidth = displayHeight = bricksPerLine = None 
 
 class Player:
@@ -34,15 +33,16 @@ class Player:
         # XXX gameobects may obstruct view of the points!
         self.pointsDisplay = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=pos, angle=angle,
                                            text='Points: 0 / %d' % pointsToWin)
-        self.raster = [[None for x in xrange(bricksPerLine)] for y in xrange(brickLines)]
-        self.nodeRaster = []                    #rectNodes to display the margins of the raster
+        self.__raster = dict()
+        self.__nodeRaster = []                    #rectNodes to display the margins of the raster
+        self.__freeBricks = set()
         pixelBrickSize = brickSize * PPM
         for x in xrange(brickLines):
             for y in xrange(bricksPerLine):
                 xPos, yPos = x * pixelBrickSize, y * pixelBrickSize
                 if not left:
                     xPos = avgNode.size[0] - xPos - pixelBrickSize
-                self.nodeRaster.append(avg.RectNode(parent=avgNode, pos=(xPos, yPos), size=(pixelBrickSize, pixelBrickSize), active=False))
+                self.__nodeRaster.append(avg.RectNode(parent=avgNode, pos=(xPos, yPos), size=(pixelBrickSize, pixelBrickSize), active=False))
         
     
     def isLeft(self):
@@ -60,20 +60,31 @@ class Player:
     
     def updateDisplay(self):
         self.pointsDisplay.text = 'Points: %d / %d' % (self.points, pointsToWin)
-
-    def nextFreeBrick(self):
-        # TODO this is very ugly and slow - better keep a list of available bricks
-        for x in xrange(brickLines):
-            for y in xrange(bricksPerLine):
-                brick = self.raster[x][y]
-                if brick is not None:
-                    if brick.getBonus() is None:
-                        return brick
+    
+    def getNodeRaster(self):
+        return self.__nodeRaster
+    
+    def getRasterContent(self, x, y):
+        if self.__raster.has_key((x, y)):
+            return self.__raster[(x, y)]
         return None
     
+    def setRasterContent(self, x, y, content):
+        self.__raster[(x, y)] = content
+        self.__freeBricks.add((x, y))
+    
+    def clearRasterContent(self, x, y):
+        del self.__raster[(x, y)]
+        if (x, y) in self.__freeBricks:
+            self.__freeBricks.remove((x, y))
+    
+    def bonusFreed(self, x, y):
+        self.__freeBricks.add((x, y))
+    
     def addBonus(self, bonus):
-        brick = self.nextFreeBrick()
-        if brick is not None:
+        if len(self.__freeBricks) > 0:
+            (x, y) = self.__freeBricks.pop()
+            brick = self.getRasterContent(x, y)
             brick.setBonus(bonus)
             bonus.saveBonus(brick)
 
@@ -888,12 +899,13 @@ class Brick(GameObject):
         self.__bonus = None
 
     # spawn a physical object
-    def materialize(self, onLeft, x, y, pos=None):
+    def materialize(self, x, y, pos=None):
         if pos is None:
             pos = (self.node.pos + self.node.pivot) / PPM # TODO this looks like trouble
         self.node.unlink()
         self.parentNode.appendChild(self.node)
         self.__divNode = avg.DivNode(parent = self.parentNode, pos = self.node.pos, size = self.node.size)
+        halfBrickSize = brickSize / 2
         fixtureDef = b2FixtureDef (userData='brick', shape=b2PolygonShape (box=(halfBrickSize, halfBrickSize)),
                                   density=1, friction=.03, restitution=1, categoryBits=cats['brick'])
         self.body = self.world.CreateStaticBody(position=pos, userData=self)
@@ -905,9 +917,6 @@ class Brick(GameObject):
         if self.hitcount < len(self.material[1]):
             self.node.setBitmap(self.material[1][self.hitcount])
         else:
-            self.block.getPlayer().raster[self.__index[0]][self.__index[1]] = None
-            if self.__bonus is not None:
-                self.__bonus.destroy(self)
             self.destroy() # XXX maybe override destroy for special effects, or call something like vanish first
     
     def getBonus(self):
@@ -917,6 +926,7 @@ class Brick(GameObject):
         self.__bonus = bonus
     
     def removeBonus(self):
+        self.getPlayer().bonusFreed(self.__index[0], self.__index[1])
         self.__bonus = None
     
     def getDivNode(self):
@@ -930,9 +940,13 @@ class Brick(GameObject):
 
     # override
     def destroy(self):
-        GameObject.destroy(self)
+        self.block.getPlayer().clearRasterContent(self.__index[0], self.__index[1])
+        if self.__bonus is not None:
+            self.__bonus.destroy(self)
         if self.__divNode is not None:
             self.__divNode.unlink(True)
+        GameObject.destroy(self)
+
     
 class Block:
     form = dict(
@@ -967,7 +981,7 @@ class Block:
             if flip: posX = rightMostPos - posX
             posY = line * brickSizeInPx
             self.brickList.append(Brick(self, renderer, world, parentNode, (posX, posY), material))
-        self.onLeft = False
+        self.__owner = self.leftPlayer
         self.__alive = False
         self.__assigned = False
         self.__timeCall = g_player.setTimeout(15000, self.__vanish) # TODO MAYBE NOT ...
@@ -994,10 +1008,10 @@ class Block:
             else:
                 if e.pos[0] < widthThird:
                     self.__assigned = True
-                    self.onLeft = True
                     self.__displayRaster(True)
                 elif e.pos[0] > widthDisplay - widthThird:
                     self.__assigned = True
+                    self.__owner = self.rightPlayer
                     self.__displayRaster(True)
                 else:
                     self.__colourRed()
@@ -1030,10 +1044,10 @@ class Block:
 #                else:
 #                    if b.node.pos[0] + self.container.pos[0] < widthThird:
 #                        self.__assigned = True
-#                        self.onLeft = True
 #                        self.__displayRaster(True)        
 #                    elif b.node.pos[0] + self.container.pos[0] > widthDisplay - widthThird - brickSize * PPM:
 #                        self.__assigned = True
+#                        self.__owner = self.rightPlayer
 #                        self.__displayRaster(True)
 #            if self.__assigned:
 #                self.__testInsertion()
@@ -1044,13 +1058,12 @@ class Block:
             self.container.angle += tr.rot
     
     def __testInsertion(self):
-        possible = True        
-        testRaster = (self.leftPlayer if self.onLeft else self.rightPlayer).raster        
+        possible = True     
         for b in self.brickList:
             (x, y) = self.__calculateIndices(b.node.pos)
             if ((x >= brickLines) or (y >= bricksPerLine) or
                 (x < 0) or (y < 0) or 
-                (testRaster[x][y] is not None)):
+                self.__owner.getRasterContent(x, y) is not None):
                 possible = False
                 break
         if possible:
@@ -1060,7 +1073,7 @@ class Block:
     
     def __calculateIndices(self, position):
         pixelBrickSize = brickSize * PPM
-        if self.onLeft:
+        if self.__owner is self.leftPlayer:
             x = int(round((position[0] + self.container.pos[0]) / pixelBrickSize))
         else:
             x = int(round((self.parentNode.size[0] - position[0] - self.container.pos[0] - pixelBrickSize) / pixelBrickSize))
@@ -1106,30 +1119,22 @@ class Block:
                 b.node.intensity = (1, 1, 1)
                 (x, y) = self.__calculateIndices(b.node.pos)
                 xPos, yPos = x * pixelBrickSize, y * pixelBrickSize
-                if self.onLeft:
-                    self.leftPlayer.raster[x][y] = b
-                else:
-                    xPos = self.parentNode.size[0] - xPos - pixelBrickSize
-                    self.rightPlayer.raster[x][y] = b
+                if self.__owner is not self.leftPlayer:
+                    xPos = self.parentNode.size[0] - xPos - pixelBrickSize    
+                self.__owner.setRasterContent(x, y, b)
                 b.node.pos = (xPos, yPos)
                 b.node.sensitive = False
-                b.materialize(self.onLeft, x, y)
+                b.materialize(x, y)
             self.container.active = False
             self.container.unlink(True)
             self.__displayRaster(False)
                 
     def __displayRaster(self, on):
-        if self.onLeft:
-            raster = self.leftPlayer.nodeRaster
-        else:
-            raster = self.rightPlayer.nodeRaster
-        for n in raster:
+        for n in self.__owner.getNodeRaster():
             n.active = on        
     
     def getPlayer(self):
-        if self.onLeft:
-            return self.leftPlayer
-        return self.rightPlayer
+        return self.__owner
 
 class timeForStep:
     picBlue = None
