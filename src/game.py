@@ -8,9 +8,10 @@ import random
 
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
+import math
 
 import gameobjects
-from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block, Mine, RedBall, Tower, Bonus
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize, ghostRadius, brickSize, brickLines
 
 g_player = avg.Player.get()
@@ -145,6 +146,10 @@ class Game(gameapp.GameApp):
         self.machine.addState('Playing', ['Winner'], enterFunc=self.startPlaying)
         self.machine.addState('Winner', ['Playing', 'MainMenu']) # XXX clarify this stuff
         self.machine.addState('About', ['MainMenu'], enterFunc=self.showAbout, leaveFunc=self.hideAbout)
+        
+
+        
+        self.createMenuBackground()
         self.showMenu()
 
     def _makeButtonInMiddle(self, name, node, yOffset, pyFunc):
@@ -165,11 +170,42 @@ class Game(gameapp.GameApp):
         self.aboutButton = self._makeButtonInMiddle('about', self.menuScreen, 1, lambda:self.machine.changeState('About'))
         self.exitButton = self._makeButtonInMiddle('exit', self.menuScreen, 2, lambda:exit(0))
 
+        
+    def createMenuBackground(self):   
+        self.nodeList = []
+        picList = [Ball.pic,Mine.leftPic,Mine.rightPic,RedBall.pic,Tower.pic,Bat.blueBat,Bat.greenBat,Bonus.highLightpic] + Ghost.pics.values() + Bonus.pics.values() # TODO WHY RED
+
+        for i in range (1,random.randint(100,200)):
+            node = avg.ImageNode(parent=self._parentNode, opacity=1)
+            node.setBitmap(random.choice(picList))
+            node.pos = (random.randint(0,self._parentNode.size[0]/3) if random.randint(0,1) else random.randint(2*self._parentNode.size[0]/3,self._parentNode.size[0]),random.randint(0,self._parentNode.size[1]))
+            self.nodeList.append(node)
+        self.title = avg.WordsNode(
+                                    parent=self._parentNode, 
+                                    pivot=(0, 0),
+                                    text="Multipong", 
+                                    pos= (self._parentNode.size[0]/2- 100,50),
+                                    wrapmode="wordchar", 
+                                    font= 'Impact', 
+                                    color = "00FF00",
+                                    fontsize=100,
+                                    variant="bold")
+            
+    def destroyMenuBackground(self):
+        for node in self.nodeList:
+            node.active = False
+            node.unlink(True)
+            node = None 
+        
+        self.title.active = False
+        self.title.unlink(True)
+        self.title = None
+                     
     def hideMenu(self):
         # XXX find out if we need to tear down all the buttons first
         self.menuScreen.unlink(True)
         self.menuScreen = None
-
+        
     def startTutorial(self):
         self.tutorialMode = True
         self.startPlaying()
@@ -186,9 +222,11 @@ class Game(gameapp.GameApp):
     def hideAbout(self):
         self.aboutScreen.unlink(True)
         self.aboutScreen = None
+        
 
     def startPlaying(self):
         # libavg setup
+        self.destroyMenuBackground()
         self.display = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
 #        background = avg.ImageNode(parent = self.display)
 #        background.setBitmap(avg.SVG('../data/img/char/background.svg', False).renderElement('layer1', self.display.size))
@@ -227,25 +265,16 @@ class Game(gameapp.GameApp):
         self.balls = []
         self.redballs = []
         self.ghosts = []
-        g_player.setTimeout(1000, self.createBall)
-          
-        ''' TEMORARY
-        self.tetrisJob = g_player.setTimeout(1000, self._tetrisJob)
-        Block(self.display, self.renderer, self.world, (50,35), (self.leftPlayer,self.rightPlayer), Block.form['SQUARE'])
-        Block(self.display, self.renderer, self.world, (1000,35), (self.leftPlayer,self.rightPlayer), Block.form['SQUARE'])
-        self.currentLeftBlock = None
-        self.currentRightBlock = None
-        
-        '''
-     
+        self.createBall()
+        self.mainLoop = g_player.setInterval(13, self.step)
+             
     def createBall(self):
         ball = Ball(self, self.renderer, self.world, self.display, self.middle)
         self.balls.append(ball)
-        self.mainLoop = g_player.setInterval(13, self.step) # XXX g_player.setOnFrameHandler(self.step)
-        
+
         if self.tutorialMode:
-            g_player.setTimeout(25000, self.createGhosts)
             ball.highLight()
+            g_player.setTimeout(25000, self.createGhosts)
         else:
             self.createGhosts()
             
@@ -255,14 +284,12 @@ class Game(gameapp.GameApp):
         self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle + (-offset,offset), "pinky"))
         self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle - (-offset,offset), "inky"))
         self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle - (offset,offset), "clyde"))   
-        
         if self.tutorialMode:
-            self.bonusjob = g_player.setTimeout(25000, self._bonusJobForTutorial)
-            
+            g_player.setTimeout(25000, self._bonusJobForTutorial)
             for ghost in self.ghosts:
-                ghost.highLight(self.field1,self.field2)                
+                ghost.highLight(self.field1,self.field2)         
         else:
-            self.bonusjob = g_player.setTimeout(3000, self._bonusJob)       
+            g_player.setTimeout(3000, self._bonusJob)       
              
     def killGhosts(self):
         for ghost in self.ghosts:        
@@ -297,9 +324,7 @@ class Game(gameapp.GameApp):
             InstantBonus(self, random.choice(InstantBonus.boni.items()))
         else:
             InstantBonus(self, ('newBlock',InstantBonus.boni['newBlock']))
-        # the timeout must not be shorter than config.bonusTime
-        # TODO get the bonusTime out of the config and out of the user's control 
-        self.bonusjob = g_player.setTimeout(random.choice([3000, 4000, 5000]), self._bonusJob) # XXX tweak
+        self.bonusjob = g_player.setTimeout(random.choice([4000, 5000, 6000]), self._bonusJob)
 
     def win(self, player):
         g_player.clearInterval(self.mainLoop)

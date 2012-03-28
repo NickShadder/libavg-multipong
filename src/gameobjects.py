@@ -102,7 +102,7 @@ class GameObject:
             
 class Ball(GameObject):
     pic = None
-    hightLightpic = None
+    highLightpic = None
     def __init__(self, game, renderer, world, parentNode, position):
         GameObject.__init__(self, renderer, world)
         self.game = game
@@ -129,7 +129,7 @@ class Ball(GameObject):
         # UP
         self.highLightNodeUp = avg.ImageNode(parent=self.parentNode, opacity=1,angle = math.pi/2)
         self.highLights.append(self.highLightNodeUp)
-        self.highLightNodeUp.setBitmap(self.hightLightpic)
+        self.highLightNodeUp.setBitmap(self.highLightpic)
         picWidth = self.highLightNodeUp.size[0]
         picHeight = self.highLightNodeUp.size[1]
         highLightNodeUpStartPosition = (self.spawnPoint[0]*PPM - picWidth/2,0) 
@@ -156,7 +156,7 @@ class Ball(GameObject):
         # DOWN
         self.highLightNodeDown = avg.ImageNode(parent=self.parentNode, opacity=1,angle = -math.pi/2)
         self.highLights.append(self.highLightNodeDown)
-        self.highLightNodeDown.setBitmap(self.hightLightpic)
+        self.highLightNodeDown.setBitmap(self.highLightpic)
         highLightNodeDownStartPosition = (self.spawnPoint[0]*PPM - picWidth/2,self.parentNode.size[1])
         highLightNodeDownEndPosition = (self.spawnPoint[0]*PPM - picWidth/2, self.spawnPoint[1]*PPM + picHeight) 
         
@@ -343,7 +343,7 @@ class SemipermeableShield:
 
 class Ghost(GameObject):
 
-    hightLightpic = None
+    highLightpic = None
     pics = None    
 
     def __init__(self, renderer, world, parentNode, position, name, owner=None, mortal=1):
@@ -374,7 +374,7 @@ class Ghost(GameObject):
         if self.name == 'clyde' or self.name == 'inky':
             self.highLightNodeUp = avg.ImageNode(parent=self.parentNode, opacity=1,angle = math.pi/2)
             self.highLights.append(self.highLightNodeUp)
-            self.highLightNodeUp.setBitmap(self.hightLightpic)
+            self.highLightNodeUp.setBitmap(self.highLightpic)
             picWidth = self.highLightNodeUp.size[0]
             picHeight = self.highLightNodeUp.size[1]
             highLightNodeUpStartPosition = (self.spawnPoint[0]*PPM - picWidth/2,0) 
@@ -386,7 +386,7 @@ class Ghost(GameObject):
         else:
             self.highLightNodeDown = avg.ImageNode(parent=self.parentNode, opacity=1,angle = -math.pi/2)
             self.highLights.append(self.highLightNodeDown)
-            self.highLightNodeDown.setBitmap(self.hightLightpic)
+            self.highLightNodeDown.setBitmap(self.highLightpic)
             picWidth = self.highLightNodeDown.size[0]
             picHeight = self.highLightNodeDown.size[1]
             highLightNodeDownStartPosition = (self.spawnPoint[0]*PPM - picWidth/2,self.parentNode.size[1])
@@ -568,7 +568,7 @@ class Tower:
 
 class Bonus:    
     pics = None
-    hightLightpic = None
+    highLightpic = None
     def __init__(self, game, (name, effect)):
         parentNode = game.display
         self.highLights = []   
@@ -592,7 +592,7 @@ class Bonus:
         # UP
         self.highLightNodeUp = avg.ImageNode(parent=self.parentNode, opacity=1,angle = math.pi/2)
         self.highLights.append(self.highLightNodeUp)
-        self.highLightNodeUp.setBitmap(self.hightLightpic)
+        self.highLightNodeUp.setBitmap(self.highLightpic)
         highLightNodeUpStartPosition = (self.rightBonus.pos[0],0) 
         highLightNodeUpEndPosition = (self.rightBonus.pos[0],self.rightBonus.pos[1] - self.rightBonus.size[1]) 
         
@@ -602,7 +602,7 @@ class Bonus:
         # DOWN
         self.highLightNodeDown = avg.ImageNode(parent=self.parentNode, opacity=1,angle = -math.pi/2)
         self.highLights.append(self.highLightNodeDown)
-        self.highLightNodeDown.setBitmap(self.hightLightpic)
+        self.highLightNodeDown.setBitmap(self.highLightpic)
         highLightNodeDownStartPosition = (self.leftBonus.pos[0],self.parentNode.size[1])
         highLightNodeDownEndPosition = (self.leftBonus.pos[0], self.leftBonus.pos[1] + self.leftBonus.size[1]) 
     
@@ -627,7 +627,7 @@ class Bonus:
         avg.LinearAnim(self.wordsNodeUp, 'pos', 600,(0,-self.wordsNodeUp.width), 
                                                     (0,self.wordsNodeUp.width)).start() 
                                                     
-            # DOWN TEXT 
+        # DOWN TEXT 
         self.wordsNodeDown = avg.WordsNode(
                                     parent=field1, 
                                     pivot=(0, 0),
@@ -642,7 +642,7 @@ class Bonus:
         self.highLights.append(self.wordsNodeDown)  
         avg.LinearAnim(self.wordsNodeDown, 'pos', 600,(field1.width,self.parentNode.size[1]), 
                                                     (field1.width,self.parentNode.size[1] - self.wordsNodeDown.width)).start()                                                        
-        # g_player.setTimeout(20000, self.dehighLight)
+        # g_player.setTimeout(20000, self.dehighLight) # TODO SHOULD NOT BE CALLED IN VANISH()
     
     def dehighLight(self):
         for node in self.highLights:
@@ -711,15 +711,15 @@ class Bonus:
     def hideGhosts(self, player=None):
         self.game.killGhosts()
         
-    def bringBackGhosts(self, player=None):
-        self.hideGhosts(player) # kill off ghosts created by the players
+    def resetGhosts(self, player=None):
+        self.hideGhosts(player)
         self.game.createGhosts() # restore the original four ghosts 
          
     def addGhost(self, player):        
         if player.isLeft():
-            name = "blue2"
+            name = "ghostOfBlue"
         else:
-            name = "green"            
+            name = "ghostOfGreen"            
         self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, self.game.middle - (0, (ballRadius + ghostRadius) * 2), name, player))
         
     def sendGhostsToOpponent(self, player):
@@ -760,7 +760,7 @@ class PersistentBonus(Bonus):
                 pacShot=Bonus.pacShot,
                 stopGhosts=Bonus.stopGhosts,
                 flipGhosts=Bonus.flipGhostStates,
-                wheel=Bonus.setTowers,
+                tower=Bonus.setTowers,
                 onlyPong=Bonus.buildShield,
                 pacman=Bonus.newOwnBall
                 )
@@ -776,9 +776,9 @@ class InstantBonus(Bonus):
                 invertPac=Bonus.invertPac,
                 newBlock=Bonus.newBlock,
                 addClyde=Bonus.addGhost,
-                Bonus4=Bonus.hideGhosts,
-                Bonus5=Bonus.bringBackGhosts,
-                Bonus6=Bonus.sendGhostsToOpponent,
+                hideGhosts=Bonus.hideGhosts,
+                resetGhosts=Bonus.resetGhosts,
+                sendGhostsToOtherSide=Bonus.sendGhostsToOpponent,
                 pacman=Bonus.newOwnBall
                 )
 
@@ -1106,7 +1106,7 @@ def preRender():
     Mine.rightPic = avg.SVG(chars+'greenpacman.svg', False).renderElement('layer1', ballSize)
     RedBall.pic = avg.SVG(chars+'redpacman.svg', False).renderElement('layer1', ballSize)
     Cloud.pic = avg.SVG(chars+'cloud.svg', False).renderElement('layer1', (500, 1000)) # XXX remove hardcode
-    Tower.pic = avg.SVG(chars+'tower.svg', False).renderElement('layer1', (2*ballDiameter,2*ballDiameter)) # XXX remove hardcode
+    
     
     batImgLen = max(1, maxBatSize * PPM / 2)
     batImgWidth = max(1, batImgLen / 10)    
@@ -1121,13 +1121,11 @@ def preRender():
         inky = avg.SVG(chars+'inky.svg', False).renderElement('layer1', ghostSize),
         pinky = avg.SVG(chars+'pinky.svg', False).renderElement('layer1', ghostSize),
         clyde = avg.SVG(chars+'clyde.svg', False).renderElement('layer1', ghostSize),
-        green = avg.SVG(chars+'green.svg', False).renderElement('layer1', ghostSize),
-        blue2 = avg.SVG(chars+'blue2.svg', False).renderElement('layer1', ghostSize))
+        ghostOfGreen = avg.SVG(chars+'ghostOfGreen.svg', False).renderElement('layer1', ghostSize),
+        ghostOfBlue = avg.SVG(chars+'ghostOfBlue.svg', False).renderElement('layer1', ghostSize))
     
-    boni = '../data/img/bonus/'
-    
-    arrowSize = (displayWidth/10,displayHeight/12) 
-    Bonus.hightLightpic = Ghost.hightLightpic = Ball.hightLightpic = avg.SVG(chars+'arrow.svg', False).renderElement('layer1', arrowSize)
+    boni = '../data/img/bonus/' 
+    Bonus.highLightpic = Ghost.highLightpic = Ball.highLightpic = avg.SVG(chars+'arrow.svg', False).renderElement('layer1', (displayWidth/10,displayHeight/12))
         
     w = (int)(displayWidth/15)
     bonusSize = w,w
@@ -1135,12 +1133,16 @@ def preRender():
                 invertPac=avg.SVG(boni+'invertPac.svg', False).renderElement('layer1', bonusSize),
                 newBlock=avg.SVG(boni+'newBlock.svg', False).renderElement('layer1', bonusSize),
                 addClyde=avg.SVG(boni+'addClyde.svg', False).renderElement('layer1', bonusSize),
-                Bonus4=avg.SVG(boni+'Bonus4.svg', False).renderElement('layer1', bonusSize),
-                Bonus5=avg.SVG(boni+'Bonus5.svg', False).renderElement('layer1', bonusSize),
-                Bonus6=avg.SVG(boni+'Bonus6.svg', False).renderElement('layer1', bonusSize),
+                hideGhosts=avg.SVG(boni+'hideGhosts.svg', False).renderElement('layer1', bonusSize),
+                
+                resetGhosts=avg.SVG(boni+'resetGhosts.svg', False).renderElement('layer1', bonusSize),
+                
+                sendGhostsToOtherSide=avg.SVG(boni+'sendGhostsToOtherSide.svg', False).renderElement('layer1', bonusSize),
                 pacman=avg.SVG(boni+'pacman.svg', False).renderElement('layer1', bonusSize),
                 pacShot=avg.SVG(boni+'pacShot.svg', False).renderElement('layer1', bonusSize),
                 stopGhosts=avg.SVG(boni+'pacShot.svg', False).renderElement('layer1', bonusSize), # TODO fix pic
                 flipGhosts=avg.SVG(boni+'flipGhosts.svg', False).renderElement('layer1', bonusSize),
-                wheel=avg.SVG(boni+'wheel.svg', False).renderElement('layer1', bonusSize),
+                tower=avg.SVG(boni+'tower.svg', False).renderElement('layer1', bonusSize),
                 onlyPong=avg.SVG(boni+'onlyPong.svg', False).renderElement('layer1', bonusSize))
+    
+    Tower.pic = Bonus.pics['tower']
