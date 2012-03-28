@@ -176,7 +176,7 @@ class Game(gameapp.GameApp):
         for i in range (1,random.randint(100,200)):
             node = avg.ImageNode(parent=self._parentNode, opacity=1)
             node.setBitmap(random.choice(picList))
-            node.pos = (random.randint(0,self._parentNode.size[0]/3) if random.randint(0,1) else random.randint(2*self._parentNode.size[0]/3,self._parentNode.size[0]),random.randint(0,self._parentNode.size[1]))
+            node.pos = (random.randint(0,int(self._parentNode.size[0]/3)) if random.randint(0,1) else random.randint(2*int(self._parentNode.size[0]/3),int(self._parentNode.size[0])),random.randint(0,int(self._parentNode.size[1])))
             self.nodeList.append(node)
         self.title = avg.WordsNode(
                                     parent=self._parentNode, 
