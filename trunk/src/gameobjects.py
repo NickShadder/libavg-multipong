@@ -10,14 +10,14 @@ import math
 from libavg import avg, ui
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape, b2Filter, b2Vec2
 
-from config import PPM, pointsToWin, ballRadius, ghostRadius, bricksPerLine, maxBatSize, bonusTime, brickLines
+from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize, bonusTime, brickLines
 
 cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008, 'redball':0x0010, 'semiborder':0x0020, 'mine':0x0040, 'bat':0x0080, 'rocket':0x0100}
 def dontCollideWith(*categories): return reduce(lambda x, y: x ^ y, [cats[el] for el in categories], 0xFFFF)
 
 standardXInertia = 20 * ballRadius # XXX solve more elegantly
 g_player = avg.Player.get()
-displayWidth = displayHeight = brickSize = None 
+displayWidth = displayHeight = bricksPerLine = None 
 
 class Player:
     def __init__(self, game, avgNode):
