@@ -11,7 +11,7 @@ import config
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
 
-from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block, Mine, RedBall, TimeForStep,Tower,Bonus
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block, Mine, RedBall, TetrisBar,Tower,Bonus, BallTutorial,GhostTutorial,TetrisTutorial,BoniTutorial
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize, ghostRadius, brickSize, brickLines
 
 g_player = avg.Player.get()
@@ -247,8 +247,24 @@ class Game(gameapp.GameApp):
         
     def startTutorial(self):
         self.tutorialMode = True
-        self.startPlaying()
+        self.setupPlayground()
+        g_player.setTimeout(config.startingTutorial, self.startBall)
+        g_player.setTimeout(config.startingTutorial+config.ballTutorial, self.startGhosts)
+        g_player.setTimeout(config.startingTutorial+config.ballTutorial+config.ghostTutorial, self.revealTetris)
+        g_player.setTimeout(config.startingTutorial+config.ballTutorial+config.ghostTutorial+config.tetrisTutorial, self.revealBoni)
+        
+    def startPlaying(self):
+        self.setupPlayground()
+        TetrisBar(self.display)
+        TetrisBar(self.display,left=False)
+        self.revealTetris()
+        g_player.setTimeout(config.tetrisTutorial, self.startMovement)
     
+    def startMovement(self):
+        self.startBall()
+        self.createGhosts()
+        self._bonusJob()
+        
     def hideTutorial(self):
         # TODO implement this by simply tearing down what you have built in startTutorial ;)
         pass
@@ -262,7 +278,7 @@ class Game(gameapp.GameApp):
         self.aboutScreen.unlink(True)
         self.aboutScreen = None
     
-    def startPlaying(self):
+    def setupPlayground(self):
         # libavg setup        
         self.display = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
         self.renderer = Renderer()
@@ -307,49 +323,43 @@ class Game(gameapp.GameApp):
         self.bonus = None
         self.balls = []
         self.redballs = []
+        
         self.ghosts = []
-        if self.tutorialMode:
-            self.beginSimulation()
-        else:
-            self.initiateBlocks()
-
-    def beginSimulation(self):
-        self.createBall()
         self.mainLoop = g_player.setOnFrameHandler(self.step)
-
-    def initiateBlocks(self):
+        
+    def startBall(self):
+        ball = Ball(self, self.renderer, self.world, self.display, self.middle)
+        self.balls.append(ball)
+        if self.tutorialMode:
+            BallTutorial(self).start()
+    
+    def revealBoni(self):
+        BoniTutorial(self).start()        
+                
+    def revealTetris(self):
         height = (self.display.height / 2) - (brickSize * PPM)
         width = self.display.width
         for i in range (-3, 3):
             form = random.choice(Block.form.values())
             Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height - (brickSize * PPM * 3) * i), self.leftPlayer, form, vanishLater=True)
             Block(self.display, self.renderer, self.world, (2 * width / 3, height - (brickSize * PPM * 3) * i), self.rightPlayer, form, vanishLater=True)
-        TimeForStep(self.display)
-        TimeForStep(self.display,self.beginSimulation,left=False)
         
-    def createBall(self):
-        ball = Ball(self, self.renderer, self.world, self.display, self.middle)
-        self.balls.append(ball)
-
         if self.tutorialMode:
-            ball.highLight()
-            g_player.setTimeout(25000, self.createGhosts)
-        else:
-            self.createGhosts()
+            TetrisTutorial(self).start()
             
+    def startGhosts(self):
+        self.createGhosts()
+        if self.tutorialMode:
+            GhostTutorial(self).start()
+                      
+    
     def createGhosts(self):
         offset = 2 * ballRadius + 3 * ghostRadius
         self.ghosts.append(Ghost(self.renderer, self, self.display, self.middle + (offset, offset), "blinky"))
         self.ghosts.append(Ghost(self.renderer, self, self.display, self.middle + (-offset, offset), "pinky"))
         self.ghosts.append(Ghost(self.renderer, self, self.display, self.middle - (-offset, offset), "inky"))
         self.ghosts.append(Ghost(self.renderer, self, self.display, self.middle - (offset, offset), "clyde"))   
-        if self.tutorialMode:
-            g_player.setTimeout(25000, self._bonusJobForTutorial)
-            for ghost in self.ghosts:
-                ghost.highLight(self.field1, self.field2)         
-        else:
-            self.bonusjob = g_player.setTimeout(3000, self._bonusJob)       
-             
+                     
     def killGhosts(self):
         for ghost in self.ghosts:        
             ghost.destroy()
@@ -364,6 +374,8 @@ class Game(gameapp.GameApp):
     def getGhosts(self):
         return self.ghosts
     
+    
+
     def _windex(self,lst):
         wtotal = sum([x[1] for x in lst])
         n = random.uniform(0, wtotal)
@@ -384,6 +396,7 @@ class Game(gameapp.GameApp):
             self.bonus = PersistentBonus(self, PersistentBonus.boni.popitem())
             self.bonus.highLight(self.field1, self.field2)
         g_player.setTimeout(5000, self._bonusJobForTutorial)
+
         
     def _bonusJob(self):
         if not self.running:
