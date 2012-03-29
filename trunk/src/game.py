@@ -136,7 +136,7 @@ class ContactListener(b2ContactListener):
                         contact.enabled = False
                 elif worldManifold.normal.x > 0:
                     contact.enabled = False
-                    
+
 class Game(gameapp.GameApp):
     def init(self):
         gameobjects.displayWidth, gameobjects.displayHeight = self._parentNode.size
@@ -182,7 +182,7 @@ class Game(gameapp.GameApp):
   
     def _createMenuBackground(self):
         self.nodeList = []
-#        picList = [Ball.pic,Mine.leftPic,Mine.rightPic,RedBall.pic,Tower.pic,Bat.blueBat,Bat.greenBat,Bonus.highLightpic] + Ghost.pics.values() + Bonus.pics.values()
+#        picList = [Ball.pic, Mine.leftPic, Mine.rightPic, RedBall.pic] + Ghost.pics.values()
 #        for i in range (1,random.randint(100,200)):
 #            node = avg.ImageNode(parent=self._parentNode)
 #            node.setBitmap(random.choice(picList))
@@ -196,8 +196,13 @@ class Game(gameapp.GameApp):
         for i in range (1, 500):
             node = avg.ImageNode(parent=self._parentNode)
             node.setBitmap(random.choice(picList))
-            node.pos = (random.randint(0, self._parentNode.width), random.randint(0, self._parentNode.height))
+            if i<=250:
+                pos = (random.randint(0,int(self._parentNode.width/3)),random.randint(0,int(self._parentNode.height)))
+            else:
+                pos = (random.randint(2*int(self._parentNode.width/3),int(self._parentNode.width)),random.randint(0,int(self._parentNode.height)))
+            node.pos = pos
             self.nodeList.append(node)
+            
         # XXX the title should be a logo
         self.title = avg.WordsNode(
                                     parent=self._parentNode,
@@ -209,8 +214,7 @@ class Game(gameapp.GameApp):
                                     color="00FF00",
                                     fontsize=100,
                                     variant="bold")
-        
-            
+                    
     def _destroyMenuBackground(self):
         for node in self.nodeList:
             node.active = False
@@ -243,7 +247,6 @@ class Game(gameapp.GameApp):
         self.aboutScreen.unlink(True)
         self.aboutScreen = None
     
-        
     def startPlaying(self):
         # libavg setup        
         self.display = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
@@ -307,7 +310,6 @@ class Game(gameapp.GameApp):
         TimeForStep(self.display)
         TimeForStep(self.display,self.beginSimulation,left=False)
         
-        
     def createBall(self):
         ball = Ball(self, self.renderer, self.world, self.display, self.middle)
         self.balls.append(ball)
@@ -320,10 +322,10 @@ class Game(gameapp.GameApp):
             
     def createGhosts(self):
         offset = 2 * ballRadius + 3 * ghostRadius
-        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle + (offset, offset), "blinky"))
-        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle + (-offset, offset), "pinky"))
-        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle - (-offset, offset), "inky"))
-        self.ghosts.append(Ghost(self.renderer, self.world, self.display, self.middle - (offset, offset), "clyde"))   
+        self.ghosts.append(Ghost(self.renderer, self, self.display, self.middle + (offset, offset), "blinky"))
+        self.ghosts.append(Ghost(self.renderer, self, self.display, self.middle + (-offset, offset), "pinky"))
+        self.ghosts.append(Ghost(self.renderer, self, self.display, self.middle - (-offset, offset), "inky"))
+        self.ghosts.append(Ghost(self.renderer, self, self.display, self.middle - (offset, offset), "clyde"))   
         if self.tutorialMode:
             g_player.setTimeout(25000, self._bonusJobForTutorial)
             for ghost in self.ghosts:
@@ -371,10 +373,11 @@ class Game(gameapp.GameApp):
         self.bonusjob = g_player.setTimeout(random.choice([4000, 5000, 6000]), self._bonusJob)
     
     def win(self, player):
-        if not self.running:
+	    if not self.running:
             return
-        player.setEndText('Winner')
-        player.other.setEndText('Loser')
+        player.setEndText('You won')
+        player.other.setEndText('You lost')
+        
         self.running = False
         self.killGhosts()
         if self.bonusjob is not None:
@@ -415,6 +418,8 @@ class Game(gameapp.GameApp):
         if len(self.balls) > 1:
             self.balls.remove(ball)
             ball.destroy()
+        else:
+            ball.reSpawn()
 
     def _processBallvsBrick(self, hitset):
         copy = hitset.copy()
@@ -435,7 +440,7 @@ class Game(gameapp.GameApp):
                     
                 if mine is not None:
                     if ball.lastPlayer != mine.getOwner() and ball.lastPlayer is not None:
-                        ball.lastPlayer.removePoint()
+                        ball.lastPlayer.penalize()
                         ball.reSpawn()
                         mine.destroy()
                         return
@@ -454,36 +459,33 @@ class Game(gameapp.GameApp):
                 if ghost is not None:
                     if ghost.mortal:
                         # ball eats ghost
-                        if ghost.owner is not None and ghost.owner == ball.lastPlayer:
-                            self.ghosts.remove(ghost)
-                            ghost.destroy()
-                        else:
-                            ghost.reSpawn()
+                        ghost.reSpawn()
                         if ball.lastPlayer is not None:
                             ball.lastPlayer.addPoint()
                         self.addBall()
                         break
-                    else:
-                        # ghost eats ball
+                    else:                        
+                        # ghost tries to eat ball
+                        if ball.lastPlayer is None:
+                            break
+                        if ghost.getOwner() is not None:
+                            if ball.lastPlayer == ghost.getOwner():
+                                break
                         player = ball.zoneOfPlayer()
-                        if player is not None and ghost.getOwner() != player:
-                            player.removePoint()
-                        if len(self.balls) <= 1:    # XXX maybe introduce minBalls
-                            ball.reSpawn()
-                        else:
+                        if player is not None:
+                            player.penalize()
                             self.removeBall(ball)
-                        break
 
     def _checkBallPosition(self):
         for ball in self.balls:
             if ball.body.position[0] > (self.display.width / PPM) + ballRadius: 
                 if ball.lastPlayer == self.rightPlayer:
-                    self.rightPlayer.removePoint()
+                    self.rightPlayer.penalize()
                 self.leftPlayer.addPoint()
                 ball.reSpawn()
             elif ball.body.position[0] < -ballRadius: 
                 if ball.lastPlayer == self.leftPlayer:
-                    self.leftPlayer.removePoint()
+                    self.leftPlayer.penalize()
                 self.rightPlayer.addPoint()
                 ball.reSpawn()
     
