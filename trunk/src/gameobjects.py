@@ -10,7 +10,7 @@ import math
 from libavg import avg, ui
 from Box2D import b2EdgeShape, b2PolygonShape, b2FixtureDef, b2CircleShape, b2Filter, b2Vec2
 
-from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize, bonusTime, brickLines
+from config import PPM, pointsToWin, ballRadius, ghostRadius, brickSize, maxBatSize, bonusTime, brickLines, maxNumOfRubberBricks
 
 cats = {'border':0x0001, 'ghost':0x0002, 'ball':0x0004, 'brick':0x0008, 'redball':0x0010, 'semiborder':0x0020, 'mine':0x0040, 'bat':0x0080, 'rocket':0x0100}
 def dontCollideWith(*categories): return reduce(lambda x, y: x ^ y, [cats[el] for el in categories], 0xFFFF)
@@ -47,7 +47,8 @@ class Player:
         self.pointsAnim = None
     
         
-        self.pointsDisplayMaximalFontSize = int(avgNode.height/20) 
+        self.pointsDisplayMaximalFontSize = int(avgNode.height/20)
+        self.__numOfRubberBricks = 0               #number of Bricks of material RUBBER -> eternal life 
         self.__raster = dict()
         self.__nodeRaster = []                    #rectNodes to display the margins of the raster
         self.__freeBricks = set()
@@ -140,6 +141,12 @@ class Player:
             brick = self.getRasterContent(x, y)
             brick.setBonus(bonus)
             bonus.saveBonus(brick, self.left)
+    
+    def getNumOfRubberBricks(self):
+        return self.__numOfRubberBricks
+    
+    def incNumOfRubberBricks(self):
+        self.__numOfRubberBricks += 1
 
     def killBricks(self): # XXX test
         copy = self.__raster.copy()
@@ -986,6 +993,8 @@ class Brick(GameObject):
         self.body = self.world.CreateStaticBody(position=pos, userData=self)
         self.body.CreateFixture(fixtureDef)
         self.__index = (x, y)
+        if self.__material == Brick.material['RUBBER']:
+            self.getPlayer().incNumOfRubberBricks()
     
     def hit(self):
         self.__hitcount += 1
@@ -1048,6 +1057,11 @@ class Block:
         self.__leftPlayer, self.__rightPlayer = player
         if form is None:
             self.__form = random.choice(Block.form.values())
+        if material is None:
+            possibleMaterials = Brick.material.values()
+            if self.__form != Block.form['SINGLE'] or self.__leftPlayer.getNumOfRubberBricks() + self.__rightPlayer.getNumOfRubberBricks() >= maxNumOfRubberBricks:
+                possibleMaterials.remove(Brick.material['RUBBER'])
+            material = random.choice(possibleMaterials)
         self.__brickList = []
         self.__container = avg.DivNode(parent=parentNode, pos=position, angle=angle)
         brickSizeInPx = brickSize * PPM
@@ -1219,6 +1233,9 @@ class Block:
     
     def getPlayer(self):
         return self.__owner
+    
+    def getForm(self):
+        return self.__form
 
 class TimeForStep:
     picBlue = None

@@ -20,7 +20,7 @@ maxBatSize = 17 # maximal bat size in meters XXX should be dependent on the actu
 brickSize = 2 # the size of a brick in meter XXX should be dependent on the actual resolution / bricksPerLine
 brickLines = 4
 initialNumberOfBlocks = 10
-maxNumberOfBlocks = 30
+maxNumOfRubberBricks = 9
 
 # ****************** bonus config ******************
 bonusTime = 3 # the time in seconds a bonus waits for interaction before disappearing
