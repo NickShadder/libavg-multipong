@@ -114,15 +114,17 @@ class Player:
     
     def setRasterContent(self, x, y, content):
         self.__raster[(x, y)] = content
-        self.__freeBricks.add((x, y))
+        if content.getMaterial() is Brick.material['BUBBLE']:
+            self.__freeBricks.add((x, y))
     
     def clearRasterContent(self, x, y):
-        del self.__raster[(x, y)]
+        if self.__raster.has_key((x, y)):
+            del self.__raster[(x, y)]
         if (x, y) in self.__freeBricks:
             self.__freeBricks.remove((x, y))
     
-    def bonusFreed(self, x, y):
-        self.__freeBricks.add((x, y))
+#    def bonusFreed(self, x, y):
+#        self.__freeBricks.add((x, y))
     
     def addBonus(self, bonus):
         if len(self.__freeBricks) > 0:
@@ -967,28 +969,31 @@ class Brick(GameObject):
         self.__index = (x, y)
     
     def hit(self):
-        self.__hitcount += 1
-        if self.__hitcount < len(self.__material):
-            self.node.setBitmap(self.__material[self.__hitcount])
-        else:
-            self.destroy() # XXX maybe override destroy for special effects, or call something like vanish first
-    
-    def getBonus(self):
-        return self.__bonus
+        if self.__material is not Brick.material['RUBBER']:
+            self.__hitcount += 1
+            if self.__hitcount < len(self.__material):
+                self.node.setBitmap(self.__material[self.__hitcount])
+            else:
+                self.destroy() # XXX maybe override destroy for special effects, or call something like vanish first
     
     def setBonus(self, bonus):
         self.__bonus = bonus
     
     def removeBonus(self):
-        if self.__block.getPlayer().getRasterContent(self.__index[0], self.__index[1]) is not None:
-            self.getPlayer().bonusFreed(self.__index[0], self.__index[1])
         self.__bonus = None
+        if self.__material is Brick.material['BUBBLE']:
+            self.destroy()
+#        elif self.__block.getPlayer().getRasterContent(self.__index[0], self.__index[1]) is not None:
+#            self.getPlayer().bonusFreed(self.__index[0], self.__index[1])
     
     def getDivNode(self):
         return self.__divNode
     
     def getPlayer(self):
         return self.__block.getPlayer()
+    
+    def getMaterial(self):
+        return self.__material
 
     def render(self):
         pass # XXX move the empty method to GameObject when the game is ready
@@ -997,6 +1002,7 @@ class Brick(GameObject):
     def destroy(self):
         self.__block.getPlayer().clearRasterContent(self.__index[0], self.__index[1])
         if self.__bonus is not None:
+            self.__material = None
             self.__bonus.destroy(self)
         if self.__divNode is not None:
             self.__divNode.unlink(True)
@@ -1230,7 +1236,8 @@ def preRender():
     Brick.material = dict(
     GLASS = [avg.SVG(chars+'glass.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM)),
                 avg.SVG(chars+'glass_shat.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))],
-    RUBBER = [avg.SVG(chars+'rubber.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))]) # XXX make unkillable?
+    RUBBER = [avg.SVG(chars+'rubber.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))], # XXX make unkillable?
+    BUBBLE = [avg.SVG(chars+'bubble.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))])
     # TODO add others?
     
     ballSize = ballDiameter, ballDiameter
