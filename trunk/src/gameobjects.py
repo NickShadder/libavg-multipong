@@ -1197,7 +1197,7 @@ class Block:
 class TimeForStep:
     picBlue = None
     picGreen = None
-    def __init__(self, parentNode, callBack=None, time=1000, left=True): 
+    def __init__(self, parentNode, callBack=None, time=10000, left=True): 
         self.node = avg.ImageNode(parent=parentNode)
         self.callBack = callBack
         offset = 10
