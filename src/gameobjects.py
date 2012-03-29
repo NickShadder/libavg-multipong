@@ -23,7 +23,6 @@ class Player:
     def __init__(self, game, avgNode,PTW):
         self.points = 0
         self.other = None
-        self.pointsToWin = PTW
         self.game = game
         self.zone = avgNode
         self.left = avgNode.pos == (0, 0)
@@ -59,8 +58,6 @@ class Player:
                 if not left:
                     xPos = avgNode.width - xPos - pixelBrickSize
                 self.__nodeRaster.append(avg.RectNode(parent=avgNode, pos=(xPos, yPos), size=(pixelBrickSize, pixelBrickSize), active=False))
-        
-        
         
     def isLeft(self):
         return self.left
@@ -152,8 +149,8 @@ class Player:
         copy = self.__raster.copy()
         for x in copy.values():
             x.destroy()
+        copy.clear()
             
-
 class GameObject:
     def __init__(self, renderer, world):
         self.renderer, self.world = renderer, world
@@ -1262,85 +1259,72 @@ class TimeForStep:
         self.node = None
         if self.callBack is not None:
             self.callBack()
-
+'''
 def preRender():
     global displayWidth, displayHeight, brickSize
     chars = '../data/img/char/'
     ballDiameter = 2 * ballRadius * PPM
-    TimeForStep.picBlue = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight / 80))    
-    TimeForStep.picGreen = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight / 80))
+    TimeForStep.picBlue = avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight / 80))    
+    TimeForStep.picGreen = avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight / 80))
     
     Brick.material = dict(
-    GLASS = [avg.SVG(chars+'bat_blue.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM)),
-                avg.SVG(chars+'bat_blue.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))],
-    BUBBLE = [avg.SVG(chars+'bat_blue.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))],
-    RUBBER = [avg.SVG(chars+'bat_blue.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM)),None])
+    GLASS = [avg.SVG(chars+'bat_red.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM)),
+                avg.SVG(chars+'bat_red.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))],
+    BUBBLE = [avg.SVG(chars+'bat_red.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))],
+    RUBBER = [avg.SVG(chars+'bat_red.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM)),None])
     # XXX add others?
     
     ballSize = ballDiameter, ballDiameter
-    SemipermeableShield.pic = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', (PPM, displayHeight))
-    Ball.pic = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ballSize)
+    SemipermeableShield.pic = avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', (PPM, displayHeight))
+    Ball.pic = avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', ballSize)
 
     # XXX the mine should look like miss pacman ;)
-    Mine.leftPic = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ballSize)
-    Mine.rightPic = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ballSize)
-    RedBall.pic = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ballSize)
+    Mine.leftPic = avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', ballSize)
+    Mine.rightPic = avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', ballSize)
+    RedBall.pic = avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', ballSize)
     
     batImgLen = max(1, maxBatSize * PPM / 2)
     batImgWidth = max(1, batImgLen / 10)    
-    Bat.blueBat = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', (batImgWidth, batImgLen))
-    Bat.greenBat = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', (batImgWidth, batImgLen))
-    Tower.pic = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', (2 * ballDiameter, 2 * ballDiameter))
+    Bat.blueBat = avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', (batImgWidth, batImgLen))
+    Bat.greenBat = avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', (batImgWidth, batImgLen))
+    Tower.pic = avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', (2 * ballDiameter, 2 * ballDiameter))
         
     ghostDiameter = 2 * ghostRadius * PPM
     ghostSize = ghostDiameter, ghostDiameter
-    
-    '''
-    Ghost.pics = dict( 
-        blue=avg.SVG(chars + 'base.svg', False).renderElement('layer1', ghostSize),
-        blinky=avg.SVG(chars + 'borg.svg', False).renderElement('layer1', ghostSize),
-        inky=avg.SVG(chars + 'ninja.svg', False).renderElement('layer1', ghostSize),
-        pinky=avg.SVG(chars + 'bricky.svg', False).renderElement('layer1', ghostSize),
-        clyde=avg.SVG(chars + 'camouflage.svg', False).renderElement('layer1', ghostSize),
-        ghostOfGreen=avg.SVG(chars + 'alien.svg', False).renderElement('layer1', ghostSize),
-        ghostOfBlue=avg.SVG(chars + 'sunglasser.svg', False).renderElement('layer1', ghostSize))
-    '''
     Ghost.pics = dict(
-        blue=avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ghostSize),
-        blinky=avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ghostSize),
-        inky=avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ghostSize),
-        pinky=avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ghostSize),
-        clyde=avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ghostSize),
-        ghostOfGreen=avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ghostSize),
-        ghostOfBlue=avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ghostSize))    
+        blue=avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', ghostSize),
+        blinky=avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', ghostSize),
+        inky=avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', ghostSize),
+        pinky=avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', ghostSize),
+        clyde=avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', ghostSize),
+        ghostOfGreen=avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', ghostSize),
+        ghostOfBlue=avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', ghostSize))    
     
-    boni = '../data/img/bonus/' 
-    Bonus.highLightpic = Ghost.highLightpic = Ball.highLightpic = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', (displayWidth / 10, displayHeight / 12))
-    Rocket.pic = avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', ballSize)
+    boni = chars
+    Bonus.highLightpic = Ghost.highLightpic = Ball.highLightpic = avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', (displayWidth / 10, displayHeight / 12))
+    Rocket.pic = avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', ballSize)
 
         
     w = (int)(displayWidth / 15)
     bonusSize = w, w
     Bonus.pics = dict(
-                invertPac=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
-                newBlock=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
-                addOwnGhost=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
-                hideGhosts=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
+                invertPac=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
+                newBlock=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
+                addOwnGhost=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
+                hideGhosts=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
                 
-                resetGhosts=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
-                wave=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
-                sendGhostsToOtherSide=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
-                mine=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
-                pacShot=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
-                stopGhosts=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize), # TODO fix pic
-                flipGhosts=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
-                tower=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
-                shield=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize))
+                resetGhosts=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
+                wave=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
+                sendGhostsToOtherSide=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
+                mine=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
+                pacShot=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
+                stopGhosts=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize), # TODO fix pic
+                flipGhosts=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
+                tower=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
+                shield=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize))
 
-    
-    
-      
-def preRenderNOT():
+'''
+def preRender():
     global displayWidth, displayHeight, brickSize
     chars = '../data/img/char/'
     ballDiameter = 2 * ballRadius * PPM
@@ -1373,6 +1357,7 @@ def preRenderNOT():
     ghostSize = ghostDiameter, ghostDiameter
     
     '''
+    better graphics
     Ghost.pics = dict( 
         blue=avg.SVG(chars + 'base.svg', False).renderElement('layer1', ghostSize),
         blinky=avg.SVG(chars + 'borg.svg', False).renderElement('layer1', ghostSize),
@@ -1382,6 +1367,7 @@ def preRenderNOT():
         ghostOfGreen=avg.SVG(chars + 'alien.svg', False).renderElement('layer1', ghostSize),
         ghostOfBlue=avg.SVG(chars + 'sunglasser.svg', False).renderElement('layer1', ghostSize))
     '''
+    
     Ghost.pics = dict(
         blue=avg.SVG(chars + 'blue.svg', False).renderElement('layer1', ghostSize),
         blinky=avg.SVG(chars + 'blinky.svg', False).renderElement('layer1', ghostSize),

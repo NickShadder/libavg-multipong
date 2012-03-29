@@ -503,7 +503,7 @@ class Game(gameapp.GameApp):
         self.redballs[:] = [x for x in self.redballs if x not in killList]
         for ball in killList:
             ball.destroy()
-                                                   
+
     def step(self):
         self.world.Step(TIME_STEP, 10, 10)
         self.world.ClearForces()
