@@ -1049,13 +1049,13 @@ class Block:
     SPIECE=(4, 2, 1),
     LPIECE=(4, 3, 0),
     TPIECE=(4, 3, 1))
-    def __init__(self, parentNode, renderer, world, position, player, form=None, flip=False, material=None, angle=None, vanishLater=False, movable = True):        
+    def __init__(self, parentNode, renderer, world, position, player, form=None, flip=False, material=None, angle=0, vanishLater=False, movable = True):        
         self.__parentNode = parentNode
         self.__player = player
         self.__form = form
-        if angle == None:
-            z = random.randint(0, 3)
-            angle = z / 2.0 * math.pi
+#        if angle == None:
+#            z = random.randint(0, 3)
+#            angle = z / 2.0 * math.pi
         if form is None:
             self.__form = random.choice(Block.form.values())
         self.__brickList = []
@@ -1080,40 +1080,41 @@ class Block:
         else:
             timeout = 10000 if vanishLater else 3000
             self.__timeCall = g_player.setTimeout(timeout, self.__vanish)
-            self.__cursor1 = None
-            self.__cursor2 = None
-            self.__container.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.__cursorReg)
-            self.__container.setEventHandler(avg.CURSOROUT, avg.TOUCH, self.__cursorDeReg)
-            ui.DragRecognizer(self.__container, moveHandler=self.__onMove, coordSysNode = self.__brickList[0].node)
-            ui.TransformRecognizer(self.__container, moveHandler=self.__onTransform, endHandler=self.__moveEnd)
+#            self.__cursor1 = None
+#            self.__cursor2 = None
+#            self.__container.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.__cursorReg)
+#            self.__container.setEventHandler(avg.CURSOROUT, avg.TOUCH, self.__cursorDeReg)
+            ui.DragRecognizer(self.__container, moveHandler=self.__onMove, endHandler=self.__moveEnd, coordSysNode = self.__brickList[0].node)
+#            ui.TransformRecognizer(self.__container, moveHandler=self.__onTransform, endHandler=self.__moveEnd)
     
     def __onMove(self, e, offset):
-        if self.__cursor2 is None:
-            if self.__timeCall is not None:
-                g_player.clearInterval(self.__timeCall)
-                self.__timeCall = None
-            self.__container.pos += offset
-            self.__testInsertion()
+#        if self.__cursor2 is None:
+        if self.__timeCall is not None:
+            g_player.clearInterval(self.__timeCall)
+            self.__timeCall = None
+        self.__displayRaster(True)
+        self.__container.pos += offset
+        self.__testInsertion()
     
-    def __cursorReg(self, event):
-        if self.__cursor1 is None:
-            self.__cursor1 = event.cursorid
-        else:
-            self.__cursor2 = event.cursorid
+#    def __cursorReg(self, event):
+#        if self.__cursor1 is None:
+#            self.__cursor1 = event.cursorid
+#        else:
+#            self.__cursor2 = event.cursorid
+#    
+#    def __cursorDeReg(self, event):
+#        if self.__cursor2 is event.cursorid:
+#            self.__cursor2 = None
+#        else:
+#            self.__cursor1 = self.__cursor2
+#            self.__cursor2 = None
     
-    def __cursorDeReg(self, event):
-        if self.__cursor2 is event.cursorid:
-            self.__cursor2 = None
-        else:
-            self.__cursor1 = self.__cursor2
-            self.__cursor2 = None
-    
-    def __onTransform(self, tr):
-        if self.__cursor2 is not None:
-            if self.__timeCall is not None:
-                g_player.clearInterval(self.__timeCall)
-                self.__timeCall = None
-            self.__container.angle += tr.rot
+#    def __onTransform(self, tr):
+#        if self.__cursor2 is not None:
+#            if self.__timeCall is not None:
+#                g_player.clearInterval(self.__timeCall)
+#                self.__timeCall = None
+#            self.__container.angle += tr.rot
     
     def __testInsertion(self):
         possible = True     
@@ -1162,7 +1163,7 @@ class Block:
             self.__timeCall = None
     
     def __moveEnd(self, tr):
-        self.__container.angle = round(2 * self.__container.angle / math.pi) * math.pi / 2
+#        self.__container.angle = round(2 * self.__container.angle / math.pi) * math.pi / 2
         pixelBrickSize = brickSize * PPM
         if not self.__alive:
             self.__timeCall = g_player.setTimeout(1000, self.__vanish)
