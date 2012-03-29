@@ -64,11 +64,9 @@ class Player:
     def addPoint(self, points=1):
         self.points += points
         self.updateDisplay()
-        if self.pointsDisplay.fontsize <= self.pointsDisplayMaximalFontSize and (self.pointsAnim is None or not self.pointsAnim.isRunning()):
+        if self.pointsAnim is None or not self.pointsAnim.isRunning():
                 self.highLightPointIncreaseByFont()
-        elif self.pointsAnim is None or not self.pointsAnim.isRunning():
-            self.highLightPointIncreaseByMovement()
-        
+                
         if self.points >= pointsToWin:
             self.highLightPointIncreaseByFont()
             self.highLightPointIncreaseByMovement()
@@ -81,21 +79,10 @@ class Player:
             
     def dehighLightPointIncreaseByFont(self):
         subjectSize = self.pointsDisplay.fontsize
+        decrease = -4 if self.pointsDisplay.fontsize <= self.pointsDisplayMaximalFontSize else -8
         self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,
-                                                    subjectSize-4).start()
-                                                    
-    def highLightPointIncreaseByMovement(self):    
-        subjectSize = self.pointsDisplay.y
-        subjectValue = 20 if self.isLeft() else -20
-        self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'y', 200, subjectSize,
-                                                   subjectSize+subjectValue,False,None,self.dehighLightPointIncreaseByMovement).start()
-    
-    def dehighLightPointIncreaseByMovement(self):
-        subjectSize = self.pointsDisplay.y
-        subjectValue = -20 if self.isLeft() else 20
-        self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'y', 200, subjectSize,
-                                                    subjectSize+subjectValue).start()
-                                                        
+                                                    subjectSize+decrease).start()
+                                                                                                     
     def penalize(self, points=1):
         self.other.addPoint(points)
 #        self.points = max(0, self.points - points)
@@ -260,8 +247,9 @@ class Rocket(GameObject):
                                       categoryBits=cats['rocket'], userData='rocket')
 
         self.body.CreateCircleFixture(radius=ballRadius, userData='rocket', isSensor=True)
-        self.nextDir = (vel, 0)
+        self.nextDir = (2*vel, 0)
         self.__appear(lambda:self.nudge())
+        g_player.setTimeout(2000,self.destroy)
     
     def getOwner(self):
         return self.owner
@@ -276,11 +264,12 @@ class Rocket(GameObject):
         avg.ParallelAnim([wAnim, hAnim], None, stopAction, 500).start()
         
     def nudge(self, direction=None):
-        self.body.active = True
-        if direction is None:
-            direction = self.nextDir
-        self.body.linearVelocity = direction
-        self.render()
+        if self is not None and self.body is not None:
+            self.body.active = True
+            if direction is None:
+                direction = self.nextDir
+            self.body.linearVelocity = direction
+            self.render()
         
     def hit(self):
         self.destroy()
@@ -598,6 +587,13 @@ class Bonus:
         
         self.vanish()
         if self.isTutorial:
+            player = None
+            if res:
+                player = self.game.leftPlayer
+            else:
+                player = self.game.rightPlayer
+            self.applyEffect(player)
+            
             self.field1 = self.game.leftPlayer.zone
             self.field2 = self.game.rightPlayer.zone
             
@@ -782,7 +778,7 @@ class PersistentBonus(Bonus):
              ('tower', 2),
              ('invertPac', 5),
              ('shield', 2),
-             ('wave', 6)
+             ('wave', 2)
              ]
     boni = dict(
                 pacShot=Bonus.pacShot,
@@ -1240,6 +1236,7 @@ class GhostTutorial(Tutorial):
                                                     (self.field1.width, self.parentNode.height - self.wordsNodeDown.width)).start()
                                                     
         g_player.setTimeout(config.ghostTutorial, self.end)
+
         
 class TetrisTutorial(Tutorial):
     def __init__(self,game):
