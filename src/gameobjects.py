@@ -69,7 +69,6 @@ class Player:
                 
         if self.points >= pointsToWin:
             self.highLightPointIncreaseByFont()
-            self.highLightPointIncreaseByMovement()
             self.game.win(self)
 
     def highLightPointIncreaseByFont(self):

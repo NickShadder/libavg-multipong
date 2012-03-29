@@ -6,7 +6,7 @@ Created on 19.01.2012
 
 # ****************** general config ******************
 debug = True
-pointsToWin = 100
+pointsToWin = 10
 PPM = 20 # number of pixels per meter
 #TARGET_FPS = 60 # the targeted frames per second
 #TIME_STEP = 1.0 / TARGET_FPS # XXX rethink maybe .013 is better
@@ -32,11 +32,11 @@ ballRadius = 1.2 # the radius of a pacman in meters
 ghostRadius = 1.8 # the radius of a ghost in meters
 
 # ****************** tutorial config ******************
-startingTutorial = 2000
-ballTutorial = 10000
-tetrisTutorial = 10000
-ghostTutorial = 10000
-bonusTutorial = 10000
+startingTutorial = 200
+ballTutorial = 1000
+tetrisTutorial = 1000
+ghostTutorial = 1000
+bonusTutorial = 1000
 
 # ****************** tutorial config ******************
 
