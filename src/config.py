@@ -6,7 +6,7 @@ Created on 19.01.2012
 
 # ****************** general config ******************
 debug = True
-pointsToWin = 50
+pointsToWin = 100
 PPM = 20 # number of pixels per meter
 #TARGET_FPS = 60 # the targeted frames per second
 #TIME_STEP = 1.0 / TARGET_FPS # XXX rethink maybe .013 is better

@@ -41,6 +41,9 @@ class Player:
             self.EndText = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=(pos[0]+avgNode.width/2 , avgNode.height-50), angle=angle,
                                            text='', fontsize=100)
         
+        self.pointsAnim = None
+    
+        
         self.pointsDisplayMaximalFontSize = int(avgNode.height/20) 
         self.__raster = dict()
         self.__nodeRaster = []                    #rectNodes to display the margins of the raster
@@ -64,9 +67,9 @@ class Player:
         self.points += points
         self.updateDisplay()
         
-        if self.pointsDisplay.fontsize <= self.pointsDisplayMaximalFontSize: #TODO NO HARDCODE
-            self.highLightPointIncreaseByFont()
-        else:
+        if self.pointsDisplay.fontsize <= self.pointsDisplayMaximalFontSize and (self.pointsAnim is None or not self.pointsAnim.isRunning()):
+                self.highLightPointIncreaseByFont()
+        elif self.pointsAnim is None or not self.pointsAnim.isRunning():
             self.highLightPointIncreaseByMovement()
         
         if self.points >= pointsToWin:
@@ -77,24 +80,25 @@ class Player:
     def highLightPointIncreaseByFont(self):
         
         subjectSize = self.pointsDisplay.fontsize
-        avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,
-                                                   subjectSize+5,False,None,self.dehighLightPointIncreaseByFont).start()
+        self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,
+                                                   subjectSize+50,False,None,self.dehighLightPointIncreaseByFont).start()
+        
     
     def dehighLightPointIncreaseByFont(self):
         subjectSize = self.pointsDisplay.fontsize
-        avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,
-                                                    subjectSize-3).start()
+        self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,
+                                                    subjectSize-4).start()
                                                     
     def highLightPointIncreaseByMovement(self):    
         subjectSize = self.pointsDisplay.y
         subjectValue = 20 if self.isLeft() else -20
-        avg.LinearAnim(self.pointsDisplay , 'y', 200, subjectSize,
+        self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'y', 200, subjectSize,
                                                    subjectSize+subjectValue,False,None,self.dehighLightPointIncreaseByMovement).start()
     
     def dehighLightPointIncreaseByMovement(self):
         subjectSize = self.pointsDisplay.y
         subjectValue = -20 if self.isLeft() else 20
-        avg.LinearAnim(self.pointsDisplay , 'y', 200, subjectSize,
+        self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'y', 200, subjectSize,
                                                     subjectSize+subjectValue).start()
                                                         
     def removePoint(self, points=1):
@@ -1257,6 +1261,18 @@ def preRender():
         
     ghostDiameter = 2 * ghostRadius * PPM
     ghostSize = ghostDiameter, ghostDiameter
+    
+    '''
+    better graphics
+    Ghost.pics = dict( 
+        blue=avg.SVG(chars + 'base.svg', False).renderElement('layer1', ghostSize),
+        blinky=avg.SVG(chars + 'borg.svg', False).renderElement('layer1', ghostSize),
+        inky=avg.SVG(chars + 'ninja.svg', False).renderElement('layer1', ghostSize),
+        pinky=avg.SVG(chars + 'bricky.svg', False).renderElement('layer1', ghostSize),
+        clyde=avg.SVG(chars + 'camouflage.svg', False).renderElement('layer1', ghostSize),
+        ghostOfGreen=avg.SVG(chars + 'alien.svg', False).renderElement('layer1', ghostSize),
+        ghostOfBlue=avg.SVG(chars + 'sunglasser.svg', False).renderElement('layer1', ghostSize))
+    '''
     Ghost.pics = dict(
         blue=avg.SVG(chars + 'blue.svg', False).renderElement('layer1', ghostSize),
         blinky=avg.SVG(chars + 'blinky.svg', False).renderElement('layer1', ghostSize),
