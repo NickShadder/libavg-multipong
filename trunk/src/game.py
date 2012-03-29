@@ -374,7 +374,6 @@ class Game(gameapp.GameApp):
     def getGhosts(self):
         return self.ghosts
     
-    
 
     def _windex(self,lst):
         wtotal = sum([x[1] for x in lst])
@@ -388,11 +387,11 @@ class Game(gameapp.GameApp):
     def _bonusJob(self):
         if not self.running:
             return
-        nextBonus = random.randint(0, 2) # XXX tweak
-        if nextBonus == 0:
+        nextBonus = random.randint(0, 10) 
+        if nextBonus <= 5:
             bonus = self._windex(PersistentBonus.probs)
             self.bonus = PersistentBonus(self, (bonus,PersistentBonus.boni[bonus]))
-        elif nextBonus == 1:
+        elif nextBonus > 6 and nextBonus <= 8:
             bonus = self._windex(InstantBonus.probs)
             self.bonus = InstantBonus(self, (bonus,InstantBonus.boni[bonus]))
         else:
@@ -425,7 +424,7 @@ class Game(gameapp.GameApp):
             ball.setPic(random.choice(picList))
             self.balls.append(ball)
             
-        if len(self.balls) <= 80: 
+        if len(self.balls) <= 60: 
             self.keepPushingBalls = g_player.setTimeout(1000, self.createWinBalls)
                 
     def clearDisplay(self):
