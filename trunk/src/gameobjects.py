@@ -129,7 +129,7 @@ class Player:
             (x, y) = self.__freeBricks.pop()
             brick = self.getRasterContent(x, y)
             brick.setBonus(bonus)
-            bonus.saveBonus(brick,self.left)
+            bonus.saveBonus(brick, self.left)
 
 class GameObject:
     def __init__(self, renderer, world):
@@ -775,7 +775,7 @@ class Bonus:
     def applyEffect(self, player):
         self.effect(self, player)
     
-    def saveBonus(self, brick,left):
+    def saveBonus(self, brick, left):
         hSize = .85 * brickSize * PPM
         position = (brickSize * PPM - hSize) / 2
         if left:
@@ -934,16 +934,16 @@ class Bat(GameObject): # XXX maybe ghosts should be able to penetrate the bat
         h = (ver[1][0] - ver[0][0])
         w = (ver[-1][1] - ver[0][1])
         self.node.size = avg.Point2D(w, h) * PPM
-    
-# todo we do not need a class for this 
 
 
 class Brick(GameObject):
     material = {}
     def __init__(self, parentBlock, container, renderer, world, parentNode, pos, mat=None):
         GameObject.__init__(self, renderer, world)
-        self.block, self.hitcount, self.__material = parentBlock, 0, mat
-        self.parentNode = parentNode
+        self.__block = parentBlock
+        self.__hitcount = 0
+        self.__material = mat
+        self.__parentNode = parentNode
         if self.__material is None:
             self.__material = random.choice(Brick.material.values())
         self.node = avg.ImageNode(parent = container, pos=pos)
@@ -957,8 +957,8 @@ class Brick(GameObject):
         if pos is None:
             pos = (self.node.pos + self.node.pivot) / PPM # TODO this looks like trouble
         self.node.unlink()
-        self.parentNode.appendChild(self.node)
-        self.__divNode = avg.DivNode(parent=self.parentNode, pos=self.node.pos, size=self.node.size)
+        self.__parentNode.appendChild(self.node)
+        self.__divNode = avg.DivNode(parent=self.__parentNode, pos=self.node.pos, size=self.node.size)
         halfBrickSize = brickSize / 2
         fixtureDef = b2FixtureDef (userData='brick', shape=b2PolygonShape (box=(halfBrickSize, halfBrickSize)),
                                   density=1, friction=.03, restitution=1, categoryBits=cats['brick'])
@@ -967,9 +967,9 @@ class Brick(GameObject):
         self.__index = (x, y)
     
     def hit(self):
-        self.hitcount += 1
-        if self.hitcount < len(self.__material):
-            self.node.setBitmap(self.__material[self.hitcount])
+        self.__hitcount += 1
+        if self.__hitcount < len(self.__material):
+            self.node.setBitmap(self.__material[self.__hitcount])
         else:
             self.destroy() # XXX maybe override destroy for special effects, or call something like vanish first
     
@@ -980,7 +980,7 @@ class Brick(GameObject):
         self.__bonus = bonus
     
     def removeBonus(self):
-        if self.block.getPlayer().getRasterContent(self.__index[0], self.__index[1]) is not None:
+        if self.__block.getPlayer().getRasterContent(self.__index[0], self.__index[1]) is not None:
             self.getPlayer().bonusFreed(self.__index[0], self.__index[1])
         self.__bonus = None
     
@@ -988,14 +988,14 @@ class Brick(GameObject):
         return self.__divNode
     
     def getPlayer(self):
-        return self.block.getPlayer()
+        return self.__block.getPlayer()
 
     def render(self):
         pass # XXX move the empty method to GameObject when the game is ready
 
     # override
     def destroy(self):
-        self.block.getPlayer().clearRasterContent(self.__index[0], self.__index[1])
+        self.__block.getPlayer().clearRasterContent(self.__index[0], self.__index[1])
         if self.__bonus is not None:
             self.__bonus.destroy(self)
         if self.__divNode is not None:
@@ -1017,9 +1017,9 @@ class Block:
     TPIECE=(4, 3, 1)
 )
     def __init__(self, parentNode, renderer, world, position, player, form=None, flip=False, material=None, angle=0, vanishLater=False, movable = True):        
-        self.parentNode, self.renderer, self.world, self.position = parentNode, renderer, world, position
+        self.__parentNode = parentNode
         self.__form = form
-        self.leftPlayer, self.rightPlayer = player
+        self.__leftPlayer, self.__rightPlayer = player
         if form is None:
             self.__form = random.choice(Block.form.values())
         self.__brickList = []
@@ -1035,14 +1035,14 @@ class Block:
             if flip: posX = rightMostPos - posX
             posY = line * brickSizeInPx
             self.__brickList.append(Brick(self, self.__container, renderer, world, parentNode, (posX, posY), material))
-        self.__widthDisplay = self.parentNode.size[1]
+        self.__widthDisplay = parentNode.size[1]
         self.__widthThird = self.__widthDisplay / 3
-        self.__owner = self.leftPlayer
+        self.__owner = self.__leftPlayer
         self.__alive = False
         if not movable:
             self.__alive = True
             if self.__brickList[0].node.pos[0] + self.__container.pos[0] > self.__widthDisplay - self.__widthThird - brickSize * PPM:
-                self.__owner = self.rightPlayer
+                self.__owner = self.__rightPlayer
             self.__moveEnd(False)
         else:
             self.__assigned = False
@@ -1069,7 +1069,7 @@ class Block:
                     self.__displayRaster(True)
                 elif e.pos[0] > self.__widthDisplay - self.__widthThird:
                     self.__assigned = True
-                    self.__owner = self.rightPlayer
+                    self.__owner = self.__rightPlayer
                     self.__displayRaster(True)
                 else:
                     self.__colourRed()
@@ -1094,7 +1094,7 @@ class Block:
 #        if self.__cursor2 is None:
 #            # only one touch -> no intent to rotate -> move
 #            self.__container.pos += tr.trans
-#            widthDisplay = self.parentNode.height
+#            widthDisplay = self.__parentNode.height
 #            widthThird = widthDisplay / 3
 #            for b in self.brickList:
 #                if self.__assigned:
@@ -1105,7 +1105,7 @@ class Block:
 #                        self.__displayRaster(True)        
 #                    elif b.node.pos[0] + self.__container.pos[0] > widthDisplay - widthThird - brickSize * PPM:
 #                        self.__assigned = True
-#                        self.__owner = self.rightPlayer
+#                        self.__owner = self.__rightPlayer
 #                        self.__displayRaster(True)
 #            if self.__assigned:
 #                self.__testInsertion()
@@ -1131,10 +1131,10 @@ class Block:
     
     def __calculateIndices(self, position):
         pixelBrickSize = brickSize * PPM
-        if self.__owner is self.leftPlayer:
+        if self.__owner is self.__leftPlayer:
             x = int(round((position[0] + self.__container.pos[0]) / pixelBrickSize))
         else:
-            x = int(round((self.parentNode.width - position[0] - self.__container.pos[0] - pixelBrickSize) / pixelBrickSize))
+            x = int(round((self.__parentNode.width - position[0] - self.__container.pos[0] - pixelBrickSize) / pixelBrickSize))
         y = int(round((position[1] + self.__container.pos[1]) / pixelBrickSize))
 #        if y >= bricksPerLine:
 #            y = bricksPerLine - 1
@@ -1177,8 +1177,8 @@ class Block:
                 b.node.intensity = (1, 1, 1)
                 (x, y) = self.__calculateIndices(b.node.pos)
                 xPos, yPos = x * pixelBrickSize, y * pixelBrickSize
-                if self.__owner is not self.leftPlayer:
-                    xPos = self.parentNode.size[0] - xPos - pixelBrickSize    
+                if self.__owner is not self.__leftPlayer:
+                    xPos = self.__parentNode.size[0] - xPos - pixelBrickSize    
                 self.__owner.setRasterContent(x, y, b)
                 b.node.pos = (xPos, yPos)
                 b.node.sensitive = False
