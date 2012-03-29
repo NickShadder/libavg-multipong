@@ -27,9 +27,9 @@ class Player:
         self.zone = avgNode
         self.left = avgNode.pos == (0, 0)
         avgNode.player = self
-        left = avgNode.pos == (0, 0)
-        angle = math.pi / 2 if left else -math.pi / 2
-        pos = (avgNode.width, 2) if left else (0, avgNode.height - 2)            
+        self.pointsToWin = PTW
+        angle = math.pi / 2 if self.left else -math.pi / 2
+        pos = (avgNode.width, 2) if self.left else (0, avgNode.height - 2)            
         # XXX gameobects may obstruct view of the points!
         
         self.pointsDisplay = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=pos, angle=angle,text='Points: 0 / %d' % PTW)
@@ -47,15 +47,15 @@ class Player:
     
         
         self.pointsDisplayMaximalFontSize = int(avgNode.height/20)
-        self.__numOfRubberBricks = 0               #number of Bricks of material RUBBER -> eternal life 
+        self.__numOfRubberBricks = 0 # current number of indestructable rubber bricks
         self.__raster = dict()
-        self.__nodeRaster = []                    #rectNodes to display the margins of the raster
+        self.__nodeRaster = [] # rectNodes to display the margins of the raster
         self.__freeBricks = set()
         pixelBrickSize = brickSize * PPM
         for x in xrange(brickLines):
             for y in xrange(bricksPerLine):
                 xPos, yPos = x * pixelBrickSize, y * pixelBrickSize
-                if not left:
+                if not self.left:
                     xPos = avgNode.width - xPos - pixelBrickSize
                 self.__nodeRaster.append(avg.RectNode(parent=avgNode, pos=(xPos, yPos), size=(pixelBrickSize, pixelBrickSize), active=False))
         
@@ -68,7 +68,6 @@ class Player:
     def addPoint(self, points=1):
         self.points += points
         self.updateDisplay()
-        
         if self.pointsDisplay.fontsize <= self.pointsDisplayMaximalFontSize and (self.pointsAnim is None or not self.pointsAnim.isRunning()):
                 self.highLightPointIncreaseByFont()
         elif self.pointsAnim is None or not self.pointsAnim.isRunning():
@@ -80,7 +79,6 @@ class Player:
             self.game.win(self)
 
     def highLightPointIncreaseByFont(self):
-        
         subjectSize = self.pointsDisplay.fontsize
         self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,
                                                    subjectSize+8,False,None,self.dehighLightPointIncreaseByFont).start()
@@ -970,7 +968,11 @@ class Brick(GameObject):
         self.__material = mat
         self.__parentNode = parentNode
         if self.__material is None:
-            self.__material = random.choice(Brick.material.values())
+            mats = Brick.material.values()[:]
+            if parentBlock.getPlayer().getNumOfRubberBricks() > maxNumOfRubberBricks:
+                mats.remove(Brick.material['RUBBER'])
+            self.__material = random.choice(mats)
+            del mats[:]
         self.node = avg.ImageNode(parent = container, pos=pos)
         self.node.setBitmap(self.__material[0])
         self.__divNode = None
@@ -1046,19 +1048,14 @@ class Block:
     LINE=(4, 4, 0),
     SPIECE=(4, 2, 1),
     LPIECE=(4, 3, 0),
-    TPIECE=(4, 3, 1)
-)
+    TPIECE=(4, 3, 1))
     def __init__(self, parentNode, renderer, world, position, player, form=None, flip=False, material=None, angle=0, vanishLater=False, movable = True):        
         self.__parentNode = parentNode
         self.__form = form
         self.__leftPlayer, self.__rightPlayer = player
+        self.__owner = self.__leftPlayer
         if form is None:
             self.__form = random.choice(Block.form.values())
-        if material is None:
-            possibleMaterials = Brick.material.values()
-            if self.__form != Block.form['SINGLE'] or self.__leftPlayer.getNumOfRubberBricks() + self.__rightPlayer.getNumOfRubberBricks() >= maxNumOfRubberBricks:
-                possibleMaterials.remove(Brick.material['RUBBER'])
-            material = random.choice(possibleMaterials)
         self.__brickList = []
         self.__container = avg.DivNode(parent=parentNode, pos=position, angle=angle)
         brickSizeInPx = brickSize * PPM
@@ -1072,9 +1069,8 @@ class Block:
             if flip: posX = rightMostPos - posX
             posY = line * brickSizeInPx
             self.__brickList.append(Brick(self, self.__container, renderer, world, parentNode, (posX, posY), material))
-        self.__widthDisplay = parentNode.size[1]
+        self.__widthDisplay = parentNode.width
         self.__widthThird = self.__widthDisplay / 3
-        self.__owner = self.__leftPlayer
         self.__alive = False
         if not movable:
             self.__alive = True
