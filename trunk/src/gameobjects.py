@@ -81,7 +81,7 @@ class Player:
         
         subjectSize = self.pointsDisplay.fontsize
         self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,
-                                                   subjectSize+50,False,None,self.dehighLightPointIncreaseByFont).start()
+                                                   subjectSize+8,False,None,self.dehighLightPointIncreaseByFont).start()
         
     
     def dehighLightPointIncreaseByFont(self):
