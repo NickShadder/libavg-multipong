@@ -42,6 +42,8 @@ class Player:
                                            text='', fontsize=100)
         
         self.pointsAnim = None
+    
+        
         self.pointsDisplayMaximalFontSize = int(avgNode.height/20) 
         self.__raster = dict()
         self.__nodeRaster = []                    #rectNodes to display the margins of the raster
@@ -57,7 +59,6 @@ class Player:
     def isLeft(self):
         return self.left
  
-
     def setEndText(self, text):
         self.EndText.text = text
         
@@ -76,10 +77,11 @@ class Player:
             self.game.win(self)
 
     def highLightPointIncreaseByFont(self):
+        
         subjectSize = self.pointsDisplay.fontsize
         self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,
                                                    subjectSize+8,False,None,self.dehighLightPointIncreaseByFont).start()
-        
+            
     def dehighLightPointIncreaseByFont(self):
         subjectSize = self.pointsDisplay.fontsize
         self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,
@@ -97,9 +99,10 @@ class Player:
         self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'y', 200, subjectSize,
                                                     subjectSize+subjectValue).start()
                                                         
-    def removePoint(self, points=1):
-        self.points = max(0, self.points - points)
-        self.updateDisplay()
+    def penalize(self, points=1):
+        self.other.addPoint(points)
+#        self.points = max(0, self.points - points)
+#        self.updateDisplay()
     
     def updateDisplay(self):
         self.pointsDisplay.text = 'Points: %d / %d' % (self.points, pointsToWin)
@@ -132,6 +135,12 @@ class Player:
             brick = self.getRasterContent(x, y)
             brick.setBonus(bonus)
             bonus.saveBonus(brick, self.left)
+
+    def killBricks(self): # XXX test
+        copy = self.__raster.copy()
+        for x in copy.values():
+            x.destroy()
+            
 
 class GameObject:
     def __init__(self, renderer, world):
@@ -280,14 +289,14 @@ class Ball(GameObject):
         avg.ParallelAnim([wAnim, hAnim, aAnim], None, stopAction, 500).start()
     
     def zoneOfPlayer(self):
-        # XXX I'm sure there is a better way to do this
+        if self.node is None:
+            return None
         lz, rz = self.leftPlayer.zone, self.rightPlayer.zone
         if lz.getAbsPos((0, 0))[0] < self.node.pos[0] < lz.getAbsPos(lz.size)[0]:
             return self.leftPlayer
         elif rz.getAbsPos((0, 0))[0] < self.node.pos[0] < rz.getAbsPos(rz.size)[0]:
             return self.rightPlayer
-        else:
-            return None
+        return None
         
     def invert(self):
         self.body.linearVelocity = -self.body.linearVelocity
@@ -337,7 +346,6 @@ class Rocket(GameObject):
         
     def hit(self):
         self.destroy()
-
 
 class Mine(Ball):
     leftPic = rightPic = None
@@ -437,15 +445,17 @@ class SemipermeableShield:
 class Ghost(GameObject):
     highLightpic = None
     pics = {}
-
-    def __init__(self, renderer, world, parentNode, position, name, owner=None, mortal=1):
-        GameObject.__init__(self, renderer, world)
-        self.parentNode = parentNode
+    def __init__(self, renderer, game, parentNode, position, name, owner=None, mortal=1):
+        GameObject.__init__(self, renderer, game.world)
+        self.parentNode = parentNode        
         self.spawnPoint = position
+        self.game = game
         self.name = name
-        self.diameter = 2 * ballRadius * PPM
+        self.movement = self.changing = self.aging = None
         self.trend = None
         self.owner = owner
+        if owner is not None:
+            self.aging = g_player.setTimeout(60000,self.destroy)
         self.mortal = mortal
         self.node = avg.ImageNode(parent=parentNode, opacity=.85)
         # self.setShadow('ADD8E6')
@@ -453,13 +463,13 @@ class Ghost(GameObject):
                                   density=1, groupIndex= -1, categoryBits=cats['ghost'], maskBits=dontCollideWith('ball'))
         ghostLower = b2FixtureDef(userData='ghost', shape=b2PolygonShape(box=(ghostRadius, ghostRadius / 2, (0, -ghostRadius / 2), 0)),
                                   density=1, groupIndex= -1, categoryBits=cats['ghost'], maskBits=dontCollideWith('ball'))
-        self.body = world.CreateDynamicBody(position=position, fixtures=[ghostUpper, ghostLower],
+        self.body = game.world.CreateDynamicBody(position=position, fixtures=[ghostUpper, ghostLower],
                                             userData=self, fixedRotation=True)
         self.changeMortality()
         self.render()
         self.move()
-        
-    def highLight(self, field1, field2):         
+
+    def highLight(self, field1, field2):
         self.highLights = []
         self.highLightText = ("These are ghosts.<br/>" +
                               "They change their color.<br/>"+
@@ -528,7 +538,6 @@ class Ghost(GameObject):
         
         g_player.setTimeout(20000, self.dehighLight)
     
-        
     def resetTrend(self):
         self.trend = None 
     
@@ -626,8 +635,10 @@ class Ghost(GameObject):
         if self.changing is not None:
             g_player.clearInterval(self.changing)
             self.changing = None
+        if self.aging is not None:
+            g_player.clearInterval(self.aging)
+            self.aging = None
 
-                                
 class BorderLine:
     body = None
     def __init__(self, world, pos1, pos2, restitution=0, sensor=False, *noCollisions):
@@ -773,6 +784,9 @@ class Bonus:
             self.rightBonus.active = False
             self.rightBonus.unlink(True)
             self.rightBonus = None
+        if self.timeout is not None:
+            g_player.clearInterval(self.timeout)
+            self.timeout = None
         
     def applyEffect(self, player):
         self.effect(self, player)
@@ -830,7 +844,7 @@ class Bonus:
             name = "ghostOfBlue"
         else:
             name = "ghostOfGreen"            
-        self.game.ghosts.append(Ghost(self.game.renderer, self.world, self.parentNode, self.game.middle - (0, (ballRadius + ghostRadius) * 2), name, player))
+        self.game.ghosts.append(Ghost(self.game.renderer, self.game, self.parentNode, self.game.middle - (0, (ballRadius + ghostRadius) * 2), name, player))
         
     def sendGhostsToOpponent(self, player):
         for g in self.game.getGhosts():
@@ -937,7 +951,6 @@ class Bat(GameObject): # XXX maybe ghosts should be able to penetrate the bat
         w = (ver[-1][1] - ver[0][1])
         self.node.size = avg.Point2D(w, h) * PPM
 
-
 class Brick(GameObject):
     material = {}
     def __init__(self, parentBlock, container, renderer, world, parentNode, pos, mat=None):
@@ -969,12 +982,14 @@ class Brick(GameObject):
         self.__index = (x, y)
     
     def hit(self):
-        if self.__material is not Brick.material['RUBBER']:
-            self.__hitcount += 1
-            if self.__hitcount < len(self.__material):
-                self.node.setBitmap(self.__material[self.__hitcount])
+        self.__hitcount += 1
+        if self.__hitcount < len(self.__material):
+            if self.__material[self.__hitcount] is None: # the material is unkillable
+                self.__hitcount -= 1
             else:
-                self.destroy() # XXX maybe override destroy for special effects, or call something like vanish first
+                self.node.setBitmap(self.__material[self.__hitcount])
+        else:            
+            self.destroy() # XXX maybe override destroy for special effects, or call something like vanish first
     
     def setBonus(self, bonus):
         self.__bonus = bonus
@@ -1008,7 +1023,6 @@ class Brick(GameObject):
             self.__divNode.unlink(True)
         GameObject.destroy(self)
 
-    
 class Block:
     form = dict(
     # (bricks, maxLineLength, offset)
@@ -1236,9 +1250,9 @@ def preRender():
     Brick.material = dict(
     GLASS = [avg.SVG(chars+'glass.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM)),
                 avg.SVG(chars+'glass_shat.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))],
-    RUBBER = [avg.SVG(chars+'rubber.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))], # XXX make unkillable?
-    BUBBLE = [avg.SVG(chars+'bubble.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))])
-    # TODO add others?
+    BUBBLE = [avg.SVG(chars+'bubble.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))],
+    RUBBER = [avg.SVG(chars+'rubber.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM)),None])
+    # XXX add others?
     
     ballSize = ballDiameter, ballDiameter
     SemipermeableShield.pic = avg.SVG(chars + 'semiperright.svg', False).renderElement('layer1', (PPM, displayHeight))
@@ -1253,7 +1267,7 @@ def preRender():
     batImgWidth = max(1, batImgLen / 10)    
     Bat.blueBat = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', (batImgWidth, batImgLen))
     Bat.greenBat = avg.SVG(chars + 'bat_green.svg', False).renderElement('layer1', (batImgWidth, batImgLen))
-    Tower.pic = avg.SVG(chars + 'tower.svg', False).renderElement('layer1', (2 * ballDiameter, 2 * ballDiameter)) # note that the size is different from the corresponding bonus picture's
+    Tower.pic = avg.SVG(chars + 'tower.svg', False).renderElement('layer1', (2 * ballDiameter, 2 * ballDiameter))
         
     ghostDiameter = 2 * ghostRadius * PPM
     ghostSize = ghostDiameter, ghostDiameter
