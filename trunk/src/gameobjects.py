@@ -20,9 +20,10 @@ g_player = avg.Player.get()
 displayWidth = displayHeight = bricksPerLine = None 
 
 class Player:
-    def __init__(self, game, avgNode):
+    def __init__(self, game, avgNode,PTW):
         self.points = 0
         self.other = None
+        self.pointsToWin = PTW
         self.game = game
         self.zone = avgNode
         self.left = avgNode.pos == (0, 0)
@@ -31,8 +32,10 @@ class Player:
         angle = math.pi / 2 if left else -math.pi / 2
         pos = (avgNode.width, 2) if left else (0, avgNode.height - 2)            
         # XXX gameobects may obstruct view of the points!
-        self.pointsDisplay = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=pos, angle=angle,
-                                           text='Points: 0 / %d' % pointsToWin)
+        
+        self.pointsDisplay = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=pos, angle=angle,text='Points: 0 / %d' % PTW)
+        
+            
         
         if self.left:
             self.EndText = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=(pos[0]-avgNode.width/2 , 50), angle=angle,
@@ -55,6 +58,8 @@ class Player:
                 if not left:
                     xPos = avgNode.width - xPos - pixelBrickSize
                 self.__nodeRaster.append(avg.RectNode(parent=avgNode, pos=(xPos, yPos), size=(pixelBrickSize, pixelBrickSize), active=False))
+        
+        
         
     def isLeft(self):
         return self.left
@@ -105,7 +110,7 @@ class Player:
 #        self.updateDisplay()
     
     def updateDisplay(self):
-        self.pointsDisplay.text = 'Points: %d / %d' % (self.points, pointsToWin)
+        self.pointsDisplay.text = 'Points: %d / %d' % (self.points, self.pointsToWin)
     
     def getNodeRaster(self):
         return self.__nodeRaster
@@ -452,6 +457,7 @@ class Ghost(GameObject):
         self.game = game
         self.name = name
         self.movement = self.changing = self.aging = None
+        self.diameter = 2 * ballRadius * PPM
         self.trend = None
         self.owner = owner
         if owner is not None:
@@ -1239,8 +1245,85 @@ class TimeForStep:
         self.node = None
         if self.callBack is not None:
             self.callBack()
-        
+
 def preRender():
+    global displayWidth, displayHeight, brickSize
+    chars = '../data/img/char/'
+    ballDiameter = 2 * ballRadius * PPM
+    TimeForStep.picBlue = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight / 80))    
+    TimeForStep.picGreen = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight / 80))
+    
+    Brick.material = dict(
+    GLASS = [avg.SVG(chars+'bat_blue.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM)),
+                avg.SVG(chars+'bat_blue.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))],
+    BUBBLE = [avg.SVG(chars+'bat_blue.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM))],
+    RUBBER = [avg.SVG(chars+'bat_blue.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM)),None])
+    # XXX add others?
+    
+    ballSize = ballDiameter, ballDiameter
+    SemipermeableShield.pic = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', (PPM, displayHeight))
+    Ball.pic = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ballSize)
+
+    # XXX the mine should look like miss pacman ;)
+    Mine.leftPic = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ballSize)
+    Mine.rightPic = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ballSize)
+    RedBall.pic = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ballSize)
+    
+    batImgLen = max(1, maxBatSize * PPM / 2)
+    batImgWidth = max(1, batImgLen / 10)    
+    Bat.blueBat = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', (batImgWidth, batImgLen))
+    Bat.greenBat = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', (batImgWidth, batImgLen))
+    Tower.pic = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', (2 * ballDiameter, 2 * ballDiameter))
+        
+    ghostDiameter = 2 * ghostRadius * PPM
+    ghostSize = ghostDiameter, ghostDiameter
+    
+    '''
+    Ghost.pics = dict( 
+        blue=avg.SVG(chars + 'base.svg', False).renderElement('layer1', ghostSize),
+        blinky=avg.SVG(chars + 'borg.svg', False).renderElement('layer1', ghostSize),
+        inky=avg.SVG(chars + 'ninja.svg', False).renderElement('layer1', ghostSize),
+        pinky=avg.SVG(chars + 'bricky.svg', False).renderElement('layer1', ghostSize),
+        clyde=avg.SVG(chars + 'camouflage.svg', False).renderElement('layer1', ghostSize),
+        ghostOfGreen=avg.SVG(chars + 'alien.svg', False).renderElement('layer1', ghostSize),
+        ghostOfBlue=avg.SVG(chars + 'sunglasser.svg', False).renderElement('layer1', ghostSize))
+    '''
+    Ghost.pics = dict(
+        blue=avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ghostSize),
+        blinky=avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ghostSize),
+        inky=avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ghostSize),
+        pinky=avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ghostSize),
+        clyde=avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ghostSize),
+        ghostOfGreen=avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ghostSize),
+        ghostOfBlue=avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', ghostSize))    
+    
+    boni = '../data/img/bonus/' 
+    Bonus.highLightpic = Ghost.highLightpic = Ball.highLightpic = avg.SVG(chars + 'bat_blue.svg', False).renderElement('layer1', (displayWidth / 10, displayHeight / 12))
+    Rocket.pic = avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', ballSize)
+
+        
+    w = (int)(displayWidth / 15)
+    bonusSize = w, w
+    Bonus.pics = dict(
+                invertPac=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
+                newBlock=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
+                addOwnGhost=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
+                hideGhosts=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
+                
+                resetGhosts=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
+                wave=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
+                sendGhostsToOtherSide=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
+                mine=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
+                pacShot=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
+                stopGhosts=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize), # TODO fix pic
+                flipGhosts=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
+                tower=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize),
+                shield=avg.SVG(boni + 'bat_blue.svg', False).renderElement('layer1', bonusSize))
+
+    
+    
+      
+def preRenderNOT():
     global displayWidth, displayHeight, brickSize
     chars = '../data/img/char/'
     ballDiameter = 2 * ballRadius * PPM
@@ -1273,7 +1356,6 @@ def preRender():
     ghostSize = ghostDiameter, ghostDiameter
     
     '''
-    better graphics
     Ghost.pics = dict( 
         blue=avg.SVG(chars + 'base.svg', False).renderElement('layer1', ghostSize),
         blinky=avg.SVG(chars + 'borg.svg', False).renderElement('layer1', ghostSize),

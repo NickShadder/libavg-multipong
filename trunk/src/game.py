@@ -6,6 +6,7 @@ Created on 19.01.2012
 import sys
 import random
 import gameobjects
+import config
 
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
@@ -273,7 +274,8 @@ class Game(gameapp.GameApp):
         self.listener = ContactListener(self.hitset)
         self.world.contactListener = self.listener
         self.running = True
-        self.leftPlayer, self.rightPlayer = Player(self, self.field1), Player(self, self.field2)
+        pointsToWin = 999 if self.tutorialMode else config.pointsToWin
+        self.leftPlayer, self.rightPlayer = Player(self, self.field1, pointsToWin), Player(self, self.field2,pointsToWin)
         self.leftPlayer.other, self.rightPlayer.other = self.rightPlayer, self.leftPlayer
         
         # horizontal lines
@@ -373,7 +375,7 @@ class Game(gameapp.GameApp):
         self.bonusjob = g_player.setTimeout(random.choice([4000, 5000, 6000]), self._bonusJob)
     
     def win(self, player):
-	    if not self.running:
+        if not self.running:
             return
         player.setEndText('You won')
         player.other.setEndText('You lost')
