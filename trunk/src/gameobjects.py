@@ -321,8 +321,9 @@ class Ball(GameObject):
 class Rocket(GameObject):
     pic = None
     highLightpic = None
-    def __init__(self, game, renderer, world, parentNode, position, vel):
+    def __init__(self, game, player, renderer, world, parentNode, position, vel):
         GameObject.__init__(self, renderer, world)
+        self.owner = player
         self.parentNode = parentNode
         self.node = avg.ImageNode(parent=parentNode)
         self.node.setBitmap(Rocket.pic)
@@ -334,6 +335,9 @@ class Rocket(GameObject):
         self.body.CreateCircleFixture(radius=ballRadius, userData='rocket', isSensor=True)
         self.nextDir = (vel, 0)
         self.__appear(lambda:self.nudge())
+    
+    def getOwner(self):
+        return self.owner
     
     def render(self):
         pos = self.body.position * PPM - self.node.size / 2
@@ -371,6 +375,9 @@ class Mine(Ball):
             
     def getOwner(self):
         return self.owner
+
+    def hit(self):
+        self.destroy()
 
     # Override
     def nudge(self, direction=None):
@@ -889,14 +896,24 @@ class Bonus:
         g_player.setTimeout(10000, s.destroy) # XXX tweak time
    
     def startWave(self, player):
-        if player.isLeft():
-            for i in range(0, 30):
-                Rocket(self.game, self.game.renderer, self.world, self.parentNode, (brickSize * brickLines + ghostRadius, (2 * ballRadius) * i), 50)
-        else:
-            for i in range(0, 30):
-                Rocket(self.game, self.game.renderer, self.world, self.parentNode, (self.parentNode.size[0] / PPM - (brickSize * brickLines + ghostRadius), (2 * ballRadius) * i), -50)
+        for i in range(0, 30):
+            if player.isLeft():
+                pos = (brickSize * brickLines + ghostRadius, (2 * ballRadius) * i)
+                vel = 50
+            else:
+                vel = -50
+                pos =  (self.parentNode.size[0] / PPM - (brickSize * brickLines + ghostRadius), (2 * ballRadius) * i)
+            Rocket(self.game, player, self.game.renderer, self.world, self.parentNode, pos, vel)
         
 class PersistentBonus(Bonus):
+    probs = [('pacShot', 4),
+             ('stopGhosts', 4),
+             ('flipGhosts', 3),
+             ('tower', 2),
+             ('invertPac', 5),
+             ('shield', 2),
+             ('wave', 6)
+             ]
     boni = dict(
                 pacShot=Bonus.pacShot,
                 stopGhosts=Bonus.stopGhosts,
@@ -914,8 +931,14 @@ class PersistentBonus(Bonus):
         (self.game.leftPlayer if Bonus.onClick(self, event) else self.game.rightPlayer).addBonus(self)  
         
 class InstantBonus(Bonus):
-    boni = dict(
-                newBlock=Bonus.newBlock,
+    probs = [('newBlock', 3),
+             ('addOwnGhost', 4),
+             ('hideGhosts', 2),
+             ('resetGhosts', 2.5),
+             ('sendGhostsToOtherSide', 5),
+             ('mine', 2)
+             ]
+    boni = dict(newBlock=Bonus.newBlock,
                 addOwnGhost=Bonus.addGhost,
                 hideGhosts=Bonus.hideGhosts,
                 resetGhosts=Bonus.resetGhosts,
@@ -969,7 +992,8 @@ class Brick(GameObject):
         self.__parentNode = parentNode
         if self.__material is None:
             mats = Brick.material.values()[:]
-            if parentBlock.getPlayer().getNumOfRubberBricks() > maxNumOfRubberBricks:
+            if (parentBlock.getForm() != Block.form['SINGLE'] or 
+                parentBlock.getPlayer().getNumOfRubberBricks() > maxNumOfRubberBricks):
                 mats.remove(Brick.material['RUBBER'])
             self.__material = random.choice(mats)
             del mats[:]
@@ -1053,9 +1077,6 @@ class Block:
         self.__parentNode = parentNode
         self.__player = player
         self.__form = form
-#        if angle == None:
-#            z = random.randint(0, 3)
-#            angle = z / 2.0 * math.pi
         if form is None:
             self.__form = random.choice(Block.form.values())
         self.__brickList = []
@@ -1080,41 +1101,15 @@ class Block:
         else:
             timeout = 10000 if vanishLater else 3000
             self.__timeCall = g_player.setTimeout(timeout, self.__vanish)
-#            self.__cursor1 = None
-#            self.__cursor2 = None
-#            self.__container.setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.__cursorReg)
-#            self.__container.setEventHandler(avg.CURSOROUT, avg.TOUCH, self.__cursorDeReg)
             ui.DragRecognizer(self.__container, moveHandler=self.__onMove, endHandler=self.__moveEnd, coordSysNode = self.__brickList[0].node)
-#            ui.TransformRecognizer(self.__container, moveHandler=self.__onTransform, endHandler=self.__moveEnd)
     
     def __onMove(self, e, offset):
-#        if self.__cursor2 is None:
         if self.__timeCall is not None:
             g_player.clearInterval(self.__timeCall)
             self.__timeCall = None
         self.__displayRaster(True)
         self.__container.pos += offset
         self.__testInsertion()
-    
-#    def __cursorReg(self, event):
-#        if self.__cursor1 is None:
-#            self.__cursor1 = event.cursorid
-#        else:
-#            self.__cursor2 = event.cursorid
-#    
-#    def __cursorDeReg(self, event):
-#        if self.__cursor2 is event.cursorid:
-#            self.__cursor2 = None
-#        else:
-#            self.__cursor1 = self.__cursor2
-#            self.__cursor2 = None
-    
-#    def __onTransform(self, tr):
-#        if self.__cursor2 is not None:
-#            if self.__timeCall is not None:
-#                g_player.clearInterval(self.__timeCall)
-#                self.__timeCall = None
-#            self.__container.angle += tr.rot
     
     def __testInsertion(self):
         possible = True     

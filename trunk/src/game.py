@@ -37,7 +37,7 @@ class ContactListener(b2ContactListener):
     def EndContact(self, contact):
         fA, fB = contact.fixtureA, contact.fixtureB
         dA, dB = fA.userData, fB.userData
-        ball = red = brick = bat = semi = None
+        ball = red = brick = bat = semi = mine = rocket = None
         found = False
         if dA == 'ball': 
             ball = fA.body.userData
@@ -51,11 +51,16 @@ class ContactListener(b2ContactListener):
         elif dA == 'brick':
             brick = fA.body.userData
             found = True
+        elif dA == 'mine':
+            mine = fA.body.userData
+            found = True
         elif dA == 'semiborder':
             semi = fA.body.userData
             found = True
         elif dA == 'rocket':
-            self.hitset.add(fA.body.userData)
+            rocket = fA.body.userData
+            self.hitset.add(rocket)
+            found = True
         if not found: return
         
         found = False
@@ -74,10 +79,19 @@ class ContactListener(b2ContactListener):
         elif dB == 'semiborder':
             semi = fB.body.userData
             found = True
+        elif dB == 'mine':
+            mine = fB.body.userData
+            found = True
         elif dB == 'rocket':
-            self.hitset.add(fB.body.userData)
+            rocket = fB.body.userData
+            self.hitset.add(rocket)
+            found = True
         if not found: return
         
+        if rocket is not None and mine is not None:
+            if mine.getOwner() != rocket.getOwner():
+                self.hitset.add(mine)
+                return
         if brick is not None:
             if ball is not None:
                 self.hitset.add(brick)
@@ -198,9 +212,9 @@ class Game(gameapp.GameApp):
             node = avg.ImageNode(parent=self._parentNode)
             node.setBitmap(random.choice(picList))
             if i<=250:
-                pos = (random.randint(0,int(self._parentNode.width/3)),random.randint(0,int(self._parentNode.height)))
+                pos = (random.randint(0,int(self._parentNode.width/3-ghostRadius*PPM*2)),random.randint(0,int(self._parentNode.height-ghostRadius*PPM*2)))
             else:
-                pos = (random.randint(2*int(self._parentNode.width/3),int(self._parentNode.width)),random.randint(0,int(self._parentNode.height)))
+                pos = (random.randint(2*int(self._parentNode.width/3),int(self._parentNode.width)),random.randint(0,int(self._parentNode.height-ghostRadius*PPM*2)))
             node.pos = pos
             self.nodeList.append(node)
             
@@ -307,8 +321,9 @@ class Game(gameapp.GameApp):
         height = (self.display.height / 2) - (brickSize * PPM)
         width = self.display.width
         for i in range (-3, 3):
-            Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height - (brickSize * PPM * 3) * i), self.leftPlayer, random.choice(Block.form.values()), vanishLater=True)
-            Block(self.display, self.renderer, self.world, (2 * width / 3, height - (brickSize * PPM * 3) * i), self.rightPlayer, random.choice(Block.form.values()), vanishLater=True)
+            form = random.choice(Block.form.values())
+            Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height - (brickSize * PPM * 3) * i), self.leftPlayer, form, vanishLater=True)
+            Block(self.display, self.renderer, self.world, (2 * width / 3, height - (brickSize * PPM * 3) * i), self.rightPlayer, form, vanishLater=True)
         TimeForStep(self.display)
         TimeForStep(self.display,self.beginSimulation,left=False)
         
@@ -349,6 +364,15 @@ class Game(gameapp.GameApp):
     def getGhosts(self):
         return self.ghosts
     
+    def _windex(self,lst):
+        wtotal = sum([x[1] for x in lst])
+        n = random.uniform(0, wtotal)
+        for item, weight in lst:
+            if n < weight:
+                break
+            n = n - weight
+        return item
+    
     def _bonusJobForTutorial(self):        
         for ball in self.getBalls():
             self.removeBall(ball)
@@ -362,13 +386,15 @@ class Game(gameapp.GameApp):
         g_player.setTimeout(5000, self._bonusJobForTutorial)
         
     def _bonusJob(self):
-        if not self.isRunning():
+        if not self.running:
             return
         nextBonus = random.randint(0, 2) # XXX tweak
         if nextBonus == 0:
-            self.bonus = PersistentBonus(self, random.choice(PersistentBonus.boni.items()))
+            bonus = self._windex(PersistentBonus.probs)
+            self.bonus = PersistentBonus(self, (bonus,PersistentBonus.boni[bonus]))
         elif nextBonus == 1:
-            self.bonus = InstantBonus(self, random.choice(InstantBonus.boni.items()))
+            bonus = self._windex(InstantBonus.probs)
+            self.bonus = InstantBonus(self, (bonus,InstantBonus.boni[bonus]))
         else:
             self.bonus = InstantBonus(self, ('newBlock', InstantBonus.boni['newBlock']))
         # TODO get the bonusTime out of the config and out of the user's control
