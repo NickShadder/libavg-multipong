@@ -26,7 +26,7 @@ class Player:
         self.game = game
         self.zone = avgNode
         self.left = avgNode.pos == (0, 0)
-        avgNode.player = self # monkey patch
+        avgNode.player = self
         left = avgNode.pos == (0, 0)
         angle = math.pi / 2 if left else -math.pi / 2
         pos = (avgNode.width, 2) if left else (0, avgNode.height - 2)            
@@ -42,8 +42,6 @@ class Player:
                                            text='', fontsize=100)
         
         self.pointsAnim = None
-    
-        
         self.pointsDisplayMaximalFontSize = int(avgNode.height/20) 
         self.__raster = dict()
         self.__nodeRaster = []                    #rectNodes to display the margins of the raster
@@ -78,12 +76,10 @@ class Player:
             self.game.win(self)
 
     def highLightPointIncreaseByFont(self):
-        
         subjectSize = self.pointsDisplay.fontsize
         self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,
                                                    subjectSize+8,False,None,self.dehighLightPointIncreaseByFont).start()
         
-    
     def dehighLightPointIncreaseByFont(self):
         subjectSize = self.pointsDisplay.fontsize
         self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,

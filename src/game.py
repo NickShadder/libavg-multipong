@@ -271,7 +271,7 @@ class Game(gameapp.GameApp):
         self.world.contactListener = self.listener
         self.running = True
         self.leftPlayer, self.rightPlayer = Player(self, self.field1), Player(self, self.field2)
-        self.leftPlayer.other, self.rightPlayer.other = self.rightPlayer, self.leftPlayer # monkey patch ftw =)
+        self.leftPlayer.other, self.rightPlayer.other = self.rightPlayer, self.leftPlayer
         
         # horizontal lines
         BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)), 1, False, 'redball')
@@ -358,6 +358,8 @@ class Game(gameapp.GameApp):
         g_player.setTimeout(5000, self._bonusJobForTutorial)
         
     def _bonusJob(self):
+        if not self.isRunning():
+            return
         nextBonus = random.randint(0, 2) # XXX tweak
         if nextBonus == 0:
             self.bonus = PersistentBonus(self, random.choice(PersistentBonus.boni.items()))
@@ -369,30 +371,22 @@ class Game(gameapp.GameApp):
         self.bonusjob = g_player.setTimeout(random.choice([4000, 5000, 6000]), self._bonusJob)
     
     def win(self, player):
-        
+        if not self.running:
+            return
         player.setEndText('Winner')
-        if player.isLeft():
-            self.rightPlayer.setEndText('Loser')
-        else:
-            self.leftPlayer.setEndText('Loser')
-        
+        player.other.setEndText('Loser')
         self.running = False
         self.killGhosts()
         if self.bonusjob is not None:
             g_player.clearInterval(self.bonusjob)
         if self.bonus is not None:
             self.bonus.vanish()
-        
         (displayWidth, displayHeight) = self.display.size
-        BorderLine(self.world, a2w((self.field1.width/2, 0)), a2w((self.field1.width/2, displayHeight)), 1, False) 
-        BorderLine(self.world, a2w((displayWidth - self.field2.width, 0)), a2w((displayWidth - (brickSize * brickLines + ghostRadius) * PPM, displayHeight)), 1, False)
-        self.createWinBalls()
-        self.startWinningAnim()
-        #g_player.setTimeout(10000, self.clearDisplay)
-        
-    def startWinningAnim(self):
-        pass
-        
+        BorderLine(self.world, a2w((0, 0)), a2w((0, displayHeight)), 1, False) 
+        BorderLine(self.world, a2w((displayWidth, 0)), a2w((displayWidth, displayHeight)), 1, False)
+        self.createWinBalls()    
+        g_player.setTimeout(40000, self.clearDisplay)
+    
     def createWinBalls(self):
         for i in range(1,random.randint(2,5)):
             ball = Ball(self, self.renderer, self.world, self.display, self.middle)
@@ -400,9 +394,9 @@ class Game(gameapp.GameApp):
             ball.setPic(random.choice(picList))
             self.balls.append(ball)
             
-        g_player.setTimeout(1000, self.createWinBalls)
-        
-    
+        if len(self.balls) <= 80: 
+            self.keepPushingBalls = g_player.setTimeout(1000, self.createWinBalls)
+                
     def clearDisplay(self):
         g_player.clearInterval(self.mainLoop)
         if self.bonusjob is not None:
@@ -412,10 +406,6 @@ class Game(gameapp.GameApp):
                 g_player.clearInterval(ghost.movement)
             if ghost.changing is not None:
                 g_player.clearInterval(ghost.changing)
-        # abort all anims and intervals
-        # TODO tear down world and current display
-        # TODO show winner/revanche screen
-
                 
     def addBall(self):
         if len(self.balls) < maxBalls:
