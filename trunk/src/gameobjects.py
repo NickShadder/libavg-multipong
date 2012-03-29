@@ -33,6 +33,15 @@ class Player:
         # XXX gameobects may obstruct view of the points!
         self.pointsDisplay = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=pos, angle=angle,
                                            text='Points: 0 / %d' % pointsToWin)
+        
+        if self.left:
+            self.EndText = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=(pos[0]-avgNode.width/2 , 50), angle=angle,
+                                           text='', fontsize=100)
+        else:
+            self.EndText = avg.WordsNode(parent=avgNode, pivot=(0, 0), pos=(pos[0]+avgNode.width/2 , avgNode.height-50), angle=angle,
+                                           text='', fontsize=100)
+        
+        self.pointsDisplayMaximalFontSize = int(avgNode.height/20) 
         self.__raster = dict()
         self.__nodeRaster = []                    #rectNodes to display the margins of the raster
         self.__freeBricks = set()
@@ -47,12 +56,45 @@ class Player:
     def isLeft(self):
         return self.left
  
+
+    def setEndText(self, text):
+        self.EndText.text = text
+        
     def addPoint(self, points=1):
         self.points += points
         self.updateDisplay()
+        
+        if self.pointsDisplay.fontsize <= self.pointsDisplayMaximalFontSize: #TODO NO HARDCODE
+            self.highLightPointIncreaseByFont()
+        else:
+            self.highLightPointIncreaseByMovement()
+        
         if self.points >= pointsToWin:
             self.game.win(self)
 
+    def highLightPointIncreaseByFont(self):
+        
+        subjectSize = self.pointsDisplay.fontsize
+        avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,
+                                                   subjectSize+5,False,None,self.dehighLightPointIncreaseByFont).start()
+    
+    def dehighLightPointIncreaseByFont(self):
+        subjectSize = self.pointsDisplay.fontsize
+        avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,
+                                                    subjectSize-3).start()
+                                                    
+    def highLightPointIncreaseByMovement(self):    
+        subjectSize = self.pointsDisplay.y
+        subjectValue = 20 if self.isLeft() else -20
+        avg.LinearAnim(self.pointsDisplay , 'y', 200, subjectSize,
+                                                   subjectSize+subjectValue,False,None,self.dehighLightPointIncreaseByMovement).start()
+    
+    def dehighLightPointIncreaseByMovement(self):
+        subjectSize = self.pointsDisplay.y
+        subjectValue = -20 if self.isLeft() else 20
+        avg.LinearAnim(self.pointsDisplay , 'y', 200, subjectSize,
+                                                    subjectSize+subjectValue).start()
+                                                        
     def removePoint(self, points=1):
         self.points = max(0, self.points - points)
         self.updateDisplay()
@@ -133,7 +175,8 @@ class Ball(GameObject):
         self.body.CreateCircleFixture(radius=ballRadius, userData='ball', isSensor=True)
         self.nextDir = (random.choice([standardXInertia, -standardXInertia]), random.randint(-10, 10))
         self.__appear(lambda:self.nudge())
-        
+    
+     
     def highLight(self):
         self.highLightText = ("The ball (pacman) spawns in the middle.<br/>" + 
         "Don't let him reach your edge of the table.<br/>" + 
@@ -196,6 +239,9 @@ class Ball(GameObject):
         
                                                                                                                                    
         g_player.setTimeout(20000, self.dehighLight)
+    
+    def setPic(self,pic):
+        self.node.setBitmap(pic)
     
     def dehighLight(self):
         for node in self.highLights:
@@ -585,13 +631,13 @@ class BorderLine:
         self.world = world
         if BorderLine.body is None:
             BorderLine.body = world.CreateStaticBody(position=(0, 0))
-        BorderLine.body.CreateFixture(shape=b2EdgeShape(vertices=[pos1, pos2]), density=1, isSensor=sensor,
+        self.fix = BorderLine.body.CreateFixture(shape=b2EdgeShape(vertices=[pos1, pos2]), density=1, isSensor=sensor,
                                 restitution=restitution, categoryBits=cats['border'], maskBits=dontCollideWith(*noCollisions))
     def destroy(self):
         if self.body is not None:
             self.world.DestroyBody(self.body)
             self.body = None
-
+            
 class Tower:
     pic = None
     def __init__(self, game, position, number, left=False):
@@ -1149,7 +1195,7 @@ class Block:
 class TimeForStep:
     picBlue = None
     picGreen = None
-    def __init__(self, parentNode, callBack=None, time=10000, left=True): 
+    def __init__(self, parentNode, callBack=None, time=1000, left=True): 
         self.node = avg.ImageNode(parent=parentNode)
         self.callBack = callBack
         offset = 10

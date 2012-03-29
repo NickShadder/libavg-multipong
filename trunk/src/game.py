@@ -10,7 +10,7 @@ import gameobjects
 from libavg import avg, gameapp, statemachine, ui
 from Box2D import b2World, b2Vec2, b2ContactListener
 
-from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block, Mine, RedBall, TimeForStep
+from gameobjects import Ball, Bat, Ghost, Player, BorderLine, PersistentBonus, InstantBonus, Block, Mine, RedBall, TimeForStep,Tower,Bonus
 from config import PPM, TIME_STEP, maxBalls, ballRadius, maxBatSize, ghostRadius, brickSize, brickLines
 
 g_player = avg.Player.get()
@@ -142,7 +142,12 @@ class Game(gameapp.GameApp):
         gameobjects.displayWidth, gameobjects.displayHeight = self._parentNode.size
         gameobjects.bricksPerLine = (int)(self._parentNode.height / (brickSize * PPM))
         gameobjects.preRender()
+        
         self.tutorialMode = False
+        self.backgroundpic= None
+        self.lines = None
+        self.preRender()
+        
         self.machine = statemachine.StateMachine('BEMOCK', 'MainMenu')
         self.machine.addState('MainMenu', ['Playing', 'Tutorial', 'About'], enterFunc=self.showMenu, leaveFunc=self.hideMenu)
         self.machine.addState('Tutorial', ['MainMenu', 'Playing', 'Tutorial'], enterFunc=self.startTutorial, leaveFunc=self.hideTutorial)
@@ -152,7 +157,11 @@ class Game(gameapp.GameApp):
     
         self._createMenuBackground()
         self.showMenu()
-
+    
+    def preRender(self):
+        self.backgroundpic= avg.SVG('../data/img/char/background_dark.svg', False).renderElement('layer1', self._parentNode.size)
+        self.lines = avg.SVG('../data/img/btn/dotted_line.svg', False)
+        
     def _makeButtonInMiddle(self, name, node, yOffset, pyFunc):        
         path = '../data/img/btn/'
         svg = avg.SVG(path + name + '_up.svg', False)
@@ -200,6 +209,7 @@ class Game(gameapp.GameApp):
                                     color="00FF00",
                                     fontsize=100,
                                     variant="bold")
+        
             
     def _destroyMenuBackground(self):
         for node in self.nodeList:
@@ -232,13 +242,16 @@ class Game(gameapp.GameApp):
     def hideAbout(self):
         self.aboutScreen.unlink(True)
         self.aboutScreen = None
+    
         
     def startPlaying(self):
         # libavg setup        
         self.display = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
         self.renderer = Renderer()
-#        background = avg.ImageNode(parent = self.display)
-#        background.setBitmap(avg.SVG('../data/img/char/background2.svg', False).renderElement('layer1', self.display.size))
+        
+        background = avg.ImageNode(parent = self.display)
+        background.setBitmap(self.backgroundpic)
+        
         self.display.player = None # monkey patch
         (displayWidth, displayHeight) = self.display.size
         widthThird = (int)(displayWidth / 3)
@@ -247,9 +260,9 @@ class Game(gameapp.GameApp):
         self.field2 = avg.DivNode(parent=self.display, size=fieldSize, pos=(displayWidth - widthThird, 0))
         avg.LineNode(parent=self.display, pos1=(0, 1), pos2=(displayWidth, 1))
         avg.LineNode(parent=self.display, pos1=(0, displayHeight), pos2=(displayWidth, displayHeight))
-        svg = avg.SVG('../data/img/btn/dotted_line.svg', False)
-        svg.createImageNode('layer1', dict(parent=self.display, pos=(widthThird, 0)), (2, displayHeight))
-        svg.createImageNode('layer1', dict(parent=self.display, pos=(displayWidth - widthThird, 0)), (2, displayHeight))
+        
+        self.lines.createImageNode('layer1', dict(parent=self.display, pos=(widthThird, 0)), (2, displayHeight))
+        self.lines.createImageNode('layer1', dict(parent=self.display, pos=(displayWidth - widthThird, 0)), (2, displayHeight))
         
         # pybox2d setup
         self.world = b2World(gravity=(0, 0), doSleep=True)
@@ -262,7 +275,7 @@ class Game(gameapp.GameApp):
         
         # horizontal lines
         BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)), 1, False, 'redball')
-        BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)), 1, False, 'redball')
+        self.rightLine = BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)), 1, False, 'redball')
         # vertical ghost lines
         maxWallHeight = (brickSize * brickLines + ghostRadius) * PPM
         BorderLine(self.world, a2w((maxWallHeight, 0)), a2w((maxWallHeight, displayHeight)), 1, False, 'redball', 'ball') 
@@ -354,8 +367,43 @@ class Game(gameapp.GameApp):
             self.bonus = InstantBonus(self, ('newBlock', InstantBonus.boni['newBlock']))
         # TODO get the bonusTime out of the config and out of the user's control
         self.bonusjob = g_player.setTimeout(random.choice([4000, 5000, 6000]), self._bonusJob)
-
+    
     def win(self, player):
+        
+        player.setEndText('Winner')
+        if player.isLeft():
+            self.rightPlayer.setEndText('Loser')
+        else:
+            self.leftPlayer.setEndText('Loser')
+        
+        self.running = False
+        self.killGhosts()
+        if self.bonusjob is not None:
+            g_player.clearInterval(self.bonusjob)
+        if self.bonus is not None:
+            self.bonus.vanish()
+        
+        (displayWidth, displayHeight) = self.display.size
+        BorderLine(self.world, a2w((self.field1.width/2, 0)), a2w((self.field1.width/2, displayHeight)), 1, False) 
+        BorderLine(self.world, a2w((displayWidth - self.field2.width, 0)), a2w((displayWidth - (brickSize * brickLines + ghostRadius) * PPM, displayHeight)), 1, False)
+        self.createWinBalls()
+        self.startWinningAnim()
+        #g_player.setTimeout(10000, self.clearDisplay)
+        
+    def startWinningAnim(self):
+        pass
+        
+    def createWinBalls(self):
+        for i in range(1,random.randint(2,5)):
+            ball = Ball(self, self.renderer, self.world, self.display, self.middle)
+            picList = [Ball.pic,Mine.leftPic,Mine.rightPic,RedBall.pic,Tower.pic] + Ghost.pics.values() + Bonus.pics.values()
+            ball.setPic(random.choice(picList))
+            self.balls.append(ball)
+            
+        g_player.setTimeout(1000, self.createWinBalls)
+        
+    
+    def clearDisplay(self):
         g_player.clearInterval(self.mainLoop)
         if self.bonusjob is not None:
             g_player.clearInterval(self.bonusjob)            
@@ -367,10 +415,8 @@ class Game(gameapp.GameApp):
         # abort all anims and intervals
         # TODO tear down world and current display
         # TODO show winner/revanche screen
-            
-                            
 
-      
+                
     def addBall(self):
         if len(self.balls) < maxBalls:
             self.balls.append(Ball(self, self.renderer, self.world, self.display, self.middle))
