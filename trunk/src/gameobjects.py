@@ -880,9 +880,9 @@ class Bonus:
         
         width = self.parentNode.width
         if player.isLeft():
-            Block(self.game.display, self.game.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height), (self.game.leftPlayer, self.game.rightPlayer), random.choice(Block.form.values()))
+            Block(self.game.display, self.game.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height), self.game.leftPlayer, random.choice(Block.form.values()))
         else:
-            Block(self.game.display, self.game.renderer, self.world, (2 * width / 3, height), (self.game.leftPlayer, self.game.rightPlayer), random.choice(Block.form.values()))
+            Block(self.game.display, self.game.renderer, self.world, (2 * width / 3, height), self.game.rightPlayer, random.choice(Block.form.values()))
             
     def buildShield(self, player):
         s = SemipermeableShield(self.game, player.isLeft(), 'ghost')
@@ -1049,11 +1049,13 @@ class Block:
     SPIECE=(4, 2, 1),
     LPIECE=(4, 3, 0),
     TPIECE=(4, 3, 1))
-    def __init__(self, parentNode, renderer, world, position, player, form=None, flip=False, material=None, angle=0, vanishLater=False, movable = True):        
+    def __init__(self, parentNode, renderer, world, position, player, form=None, flip=False, material=None, angle=None, vanishLater=False, movable = True):        
         self.__parentNode = parentNode
+        self.__player = player
         self.__form = form
-        self.__leftPlayer, self.__rightPlayer = player
-        self.__owner = self.__leftPlayer
+        if angle == None:
+            z = random.randint(0, 3)
+            angle = z / 2.0 * math.pi
         if form is None:
             self.__form = random.choice(Block.form.values())
         self.__brickList = []
@@ -1074,11 +1076,8 @@ class Block:
         self.__alive = False
         if not movable:
             self.__alive = True
-            if self.__brickList[0].node.pos[0] + self.__container.pos[0] > self.__widthDisplay - self.__widthThird - brickSize * PPM:
-                self.__owner = self.__rightPlayer
             self.__moveEnd(False)
         else:
-            self.__assigned = False
             timeout = 10000 if vanishLater else 3000
             self.__timeCall = g_player.setTimeout(timeout, self.__vanish)
             self.__cursor1 = None
@@ -1094,18 +1093,7 @@ class Block:
                 g_player.clearInterval(self.__timeCall)
                 self.__timeCall = None
             self.__container.pos += offset
-            if self.__assigned:
-                self.__testInsertion()
-            else:
-                if e.pos[0] < self.__widthThird:
-                    self.__assigned = True
-                    self.__displayRaster(True)
-                elif e.pos[0] > self.__widthDisplay - self.__widthThird:
-                    self.__assigned = True
-                    self.__owner = self.__rightPlayer
-                    self.__displayRaster(True)
-                else:
-                    self.__colourRed()
+            self.__testInsertion()
     
     def __cursorReg(self, event):
         if self.__cursor1 is None:
@@ -1121,31 +1109,10 @@ class Block:
             self.__cursor2 = None
     
     def __onTransform(self, tr):
-        if self.__timeCall is not None:
-            g_player.clearInterval(self.__timeCall)
-            self.__timeCall = None
-#        if self.__cursor2 is None:
-#            # only one touch -> no intent to rotate -> move
-#            self.__container.pos += tr.trans
-#            widthDisplay = self.__parentNode.height
-#            widthThird = widthDisplay / 3
-#            for b in self.brickList:
-#                if self.__assigned:
-#                    break
-#                else:
-#                    if b.node.pos[0] + self.__container.pos[0] < widthThird:
-#                        self.__assigned = True
-#                        self.__displayRaster(True)        
-#                    elif b.node.pos[0] + self.__container.pos[0] > widthDisplay - widthThird - brickSize * PPM:
-#                        self.__assigned = True
-#                        self.__owner = self.__rightPlayer
-#                        self.__displayRaster(True)
-#            if self.__assigned:
-#                self.__testInsertion()
-#            else:
-#                self.__colourRed()
-#        else:
         if self.__cursor2 is not None:
+            if self.__timeCall is not None:
+                g_player.clearInterval(self.__timeCall)
+                self.__timeCall = None
             self.__container.angle += tr.rot
     
     def __testInsertion(self):
@@ -1154,7 +1121,7 @@ class Block:
             (x, y) = self.__calculateIndices(b.node.pos)
             if ((x >= brickLines) or (y >= bricksPerLine) or
                 (x < 0) or (y < 0) or 
-                self.__owner.getRasterContent(x, y) is not None):
+                self.__player.getRasterContent(x, y) is not None):
                 possible = False
                 break
         if possible:
@@ -1164,17 +1131,11 @@ class Block:
     
     def __calculateIndices(self, position):
         pixelBrickSize = brickSize * PPM
-        if self.__owner is self.__leftPlayer:
+        if self.__player.isLeft():
             x = int(round((position[0] + self.__container.pos[0]) / pixelBrickSize))
         else:
             x = int(round((self.__parentNode.width - position[0] - self.__container.pos[0] - pixelBrickSize) / pixelBrickSize))
-        y = int(round((position[1] + self.__container.pos[1]) / pixelBrickSize))
-#        if y >= bricksPerLine:
-#            y = bricksPerLine - 1
-#        elif y < 0:
-#            y = 0
-#        if x < 0:
-#            x = 0        
+        y = int(round((position[1] + self.__container.pos[1]) / pixelBrickSize))      
         return (x, y)
     
     def __colourRed(self):
@@ -1210,9 +1171,9 @@ class Block:
                 b.node.intensity = (1, 1, 1)
                 (x, y) = self.__calculateIndices(b.node.pos)
                 xPos, yPos = x * pixelBrickSize, y * pixelBrickSize
-                if self.__owner is not self.__leftPlayer:
+                if not self.__player.isLeft():
                     xPos = self.__parentNode.size[0] - xPos - pixelBrickSize    
-                self.__owner.setRasterContent(x, y, b)
+                self.__player.setRasterContent(x, y, b)
                 b.node.pos = (xPos, yPos)
                 b.node.sensitive = False
                 b.materialize(x, y)
@@ -1221,11 +1182,11 @@ class Block:
             self.__displayRaster(False)
                 
     def __displayRaster(self, on):
-        for n in self.__owner.getNodeRaster():
+        for n in self.__player.getNodeRaster():
             n.active = on        
     
     def getPlayer(self):
-        return self.__owner
+        return self.__player
     
     def getForm(self):
         return self.__form

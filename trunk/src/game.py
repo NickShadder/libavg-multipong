@@ -5,7 +5,6 @@ Created on 19.01.2012
 '''
 import sys
 import random
-import math
 import gameobjects
 import config
 
@@ -308,10 +307,8 @@ class Game(gameapp.GameApp):
         height = (self.display.height / 2) - (brickSize * PPM)
         width = self.display.width
         for i in range (-3, 3):
-            z = random.randint(0, 3)
-            angle = z / 2.0 * math.pi
-            Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height - (brickSize * PPM * 3) * i), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()), angle, vanishLater=True)
-            Block(self.display, self.renderer, self.world, (2 * width / 3, height - (brickSize * PPM * 3) * i), (self.leftPlayer, self.rightPlayer), random.choice(Block.form.values()), angle, vanishLater=True)
+            Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height - (brickSize * PPM * 3) * i), self.leftPlayer, random.choice(Block.form.values()), vanishLater=True)
+            Block(self.display, self.renderer, self.world, (2 * width / 3, height - (brickSize * PPM * 3) * i), self.rightPlayer, random.choice(Block.form.values()), vanishLater=True)
         TimeForStep(self.display)
         TimeForStep(self.display,self.beginSimulation,left=False)
         
