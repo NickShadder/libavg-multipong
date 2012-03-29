@@ -384,20 +384,7 @@ class Game(gameapp.GameApp):
                 break
             n = n - weight
         return item
-    
-    def _bonusJobForTutorial(self):        
-        for ball in self.getBalls():
-            self.removeBall(ball)
             
-        if len(InstantBonus.boni.items()) > 0:
-            self.bonus = InstantBonus(self, InstantBonus.boni.popitem())
-            self.bonus.highLight(self.field1, self.field2)
-        elif len(PersistentBonus.boni.items()) > 0:
-            self.bonus = PersistentBonus(self, PersistentBonus.boni.popitem())
-            self.bonus.highLight(self.field1, self.field2)
-        g_player.setTimeout(5000, self._bonusJobForTutorial)
-
-        
     def _bonusJob(self):
         if not self.running:
             return
