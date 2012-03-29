@@ -109,8 +109,8 @@ class Player:
         if (x, y) in self.__freeBricks:
             self.__freeBricks.remove((x, y))
     
-#    def bonusFreed(self, x, y):
-#        self.__freeBricks.add((x, y))
+    def bonusFreed(self, x, y):
+        self.__freeBricks.add((x, y))
     
     def addBonus(self, bonus):
         if len(self.__freeBricks) > 0:
@@ -901,8 +901,8 @@ class Brick(GameObject):
         self.__bonus = None
         if self.__material is Brick.material['BUBBLE']:
             self.destroy()
-#        elif self.__block.getPlayer().getRasterContent(self.__index[0], self.__index[1]) is not None:
-#            self.getPlayer().bonusFreed(self.__index[0], self.__index[1])
+        elif self.__block.getPlayer().getRasterContent(self.__index[0], self.__index[1]) is not None:
+            self.getPlayer().bonusFreed(self.__index[0], self.__index[1])
     
     def getDivNode(self):
         return self.__divNode
