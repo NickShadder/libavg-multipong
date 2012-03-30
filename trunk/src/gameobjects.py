@@ -100,7 +100,7 @@ class Player:
     
     def setRasterContent(self, x, y, content):
         self.__raster[(x, y)] = content
-        if content.getMaterial() is Brick.material['BUBBLE']:
+        if content.getMaterial() is not Brick.material['RUBBER']:
             self.__freeBricks.add((x, y))
     
     def clearRasterContent(self, x, y):
@@ -168,7 +168,7 @@ class Ball(GameObject):
         self.node = avg.ImageNode(parent=parentNode)
         self.node.setBitmap(Ball.pic)
         self.body = world.CreateDynamicBody(position=position, userData=self, active=False, bullet=True) # XXX reevaluate bullet-ness
-        self.body.CreateCircleFixture(radius=ballRadius, density=1, restitution=.3,
+        self.body.CreateCircleFixture(radius=ballRadius, density=1, restitution=.5,
                                       friction=.001, groupIndex=1, categoryBits=cats['ball'],
                                       maskBits=dontCollideWith('ghost'), userData='ball')
 
@@ -512,7 +512,7 @@ class Tower:
         self.left = left
         self.firing = None
         self.node = avg.ImageNode(parent=game.display, pos=position)
-        game.display.reorderChild(self.node, 0) 
+        game.display.reorderChild(self.node, 1) 
         self.node.setBitmap(Tower.pic)
         ballOffset = ballRadius, 2 * ballRadius
         self.firingpos = (b2Vec2(position) + self.node.size) / PPM - ballOffset
@@ -883,6 +883,8 @@ class Brick(GameObject):
             self.getPlayer().incNumOfRubberBricks()
     
     def hit(self):
+        if self.node is None:
+            return
         self.__hitcount += 1
         if self.__hitcount < len(self.__material):
             if self.__material[self.__hitcount] is None: # the material is unkillable
