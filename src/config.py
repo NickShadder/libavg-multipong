@@ -32,11 +32,11 @@ ballRadius = 1.2 # the radius of a pacman in meters
 ghostRadius = 1.8 # the radius of a ghost in meters
 
 # ****************** tutorial config ******************
-startingTutorial = 200
-ballTutorial = 1000
-tetrisTutorial = 1000
-ghostTutorial = 1000
-bonusTutorial = 1000
+startingTutorial = 2000
+ballTutorial = 10000
+tetrisTutorial = 10000
+ghostTutorial = 10000
+bonusTutorial = 10000
 
 # ****************** tutorial config ******************
 
