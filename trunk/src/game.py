@@ -395,10 +395,10 @@ class Game(gameapp.GameApp):
         if not self.running:
             return
         nextBonus = random.randint(0, 10) 
-        if nextBonus <= 3:
+        if nextBonus <= 5:
             bonus = self._windex(PersistentBonus.probs)
             self.bonus = PersistentBonus(self, (bonus,PersistentBonus.boni[bonus]))
-        elif 3 < nextBonus <= 6:
+        elif 5 < nextBonus <= 7:
             bonus = self._windex(InstantBonus.probs)
             self.bonus = InstantBonus(self, (bonus,InstantBonus.boni[bonus]))
         else:
