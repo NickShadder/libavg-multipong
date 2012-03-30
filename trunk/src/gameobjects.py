@@ -512,7 +512,7 @@ class Tower:
         self.left = left
         self.firing = None
         self.node = avg.ImageNode(parent=game.display, pos=position)
-        game.display.reorderChild(self.node, 1) 
+        # game.display.reorderChild(self.node, 6) 
         self.node.setBitmap(Tower.pic)
         ballOffset = ballRadius, 2 * ballRadius
         self.firingpos = (b2Vec2(position) + self.node.size) / PPM - ballOffset
@@ -632,7 +632,7 @@ class Bonus:
                 self.lastExplNodeLeft = self.wordsNodeDown
                 self.lastExplNodeRight = self.wordsNodeUp
                 g_player.setTimeout(10000, self.cleanUp)
-                self.game.menuButton = self._makeButtonInMiddle('menu', self.game.display, 0, lambda:self.machine.changeState('MainMenu'))
+                self.game.menuButton = self.game.makeButtonInMiddle('menu', self.game.display, 0, self.game.clearDisplay)
 
         return res
     

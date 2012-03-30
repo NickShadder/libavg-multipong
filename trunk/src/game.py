@@ -159,6 +159,8 @@ class Game(gameapp.GameApp):
         gameobjects.preRender()
         
         self.bonusjob = None
+        self.cleanup = None
+        self.keepPushingBalls = None
         self.tutorialMode = False
         self.backgroundpic= None
         self.lines = None
@@ -169,15 +171,14 @@ class Game(gameapp.GameApp):
         self.machine.addState('Tutorial', ['MainMenu', 'Playing', 'Tutorial'], enterFunc=self.startTutorial, leaveFunc=self.hideTutorial)
         self.machine.addState('Playing', ['MainMenu'], enterFunc=self.startPlaying)
         self.machine.addState('About', ['MainMenu'], enterFunc=self.showAbout, leaveFunc=self.hideAbout)
-    
-        self._createMenuBackground()
+            
         self.showMenu()
     
     def preRender(self):
         self.backgroundpic= avg.SVG('../data/img/char/background_dark.svg', False).renderElement('layer1', self._parentNode.size+(50,50))
         self.lines = avg.SVG('../data/img/btn/dotted_line.svg', False)
         
-    def _makeButtonInMiddle(self, name, node, yOffset, pyFunc):        
+    def makeButtonInMiddle(self, name, node, yOffset, pyFunc):        
         path = '../data/img/btn/'
         svg = avg.SVG(path + name + '_up.svg', False)
         height = node.height / 8 # XXX make dependant on actual resolution sometime
@@ -188,12 +189,13 @@ class Game(gameapp.GameApp):
         position = (node.pivot[0] - upNode.width / 2, node.pivot[1] + yOffset * upNode.height + yOffset * 50)
         return ui.TouchButton(upNode, downNode, clickHandler=pyFunc, parent=node, pos=position)
 
-    def showMenu(self):        
+    def showMenu(self):
+        self._createMenuBackground()        
         self.menuScreen = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
-        self.startButton = self._makeButtonInMiddle('start', self.menuScreen, -1, lambda:self.machine.changeState('Playing'))
-        self.tutorialButton = self._makeButtonInMiddle('help', self.menuScreen, 0, lambda:self.machine.changeState('Tutorial'))
-        self.aboutButton = self._makeButtonInMiddle('about', self.menuScreen, 1, lambda:self.machine.changeState('About'))
-        self.exitButton = self._makeButtonInMiddle('exit', self.menuScreen, 2, lambda:exit(0))
+        self.startButton = self.makeButtonInMiddle('start', self.menuScreen, -1, lambda:self.machine.changeState('Playing'))
+        self.tutorialButton = self.makeButtonInMiddle('help', self.menuScreen, 0, lambda:self.machine.changeState('Tutorial'))
+        self.aboutButton = self.makeButtonInMiddle('about', self.menuScreen, 1, lambda:self.machine.changeState('About'))
+        self.exitButton = self.makeButtonInMiddle('exit', self.menuScreen, 2, lambda:exit(0))
   
     def _createMenuBackground(self):
         self.nodeList = []
@@ -222,7 +224,7 @@ class Game(gameapp.GameApp):
         self.title = avg.WordsNode(
                                     parent=self._parentNode,
                                     pivot=(0, 0),
-                                    text="Multipong", # XXX the title shouldn't be Multipong - we need a new name
+                                    text="UMP", # XXX the title shouldn't be Multipong - we need a new name
                                     pos=(self._parentNode.width / 2 - 100, 50), # XXX the title is not in the middle
                                     wrapmode="wordchar",
                                     font='Impact',
@@ -254,6 +256,7 @@ class Game(gameapp.GameApp):
         g_player.setTimeout(config.startingTutorial+config.ballTutorial+config.ghostTutorial+config.tetrisTutorial, self.revealBoni)
         
     def startPlaying(self):
+        self.tutorialMode = False
         self.setupPlayground()
         TetrisBar(self.display)
         TetrisBar(self.display,left=False)
@@ -266,13 +269,12 @@ class Game(gameapp.GameApp):
         self._bonusJob()
         
     def hideTutorial(self):
-        # TODO implement this by simply tearing down what you have built in startTutorial ;)
         pass
 
     def showAbout(self):
         self.aboutScreen = avg.DivNode(parent=self._parentNode, size=self._parentNode.size)
         avg.WordsNode(parent=self.aboutScreen, x=5, text='Unnamed Multipong<br/>as envisioned and implemented by<br/>Benjamin Guttman<br/>Joachim Couturier<br/>Philipp Hermann<br/>Mykola Havrikov<br/><br/>This game uses libavg(www.libavg.de) and PyBox2D(http://code.google.com/p/pybox2d/)')
-        self.menuButton = self._makeButtonInMiddle('menu', self.aboutScreen, 1, lambda:self.machine.changeState('MainMenu'))
+        self.menuButton = self.makeButtonInMiddle('menu', self.aboutScreen, 1, lambda:self.machine.changeState('MainMenu'))
 
     def hideAbout(self):
         self.aboutScreen.unlink(True)
@@ -414,8 +416,8 @@ class Game(gameapp.GameApp):
         BorderLine(self.world, a2w((0, 0)), a2w((0, displayHeight)), 1, False) 
         BorderLine(self.world, a2w((displayWidth, 0)), a2w((displayWidth, displayHeight)), 1, False)
         self.createWinBalls()    
-        g_player.setTimeout(40000, self.clearDisplay)
-        self.menuButton = self._makeButtonInMiddle('menu', self.display, 0, lambda:self.machine.changeState('MainMenu'))
+        self.cleanup = g_player.setTimeout(40000, self.clearDisplay)
+        self.menuButton = self.makeButtonInMiddle('menu', self.display, 0, self.clearDisplay)
     
     def createWinBalls(self):
         for i in range(1,random.randint(2,5)):
@@ -430,12 +432,21 @@ class Game(gameapp.GameApp):
     def clearDisplay(self):
         g_player.clearInterval(self.mainLoop)
         if self.bonusjob is not None:
-            g_player.clearInterval(self.bonusjob)            
+            g_player.clearInterval(self.bonusjob)  
+        if self.cleanup is not None:
+            g_player.clearInterval(self.cleanup)
+            self.cleanup = None
+        if self.keepPushingBalls is not None:
+            g_player.clearInterval(self.keepPushingBalls)            
+            self.keepPushingBalls = None
         for ghost in self.ghosts:
             if ghost.movement is not None:
                 g_player.clearInterval(ghost.movement)
             if ghost.changing is not None:
                 g_player.clearInterval(ghost.changing)
+        self.display.active = False
+        self.display.unlink(True)
+        self.machine.changeState('MainMenu')
                 
     def addBall(self):
         if len(self.balls) < maxBalls:
