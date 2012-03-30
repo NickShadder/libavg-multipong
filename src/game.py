@@ -315,8 +315,8 @@ class Game(gameapp.GameApp):
         maxWallHeight = brickSize * brickLines * PPM
         BorderLine(self.world, a2w((maxWallHeight, 0)), a2w((maxWallHeight, displayHeight)), 1, False, 'redball', 'ball') 
         BorderLine(self.world, a2w((displayWidth - maxWallHeight - 1, 0)), a2w((displayWidth - maxWallHeight - 1, displayHeight)), 1, False, 'redball', 'ball')
-        self.lines.createImageNode('layer1', dict(parent=self.display, pos=(maxWallHeight, 0)), (2, displayHeight))
-        self.lines.createImageNode('layer1', dict(parent=self.display, pos=(displayWidth-maxWallHeight, 0)), (2, displayHeight))
+#        self.lines.createImageNode('layer1', dict(parent=self.display, pos=(maxWallHeight, 0)), (2, displayHeight))
+#        self.lines.createImageNode('layer1', dict(parent=self.display, pos=(displayWidth-maxWallHeight, 0)), (2, displayHeight))
         self.middleX, self.middleY = self.display.size / 2
         self.middle = a2w((self.middleX, self.middleY))
         BatManager(self.field1, self.world, self.renderer)
@@ -387,10 +387,10 @@ class Game(gameapp.GameApp):
         if not self.running:
             return
         nextBonus = random.randint(0, 10) 
-        if nextBonus <= 5:
+        if nextBonus <= 3:
             bonus = self._windex(PersistentBonus.probs)
             self.bonus = PersistentBonus(self, (bonus,PersistentBonus.boni[bonus]))
-        elif nextBonus > 6 and nextBonus <= 8:
+        elif 3 < nextBonus <= 6:
             bonus = self._windex(InstantBonus.probs)
             self.bonus = InstantBonus(self, (bonus,InstantBonus.boni[bonus]))
         else:
@@ -617,7 +617,7 @@ class BatManager:
             self.bat.body.position += tr.trans / PPM
             self.bat.body.angle += tr.rot
             
-            res = 1.8 - (length / maxBatSize)
+            res = 1.65 - (length / maxBatSize)
             self.bat.body.fixtures[0].restitution = res
 
 '''
