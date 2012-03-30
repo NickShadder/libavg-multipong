@@ -67,7 +67,7 @@ class Player:
         if self.pointsAnim is None or not self.pointsAnim.isRunning():
                 self.highLightPointIncreaseByFont()
                 
-        if self.points >= pointsToWin:
+        if self.points >= self.pointsToWin:
             self.highLightPointIncreaseByFont()
             self.game.win(self)
 
@@ -576,30 +576,29 @@ class Bonus:
         self.isTutorial = False
         self.lastExplNodeLeft = None
         self.lastExplNodeRight = None
+        self.res = None
+        self.explStarted = 0
+        self.player = None
+        self.item = None
         
     def onClick(self, event):
+        self.res = event.node == self.leftBonus
         g_player.clearInterval(self.timeout)
-        res = event.node == self.leftBonus
-        
-        self.vanish()
-        if self.isTutorial:
-            player = None
-            if res:
-                player = self.game.leftPlayer
-            else:
-                player = self.game.rightPlayer
-            self.applyEffect(player)
+        if self.res:
+            self.player = self.game.leftPlayer
+        else:
+            self.player = self.game.rightPlayer
             
-            self.field1 = self.game.leftPlayer.zone
-            self.field2 = self.game.rightPlayer.zone
-            
-            
-            item = self.texts[self.name]
-            
+        if self.isTutorial and not self.explStarted:
+            self.explStarted = 1
+            self.cleanUp()
+            self.field1 = self.game.field1
+            self.field2 = self.game.field2
+            self.item = self.texts[self.name]
             self.wordsNodeUp = avg.WordsNode(
                                     parent=self.field2,
                                     pivot=(0, 0),
-                                    text=item[0],
+                                    text=self.item[0],
                                     wrapmode="wordchar",
                                     font='Comic Sans MS',
                                     color="00FF00",
@@ -613,7 +612,7 @@ class Bonus:
             self.wordsNodeDown = avg.WordsNode(
                                     parent=self.field1,
                                     pivot=(0, 0),
-                                    text=item[0],
+                                    text=self.item[0],
                                     wrapmode="wordchar",
                                     font='Comic Sans MS',
                                     color="00FF00",
@@ -624,22 +623,49 @@ class Bonus:
             self.highLights.append(self.wordsNodeDown)  
             avg.LinearAnim(self.wordsNodeDown, 'pos', 600, (self.field1.width, self.wordsNodeDown.getParent().height),
                                                     (self.field1.width, self.wordsNodeDown.getParent().height - self.wordsNodeDown.width)).start()        
-                                                                                                                                                            
-            self.cleanUp()
-            if not item[1] == 'None':  
-                self.giveBonus(item[1]).setupTutorial(self.wordsNodeUp,self.wordsNodeDown)
+                                                                                                                                                                               
+            
+            self.lastExplNodeLeft = self.wordsNodeDown
+            self.lastExplNodeRight = self.wordsNodeUp
+            g_player.setTimeout(config.bonusVanishTime, self.nextBonus)
+            
+        elif self.isTutorial and self.explStarted:
+            self.applyEffect(self.player)
+            
+        else:
+            self.vanish()
+            
+        return self.res
+
+    def nextBonus(self):     
+#        if self.explStarted:
+#            self.vanish()
+
+        if self.isTutorial:
+            self.explStarted = 1
+            if not self.item[1] == 'None':  
+                self.cleanUp()
+                self.vanish()
+                self.giveBonus(self.item[1]).setupTutorial(self.wordsNodeUp,self.wordsNodeDown)
             else:
                 self.lastExplNodeLeft = self.wordsNodeDown
                 self.lastExplNodeRight = self.wordsNodeUp
-                g_player.setTimeout(10000, self.cleanUp)
+                g_player.setTimeout(config.bonusVanishTime, self.vanish)
+                g_player.setTimeout(config.bonusVanishTime, self.cleanUp)
                 self.game.menuButton = self.game.makeButtonInMiddle('menu', self.game.display, 0, self.game.clearDisplay)
 
-        return res
+        return self.res
     
     def cleanUp(self):
         killNode(self.lastExplNodeLeft)
         killNode(self.lastExplNodeRight)
-
+        
+    def setPositionLeft(self,position):
+        self.leftBonus.pos = position
+         
+    def setPositionRight(self,position):
+        self.rightBonus.pos = position
+        
     def setupTutorial(self,lastExplNodeLeft=None,lastExplNodeRight=None):
         self.lastExplNodeLeft = lastExplNodeLeft
         self.lastExplNodeRight = lastExplNodeRight
@@ -769,13 +795,13 @@ class Bonus:
         return self.game.bonus
         
 class PersistentBonus(Bonus):
-    probs = [('pacShot', 4),
-             ('stopGhosts', 4),
-             ('flipGhosts', 3),
-             ('tower', 2),
-             ('invertPac', 5),
-             ('shield', 2),
-             ('wave', 2)
+    probs = [('pacShot', 2),
+             ('stopGhosts', 2),
+             ('flipGhosts', 2),
+             ('tower', 4),
+             ('invertPac', 2),
+             ('shield', 4),
+             ('wave', 5)
              ]
     boni = dict(
                 pacShot=Bonus.pacShot,
