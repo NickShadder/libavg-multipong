@@ -590,6 +590,7 @@ class Bonus:
             self.player = self.game.rightPlayer
             
         if self.isTutorial and not self.explStarted:
+            self.applyEffect(self.player)
             self.explStarted = 1
             self.cleanUp()
             self.field1 = self.game.field1
