@@ -401,13 +401,17 @@ class Game(gameapp.GameApp):
         self.bonusjob = g_player.setTimeout(random.choice([4000, 5000, 6000]), self._bonusJob)
     
     def win(self, player):
-        if not self.running:
+        if not self.running or self.tutorialMode:
             return
         player.setEndText('You won')
         player.other.setEndText('You lost')
         
         self.running = False
         self.killGhosts()
+        
+        self.leftPlayer.killBricks()
+        self.rightPlayer.killBricks()
+        
         if self.bonusjob is not None:
             g_player.clearInterval(self.bonusjob)
         if self.bonus is not None:
