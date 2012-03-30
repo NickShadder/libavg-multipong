@@ -269,6 +269,8 @@ class Game(gameapp.GameApp):
         self._bonusJob()
         
     def hideTutorial(self):
+        self.tutorialMode = False
+        
         pass
 
     def showAbout(self):
@@ -401,26 +403,27 @@ class Game(gameapp.GameApp):
         # TODO get the bonusTime out of the config and out of the user's control
         self.bonusjob = g_player.setTimeout(random.choice([4000, 5000, 6000]), self._bonusJob)
     
-    def win(self, player):
-        if not self.running or self.tutorialMode:
+    def end(self, player):
+        if not self.running:
             return
-        player.setEndText('You won')
-        player.other.setEndText('You lost')
-        
         self.running = False
         self.killGhosts()
-        
         self.leftPlayer.killBricks()
         self.rightPlayer.killBricks()
-        
-        if self.bonusjob is not None:
+        if self.bonusjob is not None and not self.tutorialMode:
             g_player.clearInterval(self.bonusjob)
-        if self.bonus is not None:
+        if self.bonus is not None and not self.tutorialMode:
             self.bonus.vanish()
+            
         (displayWidth, displayHeight) = self.display.size
         BorderLine(self.world, a2w((0, 0)), a2w((0, displayHeight)), 1, False) 
         BorderLine(self.world, a2w((displayWidth, 0)), a2w((displayWidth, displayHeight)), 1, False)
-        self.createWinBalls()    
+        
+        if not self.tutorialMode:
+            player.setEndText('You won')
+            player.other.setEndText('You lost')
+            self.createWinBalls()
+                        
         self.cleanup = g_player.setTimeout(40000, self.clearDisplay)
         self.menuButton = self.makeButtonInMiddle('menu', self.display, 0, self.clearDisplay)
     
@@ -436,8 +439,8 @@ class Game(gameapp.GameApp):
                 
     def clearDisplay(self):
         g_player.clearInterval(self.mainLoop)
-        if self.bonusjob is not None:
-            g_player.clearInterval(self.bonusjob)  
+#        if self.bonusjob is not None:
+#            g_player.clearInterval(self.bonusjob)  
         if self.cleanup is not None:
             g_player.clearInterval(self.cleanup)
             self.cleanup = None

@@ -72,7 +72,7 @@ class Player:
                 
         if self.points >= self.pointsToWin:
             self.highLightPointIncreaseByFont()
-            self.game.win(self)
+            self.game.end(self)
 
     def highLightPointIncreaseByFont(self):
         self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, self.pumpingBack,
@@ -1354,7 +1354,7 @@ def killNode(node):
         node.unlink(True)
         node = None
     
-def preRenderNOT():
+def preRender():
     global displayWidth, displayHeight, brickSize
     chars = '../data/img/char/'
     ballDiameter = 2 * ballRadius * PPM
@@ -1417,7 +1417,7 @@ def preRenderNOT():
                 tower=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
                 shield=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize))
 
-def preRender():
+def preRenderNOT():
     global displayWidth, displayHeight, brickSize
     chars = '../data/img/char/'
     ballDiameter = 2 * ballRadius * PPM
