@@ -158,6 +158,7 @@ class Game(gameapp.GameApp):
         gameobjects.bricksPerLine = (int)(self._parentNode.height / (brickSize * PPM))
         gameobjects.preRender()
         
+        self.bonusjob = None
         self.tutorialMode = False
         self.backgroundpic= None
         self.lines = None
@@ -166,15 +167,14 @@ class Game(gameapp.GameApp):
         self.machine = statemachine.StateMachine('BEMOCK', 'MainMenu')
         self.machine.addState('MainMenu', ['Playing', 'Tutorial', 'About'], enterFunc=self.showMenu, leaveFunc=self.hideMenu)
         self.machine.addState('Tutorial', ['MainMenu', 'Playing', 'Tutorial'], enterFunc=self.startTutorial, leaveFunc=self.hideTutorial)
-        self.machine.addState('Playing', ['Winner'], enterFunc=self.startPlaying)
-        self.machine.addState('Winner', ['Playing', 'MainMenu']) # XXX clarify this stuff
+        self.machine.addState('Playing', ['MainMenu'], enterFunc=self.startPlaying)
         self.machine.addState('About', ['MainMenu'], enterFunc=self.showAbout, leaveFunc=self.hideAbout)
     
         self._createMenuBackground()
         self.showMenu()
     
     def preRender(self):
-        self.backgroundpic= avg.SVG('../data/img/char/background_dark.svg', False).renderElement('layer1', self._parentNode.size)
+        self.backgroundpic= avg.SVG('../data/img/char/background_dark.svg', False).renderElement('layer1', self._parentNode.size+(50,50))
         self.lines = avg.SVG('../data/img/btn/dotted_line.svg', False)
         
     def _makeButtonInMiddle(self, name, node, yOffset, pyFunc):        
@@ -235,10 +235,10 @@ class Game(gameapp.GameApp):
             node.active = False
             node.unlink(True)
             node = None 
-        
-        self.title.active = False
-        self.title.unlink(True)
-        self.title = None
+        if self.title is not None:
+            self.title.active = False
+            self.title.unlink(True)
+            self.title = None
                      
     def hideMenu(self):
         self._destroyMenuBackground()
@@ -286,7 +286,7 @@ class Game(gameapp.GameApp):
         background = avg.ImageNode(parent = self.display)
         background.setBitmap(self.backgroundpic)
         
-        self.display.player = None # monkey patch
+        self.display.player = None
         (displayWidth, displayHeight) = self.display.size
         widthThird = (int)(displayWidth / 3)
         fieldSize = (widthThird, displayHeight)
@@ -312,14 +312,15 @@ class Game(gameapp.GameApp):
         BorderLine(self.world, a2w((0, 1)), a2w((displayWidth, 1)), 1, False, 'redball')
         self.rightLine = BorderLine(self.world, a2w((0, displayHeight)), a2w((displayWidth, displayHeight)), 1, False, 'redball')
         # vertical ghost lines
-        maxWallHeight = (brickSize * brickLines + ghostRadius) * PPM
+        maxWallHeight = brickSize * brickLines * PPM
         BorderLine(self.world, a2w((maxWallHeight, 0)), a2w((maxWallHeight, displayHeight)), 1, False, 'redball', 'ball') 
         BorderLine(self.world, a2w((displayWidth - maxWallHeight - 1, 0)), a2w((displayWidth - maxWallHeight - 1, displayHeight)), 1, False, 'redball', 'ball')
+        self.lines.createImageNode('layer1', dict(parent=self.display, pos=(maxWallHeight, 0)), (2, displayHeight))
+        self.lines.createImageNode('layer1', dict(parent=self.display, pos=(displayWidth-maxWallHeight, 0)), (2, displayHeight))
         self.middleX, self.middleY = self.display.size / 2
         self.middle = a2w((self.middleX, self.middleY))
         BatManager(self.field1, self.world, self.renderer)
         BatManager(self.field2, self.world, self.renderer)
-        self.bonus = None
         self.bonus = None
         self.balls = []
         self.redballs = []
@@ -351,8 +352,7 @@ class Game(gameapp.GameApp):
         self.createGhosts()
         if self.tutorialMode:
             GhostTutorial(self).start()
-                      
-    
+
     def createGhosts(self):
         offset = 2 * ballRadius + 3 * ghostRadius
         self.ghosts.append(Ghost(self.renderer, self, self.display, self.middle + (offset, offset), "blinky"))
@@ -374,7 +374,6 @@ class Game(gameapp.GameApp):
     def getGhosts(self):
         return self.ghosts
     
-
     def _windex(self,lst):
         wtotal = sum([x[1] for x in lst])
         n = random.uniform(0, wtotal)
@@ -416,6 +415,7 @@ class Game(gameapp.GameApp):
         BorderLine(self.world, a2w((displayWidth, 0)), a2w((displayWidth, displayHeight)), 1, False)
         self.createWinBalls()    
         g_player.setTimeout(40000, self.clearDisplay)
+        self.menuButton = self._makeButtonInMiddle('menu', self.display, 0, lambda:self.machine.changeState('MainMenu'))
     
     def createWinBalls(self):
         for i in range(1,random.randint(2,5)):
@@ -607,7 +607,6 @@ class BatManager:
                 
     def onTransform(self, tr):
         if self.bat is not None:
-            # ugly
             vert = [(tr.scale * v[0], tr.scale * v[1]) for v in self.bat.body.fixtures[0].shape.vertices]
             pos1, pos2 = avg.Point2D(vert[0]), avg.Point2D(vert[1])
             length = (pos2 - pos1).getNorm()
@@ -618,7 +617,7 @@ class BatManager:
             self.bat.body.position += tr.trans / PPM
             self.bat.body.angle += tr.rot
             
-            res = 1.5 - (length / maxBatSize)
+            res = 1.8 - (length / maxBatSize)
             self.bat.body.fixtures[0].restitution = res
 
 '''

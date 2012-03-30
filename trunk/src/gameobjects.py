@@ -169,16 +169,13 @@ class Ball(GameObject):
         self.node.setBitmap(Ball.pic)
         self.body = world.CreateDynamicBody(position=position, userData=self, active=False, bullet=True) # XXX reevaluate bullet-ness
         self.body.CreateCircleFixture(radius=ballRadius, density=1, restitution=.3,
-                                      friction=.01, groupIndex=1, categoryBits=cats['ball'],
+                                      friction=.001, groupIndex=1, categoryBits=cats['ball'],
                                       maskBits=dontCollideWith('ghost'), userData='ball')
 
         self.body.CreateCircleFixture(radius=ballRadius, userData='ball', isSensor=True)
         self.nextDir = (random.choice([standardXInertia, -standardXInertia]), random.randint(-10, 10))
         self.__appear(lambda:self.nudge())
-    
-     
-
-            
+        
     def setPic(self,pic):
         self.node.setBitmap(pic)
                  
@@ -515,7 +512,7 @@ class Tower:
         self.left = left
         self.firing = None
         self.node = avg.ImageNode(parent=game.display, pos=position)
-        game.display.reorderChild(self.node, 6) 
+        game.display.reorderChild(self.node, 0) 
         self.node.setBitmap(Tower.pic)
         ballOffset = ballRadius, 2 * ballRadius
         self.firingpos = (b2Vec2(position) + self.node.size) / PPM - ballOffset
@@ -635,6 +632,7 @@ class Bonus:
                 self.lastExplNodeLeft = self.wordsNodeDown
                 self.lastExplNodeRight = self.wordsNodeUp
                 g_player.setTimeout(10000, self.cleanUp)
+                self.game.menuButton = self._makeButtonInMiddle('menu', self.game.display, 0, lambda:self.machine.changeState('MainMenu'))
 
         return res
     
@@ -966,7 +964,8 @@ class Block:
         else:
             timeout = 10000 if vanishLater else 3000
             self.__timeCall = g_player.setTimeout(timeout, self.__vanish)
-            ui.DragRecognizer(self.__container, moveHandler=self.__onMove, endHandler=self.__moveEnd, coordSysNode = self.__brickList[0].node)
+            if self.__container is not None:
+                ui.DragRecognizer(self.__container, moveHandler=self.__onMove, endHandler=self.__moveEnd, coordSysNode = self.__brickList[0].node)
     
     def __onMove(self, e, offset):
         if self.__timeCall is not None:
@@ -1236,7 +1235,6 @@ class GhostTutorial(Tutorial):
                                                     
         g_player.setTimeout(config.ghostTutorial, self.end)
 
-        
 class TetrisTutorial(Tutorial):
     def __init__(self,game):
         Tutorial.__init__(self,game)
@@ -1321,7 +1319,6 @@ class BoniTutorial(Tutorial):
         # UP TEXT 
         self.game.bonus = InstantBonus(self.game, ('newBlock', InstantBonus.boni['newBlock'])).setupTutorial(self.wordsNodeUp,self.wordsNodeDown)
         
-        
 def killNode(node):
     if node is not None:
         node.active = False
@@ -1390,7 +1387,6 @@ def preRenderNot():
                 flipGhosts=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
                 tower=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
                 shield=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize))
-
 
 def preRender():
     global displayWidth, displayHeight, brickSize
