@@ -44,7 +44,7 @@ bonusVanishTime = 10000
 abstractBoniText = ("This is a bonus.<br/>"+ 
 "Tap on it before your opponent does!<br/>"+ 
 "Some boni will activate as soon as you tap on them, <br/> "+ 
-"and some will be stored on your bubbles in your wall.<br/> "+ 
+"and some will be stored on your bubbles and glass bricks in your wall.<br/> "+ 
 "The latter can be activated strategically by tapping on them.<br/> "+ 
 "The bubble gets destroyed when you activate its bonus.<br/>"+
 "Click on them")

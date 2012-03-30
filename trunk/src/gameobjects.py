@@ -767,12 +767,15 @@ class Bonus:
           
     def newBlock(self, player): 
         height = (self.parentNode.height / 2) - (brickSize * PPM)
-        
         width = self.parentNode.width
+        form = random.choice(Block.form.values())
+        offset = form[1]
+        if form == Block.form['SPIECE']:
+                offset += 1
         if player.isLeft():
-            Block(self.game.display, self.game.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height), self.game.leftPlayer, random.choice(Block.form.values()))
+            Block(self.game.display, self.game.renderer, self.world, (width / 3 - (brickSize * offset * PPM), height), self.game.leftPlayer, form)
         else:
-            Block(self.game.display, self.game.renderer, self.world, (2 * width / 3, height), self.game.rightPlayer, random.choice(Block.form.values()))
+            Block(self.game.display, self.game.renderer, self.world, (2 * width / 3, height), self.game.rightPlayer, form)
             
     def buildShield(self, player):
         s = SemipermeableShield(self.game, player.isLeft(), 'ghost')
