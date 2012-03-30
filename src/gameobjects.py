@@ -43,6 +43,9 @@ class Player:
         
         self.pointsAnim = None
         self.pointsDisplayMaximalFontSize = int(avgNode.height/20)
+        self.pumpingBack = self.pointsDisplay.fontsize
+        self.pumpingMax = self.pumpingBack + 8
+        
         self.__numOfRubberBricks = 0 # current number of indestructable rubber bricks
         self.__raster = dict()
         self.__nodeRaster = [] # rectNodes to display the margins of the raster
@@ -72,16 +75,12 @@ class Player:
             self.game.win(self)
 
     def highLightPointIncreaseByFont(self):
-        subjectSize = self.pointsDisplay.fontsize
-        self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,
-                                                   subjectSize+8,False,None,self.dehighLightPointIncreaseByFont).start()
+        self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, self.pumpingBack,
+                                                   self.pumpingMax,False,None,self.dehighLightPointIncreaseByFont).start()
             
     def dehighLightPointIncreaseByFont(self):
-        subjectSize = self.pointsDisplay.fontsize
-        # decrease = -4 if self.pointsDisplay.fontsize <= self.pointsDisplayMaximalFontSize else -8
-        decrease = -8
-        self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,
-                                                    subjectSize+decrease).start()
+        self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, self.pumpingMax,
+                                                    self.pumpingBack).start()
                                                                                                      
     def penalize(self, points=1):
         self.other.addPoint(points)
@@ -1085,7 +1084,7 @@ class TetrisBar:
     picBlue = None
     picGreen = None
     def __init__(self, parentNode, callBack=None, time=config.tetrisTutorial, left=True): 
-        self.node = avg.ImageNode(parent=parentNode)
+        self.node = avg.ImageNode(parent=parentNode, opacity = 0.7)
         # self.callBack = callBack
         offset = 10
         if left:
@@ -1355,7 +1354,7 @@ def killNode(node):
         node.unlink(True)
         node = None
     
-def preRender():
+def preRenderNOT():
     global displayWidth, displayHeight, brickSize
     chars = '../data/img/char/'
     ballDiameter = 2 * ballRadius * PPM
@@ -1418,7 +1417,7 @@ def preRender():
                 tower=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
                 shield=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize))
 
-def preRenderNOT():
+def preRender():
     global displayWidth, displayHeight, brickSize
     chars = '../data/img/char/'
     ballDiameter = 2 * ballRadius * PPM
