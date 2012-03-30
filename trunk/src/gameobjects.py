@@ -1354,7 +1354,7 @@ def killNode(node):
         node.unlink(True)
         node = None
     
-def preRender():
+def preRenderNOT():
     global displayWidth, displayHeight, brickSize
     chars = '../data/img/char/'
     ballDiameter = 2 * ballRadius * PPM
@@ -1417,7 +1417,7 @@ def preRender():
                 tower=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
                 shield=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize))
 
-def preRenderNOT():
+def preRender():
     global displayWidth, displayHeight, brickSize
     chars = '../data/img/char/'
     ballDiameter = 2 * ballRadius * PPM
