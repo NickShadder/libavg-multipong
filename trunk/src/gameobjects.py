@@ -78,7 +78,8 @@ class Player:
             
     def dehighLightPointIncreaseByFont(self):
         subjectSize = self.pointsDisplay.fontsize
-        decrease = -4 if self.pointsDisplay.fontsize <= self.pointsDisplayMaximalFontSize else -8
+        # decrease = -4 if self.pointsDisplay.fontsize <= self.pointsDisplayMaximalFontSize else -8
+        decrease = -8
         self.pointsAnim = avg.LinearAnim(self.pointsDisplay , 'fontsize', 200, subjectSize,
                                                     subjectSize+decrease).start()
                                                                                                      
@@ -803,6 +804,7 @@ class PersistentBonus(Bonus):
              ('shield', 4),
              ('wave', 5)
              ]
+    
     boni = dict(
                 pacShot=Bonus.pacShot,
                 stopGhosts=Bonus.stopGhosts,
@@ -1270,7 +1272,7 @@ class TetrisTutorial(Tutorial):
         self.field1 = game.leftPlayer.zone
         self.field2 = game.rightPlayer.zone
         TetrisBar(self.game.display)
-        TetrisBar(self.game.display,left = 'False')
+        TetrisBar(self.game.display,left = False)
              
     def start(self):  
         # UP TEXT 
@@ -1353,12 +1355,12 @@ def killNode(node):
         node.unlink(True)
         node = None
     
-def preRenderNot():
+def preRender():
     global displayWidth, displayHeight, brickSize
     chars = '../data/img/char/'
     ballDiameter = 2 * ballRadius * PPM
-    TetrisBar.picBlue = avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight / 80))    
-    TetrisBar.picGreen = avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight / 80))
+    TetrisBar.picBlue = avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight))    
+    TetrisBar.picGreen = avg.SVG(chars + 'bat_red.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight ))
     
     Brick.material = dict(
     GLASS = [avg.SVG(chars+'bat_red.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM)),
@@ -1416,12 +1418,12 @@ def preRenderNot():
                 tower=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize),
                 shield=avg.SVG(boni + 'bat_red.svg', False).renderElement('layer1', bonusSize))
 
-def preRender():
+def preRenderNOT():
     global displayWidth, displayHeight, brickSize
     chars = '../data/img/char/'
     ballDiameter = 2 * ballRadius * PPM
-    TetrisBar.picBlue = avg.SVG(chars + 'tetrisTimeBlue.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight / 80))    
-    TetrisBar.picGreen = avg.SVG(chars + 'tetrisTimeGreen.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight / 80))
+    TetrisBar.picBlue = avg.SVG(chars + 'tetrisTimeBlue.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight))    
+    TetrisBar.picGreen = avg.SVG(chars + 'tetrisTimeGreen.svg', False).renderElement('layer1', (displayWidth / 5, displayHeight))
     
     Brick.material = dict(
     GLASS = [avg.SVG(chars+'glass.svg', False).renderElement('layer1', (brickSize * PPM, brickSize * PPM)),
