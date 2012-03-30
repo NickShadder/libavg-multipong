@@ -344,7 +344,8 @@ class Game(gameapp.GameApp):
         width = self.display.width
         for i in range (-3, 3):
             form = random.choice(Block.form.values())
-            Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height - (brickSize * PPM * 3) * i), self.leftPlayer, form, vanishLater=True)
+            offset = form[1]
+            Block(self.display, self.renderer, self.world, (width / 3 - (brickSize * offset * PPM), height - (brickSize * PPM * 3) * i), self.leftPlayer, form, vanishLater=True)
             Block(self.display, self.renderer, self.world, (2 * width / 3, height - (brickSize * PPM * 3) * i), self.rightPlayer, form, vanishLater=True)
         
         if self.tutorialMode:
