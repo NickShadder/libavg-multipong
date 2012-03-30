@@ -770,15 +770,12 @@ class Bonus:
           
     def newBlock(self, player): 
         height = (self.parentNode.height / 2) - (brickSize * PPM)
+        
         width = self.parentNode.width
-        form = random.choice(Block.form.values())
-        offset = form[1]
-        if form == Block.form['SPIECE']:
-                offset += 1
         if player.isLeft():
-            Block(self.game.display, self.game.renderer, self.world, (width / 3 - (brickSize * offset * PPM), height), self.game.leftPlayer, form)
+            Block(self.game.display, self.game.renderer, self.world, (width / 3 - (brickSize * 5 * PPM), height), self.game.leftPlayer, random.choice(Block.form.values()))
         else:
-            Block(self.game.display, self.game.renderer, self.world, (2 * width / 3, height), self.game.rightPlayer, form)
+            Block(self.game.display, self.game.renderer, self.world, (2 * width / 3, height), self.game.rightPlayer, random.choice(Block.form.values()))
             
     def buildShield(self, player):
         s = SemipermeableShield(self.game, player.isLeft(), 'ghost')
@@ -805,10 +802,10 @@ class PersistentBonus(Bonus):
     probs = [('pacShot', 2),
              ('stopGhosts', 2),
              ('flipGhosts', 2),
-             ('tower', 4),
+             ('tower', 2),
              ('invertPac', 2),
-             ('shield', 4),
-             ('wave', 5)
+             ('shield', 2),
+             ('wave', 7)
              ]
     
     boni = dict(
