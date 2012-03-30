@@ -308,6 +308,8 @@ class RedBall(Ball):
             fix.filterData = filterdef        
     # Override
     def nudge(self, direction=None):
+        if not (self is not None and self.body is not None):
+            return
         self.body.active = True
         speedX = -25 # XXX tweak
         if self.left:
@@ -512,7 +514,7 @@ class Tower:
         self.left = left
         self.firing = None
         self.node = avg.ImageNode(parent=game.display, pos=position)
-        # game.display.reorderChild(self.node, 6) 
+        game.display.reorderChild(self.node, 6) 
         self.node.setBitmap(Tower.pic)
         ballOffset = ballRadius, 2 * ballRadius
         self.firingpos = (b2Vec2(position) + self.node.size) / PPM - ballOffset
@@ -590,7 +592,7 @@ class Bonus:
             self.player = self.game.rightPlayer
             
         if self.isTutorial and not self.explStarted:
-            self.applyEffect(self.player)
+            #self.applyEffect(self.player)
             self.explStarted = 1
             self.cleanUp()
             self.field1 = self.game.field1
@@ -609,7 +611,7 @@ class Bonus:
         
             self.highLights.append(self.wordsNodeUp)
             avg.LinearAnim(self.wordsNodeUp, 'pos', 600, (0, -self.wordsNodeUp.width),
-                                                    (0, self.wordsNodeUp.width)).start()                                 
+                                                    (brickSize*5*PPM, self.wordsNodeUp.width)).start()                                 
             self.wordsNodeDown = avg.WordsNode(
                                     parent=self.field1,
                                     pivot=(0, 0),
@@ -623,7 +625,7 @@ class Bonus:
         
             self.highLights.append(self.wordsNodeDown)  
             avg.LinearAnim(self.wordsNodeDown, 'pos', 600, (self.field1.width, self.wordsNodeDown.getParent().height),
-                                                    (self.field1.width, self.wordsNodeDown.getParent().height - self.wordsNodeDown.width)).start()        
+                                                    (self.field1.width-(brickSize*5*PPM), self.wordsNodeDown.getParent().height - self.wordsNodeDown.width)).start()        
                                                                                                                                                                                
             
             self.lastExplNodeLeft = self.wordsNodeDown
@@ -653,7 +655,8 @@ class Bonus:
                 self.lastExplNodeRight = self.wordsNodeUp
                 g_player.setTimeout(config.bonusVanishTime, self.vanish)
                 g_player.setTimeout(config.bonusVanishTime, self.cleanUp)
-                self.game.menuButton = self.game.makeButtonInMiddle('menu', self.game.display, 0, self.game.clearDisplay)
+                self.game.end(self.player)
+                
 
         return self.res
     
@@ -760,7 +763,7 @@ class Bonus:
         else:
             x = 2 * thirdWidth
         for i in range(1, 4):
-            Tower(self.game, (x, i * quarterHeight), i, player.isLeft())        
+            self.game.towers.append(Tower(self.game, (x, i * quarterHeight), i, player.isLeft()))        
             
     def setMine(self, player=None):
         Mine(self.game, self.parentNode, player)
@@ -1056,6 +1059,8 @@ class Block:
     
     def __moveEnd(self, tr):
 #        self.__container.angle = round(2 * self.__container.angle / math.pi) * math.pi / 2
+        if self.__container is None:
+            return
         pixelBrickSize = brickSize * PPM
         if not self.__alive:
             self.__timeCall = g_player.setTimeout(1000, self.__vanish)
@@ -1292,7 +1297,7 @@ class TetrisTutorial(Tutorial):
         
         self.highLights.append(self.wordsNodeUp)
         avg.LinearAnim(self.wordsNodeUp, 'pos', 600, (0, -self.wordsNodeUp.width),
-                                                    (0, self.wordsNodeUp.width)).start()                                 
+                                                    (brickSize*5*PPM, self.wordsNodeUp.width)).start()                                 
         # DOWN TEXT 
         self.wordsNodeDown = avg.WordsNode(
                                     parent=self.field1,
@@ -1307,7 +1312,7 @@ class TetrisTutorial(Tutorial):
         
         self.highLights.append(self.wordsNodeDown)  
         avg.LinearAnim(self.wordsNodeDown, 'pos', 600, (self.field1.width, self.parentNode.height),
-                                                    (self.field1.width, self.parentNode.height - self.wordsNodeDown.width)).start()
+                                                    (self.field1.width-(brickSize*5*PPM), self.parentNode.height - self.wordsNodeDown.width)).start()
         
         g_player.setTimeout(config.tetrisTutorial, self.end)
                                                     

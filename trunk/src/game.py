@@ -224,7 +224,7 @@ class Game(gameapp.GameApp):
         self.title = avg.WordsNode(
                                     parent=self._parentNode,
                                     pivot=(0, 0),
-                                    text="UMP", # XXX the title shouldn't be Multipong - we need a new name
+                                    text="UPM", # XXX the title shouldn't be Multipong - we need a new name
                                     pos=(self._parentNode.width / 2 - 100, 50), # XXX the title is not in the middle
                                     wrapmode="wordchar",
                                     font='Impact',
@@ -328,6 +328,7 @@ class Game(gameapp.GameApp):
         self.bonus = None
         self.balls = []
         self.redballs = []
+        self.towers = []
         
         self.ghosts = []
         self.mainLoop = g_player.setOnFrameHandler(self.step)
@@ -440,9 +441,14 @@ class Game(gameapp.GameApp):
             self.keepPushingBalls = g_player.setTimeout(1000, self.createWinBalls)
                 
     def clearDisplay(self):
+        
+        for tower in self.towers:
+            tower.destroy()
+        
+        for redball in self.redballs:
+            redball.destroy()
+            
         g_player.clearInterval(self.mainLoop)
-#        if self.bonusjob is not None:
-#            g_player.clearInterval(self.bonusjob)  
         if self.cleanup is not None:
             g_player.clearInterval(self.cleanup)
             self.cleanup = None
