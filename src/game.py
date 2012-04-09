@@ -422,6 +422,7 @@ class Game(gameapp.GameApp):
                 g_player.clearInterval(ghost.changing)
         self.display.active = False
         self.display.unlink(True)
+        BorderLine.body = None
         self.machine.changeState('MainMenu')
                 
     def addBall(self):
